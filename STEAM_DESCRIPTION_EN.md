@@ -30,16 +30,18 @@ This mod must load [b]before any mod that depends on it[/b] (place it above them
 Add it to both lines in your server ini:
 [list]
 [*] [b]Mods=[/b] MinidoracatUIFor42
-[*] [b]WorkshopItems=[/b] (the numeric Workshop ID will be added after first release)
+[*] [b]WorkshopItems=[/b] 3789836701
 [/list]
 
 [h2]🔗 Mod series[/h2]
 [list]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
 [/list]
 
 [h2]📋 Mod info[/h2]
 [list]
+[*] [b]Workshop ID:[/b] 3789836701
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
 [*] [b]Supported version:[/b] Build 42.20.1+
 [*] [b]Singleplayer / Multiplayer:[/b] both supported

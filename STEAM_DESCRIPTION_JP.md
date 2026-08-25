@@ -30,16 +30,18 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 サーバー ini の両方に追加してください：
 [list]
 [*] [b]Mods=[/b] MinidoracatUIFor42
-[*] [b]WorkshopItems=[/b]（初回公開後に Workshop の数字 ID を追記）
+[*] [b]WorkshopItems=[/b] 3789836701
 [/list]
 
 [h2]🔗 MOD シリーズ[/h2]
 [list]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
 [/list]
 
 [h2]📋 MOD 情報[/h2]
 [list]
+[*] [b]Workshop ID:[/b] 3789836701
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
 [*] [b]対応バージョン:[/b] Build 42.20.1+
 [*] [b]シングル / マルチ:[/b] 両対応

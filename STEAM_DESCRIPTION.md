@@ -30,16 +30,18 @@ Minidoracat 系列 MOD 共用的 UI 函式庫：主題色票（深色／淺色�
 伺服器 ini 兩處都要加：
 [list]
 [*] [b]Mods=[/b] MinidoracatUIFor42
-[*] [b]WorkshopItems=[/b]（首次上傳後補上 Workshop 數字 ID）
+[*] [b]WorkshopItems=[/b] 3789836701
 [/list]
 
 [h2]🔗 MOD 系列[/h2]
 [list]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
 [/list]
 
 [h2]📋 MOD 資訊[/h2]
 [list]
+[*] [b]Workshop ID:[/b] 3789836701
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
 [*] [b]支援版本:[/b] Build 42.20.1+
 [*] [b]單人 / 多人:[/b] 皆支援

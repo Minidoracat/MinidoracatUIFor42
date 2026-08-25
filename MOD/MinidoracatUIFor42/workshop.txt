@@ -1,0 +1,65 @@
+version=1
+id=3789836701
+title=Minidoracat UI Library for B42
+description=[h1]🎨 Minidoracat UI Library for B42[/h1]
+description=[h3]By Minidoracat[/h3]
+description=
+description=[hr][/hr]
+description=
+description=[h2]✨ What is this[/h2]
+description=Shared UI library for the Minidoracat mod series: themed color palettes (dark / light), rounded-corner window skins, floating buttons, toast notifications and other reusable components.
+description=
+description=This mod [b]does not add any gameplay content by itself[/b] — it is a base library used by other mods. Its visible effects depend entirely on the mods that use it.
+description=
+description=[h2]👥 Who needs this[/h2]
+description=[list]
+description=[*] Subscribe only when another mod lists it under Required Items
+description=[*] If none of your mods depend on it, you can leave it disabled
+description=[/list]
+description=
+description=[h2]🧰 What it provides (for mod developers)[/h2]
+description=[list]
+description=[*] [b]Theme system[/b]: token-based palettes with dark / light variants, per-mod overrides
+description=[*] [b]Rounded skin[/b]: engine-native 9-slice rounded rendering with a safe rectangular fallback when textures are missing — windows never fail to open
+description=[*] [b]Shared widgets[/b]: floating button (drag + position memory), toast notifications (shared stack across mods)
+description=[*] [b]Virtual list[/b]: large tables (trading/auction-style UIs) only build visible rows
+description=[*] [b]Versioned API[/b]: dependent mods declare the API revision they need, so library updates never silently break them
+description=[/list]
+description=
+description=[h2]⚠️ Load order[/h2]
+description=This mod must load [b]before any mod that depends on it[/b] (place it above them in your mod list).
+description=
+description=[h2]🖥️ Multiplayer / Dedicated server[/h2]
+description=Add it to both lines in your server ini:
+description=[list]
+description=[*] [b]Mods=[/b] MinidoracatUIFor42
+description=[*] [b]WorkshopItems=[/b] 3789836701
+description=[/list]
+description=
+description=[h2]🔗 Mod series[/h2]
+description=[list]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
+description=[/list]
+description=
+description=[h2]📋 Mod info[/h2]
+description=[list]
+description=[*] [b]Workshop ID:[/b] 3789836701
+description=[*] [b]Mod ID:[/b] MinidoracatUIFor42
+description=[*] [b]Supported version:[/b] Build 42.20.1+
+description=[*] [b]Singleplayer / Multiplayer:[/b] both supported
+description=[/list]
+description=
+description=[h2]💬 Feedback[/h2]
+description=[list]
+description=[*] [url=https://discord.gg/Gur2V67]Discord community[/url]
+description=[/list]
+description=
+description=[h2]📺 Follow the author[/h2]
+description=[list]
+description=[*] [url=https://www.twitch.tv/minidoracat]Twitch[/url]
+description=[/list]
+description=
+description=[b]#Minidoracat[/b]
+tags=Build 42;Framework;Interface;Multiplayer
+visibility=public

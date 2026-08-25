@@ -340,9 +340,9 @@ end
 
 MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
-    VERSION = "0.3.0",
+    VERSION = "0.1.0",
     API_MAJOR = 1,
-    API_REVISION = 2, -- rev 2：FloatButton＋Toast＋VirtualList（additive）
+    API_REVISION = 1, -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -351,7 +351,7 @@ MinidoracatUI.v1 = {
         -- 對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
         floatButton = false,
         toast = false,
-        virtualList = false, -- v0.3
+        virtualList = false,
     },
     Theme = Theme,
     Skin = Skin,
