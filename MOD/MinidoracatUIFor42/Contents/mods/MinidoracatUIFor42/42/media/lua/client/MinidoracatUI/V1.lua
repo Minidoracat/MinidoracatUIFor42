@@ -125,6 +125,16 @@ end
 
 -- pcall 用具名頂層函式＋傳參：inline closure 會在每次 fill/border 配置一個捕捉
 -- 外層變數的匿名函式——皮膚視窗每幀 3+ 呼叫＝穩定 GC 壓力；pcall(fn, args...) 零配置。
+--
+-- 絕對座標＋自身捲動位移：getAbsoluteX/Y 只含 parent 鏈 scroll、不含自身，
+-- 而 drawRect 系繪製上下文吃自身 scroll——9-slice 走絕對螢幕座標必須手補，
+-- 否則捲動清單內的列高亮會錯位（非捲動視窗 getXScroll()=0 無害）。
+-- floor 必做：render 不 floor，GL_NEAREST 遇半像素在邊上抖 1px（動畫座標是小數）。
+local function absOrigin(element, x, y)
+    return math.floor(element:getAbsoluteX() + element:getXScroll() + x),
+        math.floor(element:getAbsoluteY() + element:getYScroll() + y)
+end
+
 local function renderNine(npt, ax, ay, w, h, r, g, b, a)
     npt:render(ax, ay, w, h, r, g, b, a)
 end
@@ -135,12 +145,12 @@ local function drawNinePatch(element, name, x, y, width, height, color, alpha)
     if not npt then
         return false
     end
-    -- 絕對座標＋自身捲動位移：getAbsoluteX/Y 只含 parent 鏈 scroll、不含自身，
-    -- 而 drawRect 系繪製上下文吃自身 scroll——9-slice 走絕對螢幕座標必須手補，
-    -- 否則捲動清單內的列高亮會錯位（非捲動視窗 getXScroll()=0 無害）。
-    -- floor 必做：render 不 floor，GL_NEAREST 遇半像素在邊上抖 1px（動畫座標是小數）。
-    local ax = math.floor(element:getAbsoluteX() + element:getXScroll() + x)
-    local ay = math.floor(element:getAbsoluteY() + element:getYScroll() + y)
+    -- 座標計算也在 pcall 內（紅線：element 缺存取器不得讓錯誤穿透到 prerender）；
+    -- 但 element 契約破損不是貼圖的錯——退回而**不**標壞貼圖。
+    local okCoord, ax, ay = pcall(absOrigin, element, x, y)
+    if not okCoord then
+        return false
+    end
     local ok = pcall(renderNine, npt, ax, ay, math.floor(width), math.floor(height),
         color.r, color.g, color.b, alpha)
     if not ok then

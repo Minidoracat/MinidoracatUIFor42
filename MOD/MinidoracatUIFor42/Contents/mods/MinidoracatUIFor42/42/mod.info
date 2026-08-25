@@ -1,6 +1,6 @@
 name=Minidoracat UI Library for B42
 id=MinidoracatUIFor42
-description=[B42]Minidoracat 家族 MOD 共用 UI 函式庫（主題色票、圓角皮膚、浮動按鈕與 Toast），本體不新增遊戲內容，僅供家族 MOD 依賴使用。By Minidoracat
+description=[B42]Minidoracat 家族 MOD 共用 UI 函式庫（版本化 API、主題色票深淺雙色系、圓角皮膚；浮動按鈕與 Toast 為後續版本規劃），本體不新增遊戲內容，僅供家族 MOD 依賴使用。By Minidoracat
 poster=poster.png
 modversion=42.20.3-0.1.0
 versionMin=42.20.3

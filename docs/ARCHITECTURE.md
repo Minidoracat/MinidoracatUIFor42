@@ -32,12 +32,13 @@ graph LR
     C --> E[MinidoracatUI.v1]
 ```
 
-1. **引擎層**：`require=MinidoracatUIFor42` 保證框架先載入（`ZomboidFileSystem.java:807-833`）。
+1. **引擎層（硬依賴）**：consumer 的 mod.info 掛 `require=MinidoracatUIFor42`——引擎保證框架先載入（`ZomboidFileSystem.java:807-833`），**框架 MOD 未安裝／PZ build 落在框架 versionMin 之外時，consumer 整個 MOD 會被引擎拒載**（`ChooseGameInfo.java:647-666`）。「玩家漏裝框架」由這一層以「缺少必要 MOD」明確擋下（Steam 訂閱會自動拉 Required Items），**不是**由退回層吸收。
 2. **API 層**：consumer 檢查 `API_MAJOR`／`API_REVISION`；不合格＝**當框架不存在處理**，不得帶半套狀態運行。
-3. **繪製層（軟依賴）**：consumer 的 adapter 保留最小直角退回路徑（`drawRect`／`drawRectBorder`）。框架整包缺席時 UI 仍可用，只是沒有圓角／動畫——這讓「玩家漏裝框架」「框架壞版」都不是災難，也讓 consumer 可以獨立測試。
+3. **繪製層（退回紅線）**：consumer 的 adapter 保留最小直角退回路徑（`drawRect`／`drawRectBorder`）。它保護的情境是：**框架版本不合（API 檢查不過）、框架 Lua 初始化失敗（半初始化＝facade 未發布）、離線測試 harness**——這些情境下 UI 照開、只失去圓角。
 
 > 解耦的代價聲明：adapter 模式意味著每個 consumer 保留 ~30 行退回碼。這是刻意的
-> ——它換來 consumer 對框架的**軟依賴**，是「盡量解耦」的落地形式。
+> ——它讓 consumer 可以獨立測試、且框架壞版時不帶病運行；但注意這**不是**「不裝
+> 框架也能玩」的軟依賴（引擎層是硬依賴），文件早期版本的「軟依賴」措辭以本節為準。
 
 ## 2. API 契約（v1）
 
@@ -81,15 +82,14 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 
 | 檔案 | 期 | 職責 |
 |---|---|---|
-| `V1.lua` | v0.1 | facade：載入內部模組、組裝 API table、最後發布全域 |
-| `Theme.lua` | v0.1 | default palette（dark＋light）、`Theme.create(overrides)` 深拷貝＋覆蓋 |
-| `Skin.lua` | v0.1 | NinePatch 生命週期＋`fill`/`border`/`dot`＋直角退回；無狀態繪製函式吃 theme 實例 |
-| `Widgets/FloatButton.lua` | v0.2 | 常駐浮鈕：拖曳、位移門檻點擊判定、位置持久化回調、clamp 回螢幕 |
-| `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop |
+| `V1.lua` | v0.1 | **單檔**：Theme＋Skin＋facade 三個 section（詳見檔頭「單檔設計」註解——PZ require 不保證回傳值、跨檔共享只能靠全域，分檔會重演 NeatUI 的隱藏載入順序依賴；單檔讓「中段 error＝facade 從未發布」自然成立） |
+| `Widgets/FloatButton.lua` | v0.2 | 常駐浮鈕：拖曳、位移門檻點擊判定、位置持久化回調、clamp 回螢幕；獨立檔、單向依賴 V1 全域，載入失敗只影響 `CAPABILITIES.floatButton` |
+| `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop；同上 |
 | `VirtualList.lua` | v0.3 | 垂直固定列高虛擬清單（§5） |
 
-載入順序防雷：`V1.lua` 是唯一入口，內部模組間依賴由它顯式 require——不重演 NeatUI
-「scrollview 用 `NIScrollBar` 卻不 require」的隱藏順序依賴。
+載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
+`MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
+`NIScrollBar` 卻不 require」的隱藏順序依賴。
 
 ### 3.2 Theme（含深/淺雙色系，v0.1 內建）
 
@@ -102,19 +102,26 @@ local theme = UI.Theme.create({
 })
 ```
 
-- **token 分層**：框架 default 只放跨 MOD token（`surface`／`surfaceTitle`／`border`／`text`／`textMuted`／`accent`／`hover`／`selected`／`error`）；MOD 自有 token（如 NoticeBoard 的 `unread`、MiniMap 的 `rowHover`）由 create 時自帶，框架不認識也不管。
+- **token 分層**：框架 default 只放跨 MOD token，**v1 共 12 個**（`surface`／`surfaceTitle`／`well`／`border`／`text`／`textMuted`／`textFaint`／`accent`／`hover`／`selected`／`errorSurface`／`errorText`——與 `V1.lua` 的 `DARK`/`LIGHT` 表逐字一致，該表是唯一權威）；MOD 自有 token（如 NoticeBoard 的 `unread`、MiniMap 的 `rowHover`）由 create 時自帶，框架不認識也不管。**未知 token 的 theme 便捷方法呼叫是靜默不畫**（fail-soft），拼錯 token＝元素消失無診斷——寫 consumer 時以 V1.lua 的表為準，勿憑記憶。
 - **雙色系**：`variant` 選 default palette 起點；兩套數值都在 `Theme.lua` 內維護。繪製邏輯與資產完全 variant 無關（白圖×頂點染色）。深色為預設（PZ 本體與家族現有 UI 全深色）；淺色首發標 experimental。variant 由 MOD 開發者決定；玩家層級即時切換是未來項目（牽涉全 consumer token 完整性）。
 - **隔離**：`create()` 深拷貝，禁止 mutate 共享 default——現有 NBSkin↔MiniMap drift 的根源就是「共用色票、各自複製」。
+- **已知取捨（色票三份現況）**：兩個既有 adapter 刻意保留字面 `COLORS`（框架缺席時色票也要在、退回路徑不依賴框架），因此共通數值目前存在三份（NBSkin／MiniMap Skin／框架 DARK）。v0.1 接受此取捨——「消滅重複」在繪製碼與 PNG 已達成，色票的單一權威化留待既有 consumer 改用 `Theme.create`（自然時機：某 MOD 需要 light variant 或玩家換色時）。
 
 ### 3.3 Skin（NinePatch 生命週期全封裝）
 
-繪製入口（皆為 theme 實例方法，內部轉呼叫無狀態 Skin 函式）：
+`Skin` 的無狀態繪製函式是**正式公開 API**（受同 major additive 承諾保護），
+thin adapter 直接取用；theme 實例方法是其上的便捷薄層（token 字串解析）：
 
 ```lua
-theme:fill(element, x, y, w, h, colorToken, shape, alphaScale)
-theme:border(element, x, y, w, h, colorToken, shape, alphaScale)
-theme:dot(element, x, y, size, colorToken, outlineToken)
--- shape: "round"（四角圓）| "roundTop"（上圓下直）| "rect"（強制直角）
+-- 正式 API（adapter 用法；color 是 {r,g,b,a} table）：
+UI.Skin.fill(element, x, y, w, h, color, shape, alphaScale)
+UI.Skin.border(element, x, y, w, h, color, shape, alphaScale)
+UI.Skin.dot(element, x, y, size, color, outline)
+UI.Skin.fits(w, h, shape)
+-- theme 便捷層（新 MOD 用法；color 可為 token 字串或 table）：
+theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
+-- shape: nil/false="round"（四角圓）| true/"roundTop"（上圓下直）| "rect"（強制直角）
+--        boolean 形式與家族既有 topOnly 呼叫慣例逐位相容
 ```
 
 **內建規則（caller 不必知道的事）**
@@ -174,11 +181,13 @@ theme:dot(element, x, y, size, colorToken, outlineToken)
 
 ## 7. 測試策略
 
-- `scripts/smoke_harness.lua`（標準 Lua，假 PZ 全域）情境：
+- `scripts/smoke_harness.lua`（標準 Lua，假 PZ 全域；由 `verify_mod.py` 第 13 項自動執行）情境：
   1. facade 半初始化（模擬中途 error → `MinidoracatUI.v1` 必須不存在）
-  2. NinePatch 三態（無全域／正常／壞路徑）× fill/border 不拋錯、退回旗標正確
-  3. stencil 計數器成對＋repaint（參考 NoticeBoard `test_nbpanel.lua`）
-  4. theme 隔離（兩實例互不污染、default 不被 mutate）
-  5. （v0.2 起）FloatButton 拖曳門檻／clamp、Toast 佇列上限
-- `scripts/verify_mod.py`：家族十項靜態閘門＋（v0.1 起）UI 貼圖驗證項。
+  2. NinePatch 三態＋element 契約破損（無全域／正常／壞路徑／缺存取器）× fill/border/dot 不拋錯、退回旗標正確、element 壞不標壞貼圖
+  3. theme 隔離（兩實例互不污染、default 不被 mutate、light variant、token 解析）
+  4. fits 邊界與 shape 相容（boolean topOnly ≡ "roundTop"、"rect" 強制退回）
+  - 條數守門 `EXPECTED_ASSERTIONS`（家族慣例：防整段被註解仍全綠）
+  -（v0.2 起）stencil 計數器成對＋repaint（Toast/Widget 才觸碰 stencil）、FloatButton 拖曳門檻／clamp、Toast 佇列上限
+- `scripts/verify_mod.py`：13 項閘門＝家族十項靜態＋UI 貼圖驗證（第 12 項）＋Lua 煙霧測試（第 13 項）。
+- 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

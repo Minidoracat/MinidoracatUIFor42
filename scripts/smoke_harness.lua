@@ -20,7 +20,9 @@ local load_ = loadstring or load -- Lua 5.1 / 5.2+ 兼容
 
 -- ===== 測試工具 =====
 local failures = 0
+local assertionCount = 0
 local function check(ok, label)
+    assertionCount = assertionCount + 1
     if ok then print("  PASS  " .. label)
     else failures = failures + 1; print("  FAIL  " .. label) end
 end
@@ -85,8 +87,8 @@ do
     check(ret == v1, "檔尾 return 與全域是同一實體")
     check(v1.API_MAJOR == 1 and v1.API_REVISION >= 1, "API_MAJOR/API_REVISION 形狀正確")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
-    check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.virtualList == false,
-        "未實作能力誠實標 false")
+    check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
+        and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
 
     -- 注入 error：把 PALETTES 定義行換成 error()，模擬檔案中段失敗
     MinidoracatUI = nil
@@ -181,6 +183,20 @@ do
     check(#el4.rects == 2 and badRender.calls["media/ui/MinidoracatUI/mui_round_fill.png"] == 2,
         "E2b 拋錯後標壞：下幀直接退回、不再取貼圖")
 
+    -- E3：element 契約破損（缺 getXScroll 的畸形 stub）——紅線：錯誤不得穿透到
+    -- 呼叫端；且 element 壞不是貼圖的錯，貼圖不得被標壞（下一個正常 element 仍走 9-slice）
+    local e3 = {}
+    NinePatchTexture = makeNinePatchStub(e3)
+    Skin._resetForTests()
+    local broken = newElement(0, 0)
+    broken.getXScroll = nil
+    local okBroken = pcall(Skin.fill, broken, 0, 0, 100, 40, SURFACE)
+    check(okBroken and #broken.rects == 1, "E3 element 缺存取器：不炸、當幀退回直角")
+    local intact = newElement(0, 0)
+    Skin.fill(intact, 0, 0, 100, 40, SURFACE)
+    check(#e3.patches == 1 and #intact.rects == 0,
+        "E3 element 壞不標壞貼圖：正常 element 隨後仍走 9-slice")
+
     NinePatchTexture = nil
     getTexture = nil
     Skin._resetForTests()
@@ -241,9 +257,17 @@ do
     Skin._resetForTests()
 end
 
+-- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
+-- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
+local EXPECTED_ASSERTIONS = 48
 print()
+if assertionCount ~= EXPECTED_ASSERTIONS then
+    print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount
+        .. "（有測試被刪掉或跳過？）")
+    os.exit(1)
+end
 if failures > 0 then
     print(failures .. " 項失敗")
     os.exit(1)
 end
-print("全部通過")
+print("全部通過（" .. assertionCount .. " 斷言）")

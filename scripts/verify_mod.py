@@ -314,6 +314,8 @@ else:
     for _m in MEDIA_DIRS:
         _tex_dir = _Path(_m) / "ui" / "MinidoracatUI"
         if not _tex_dir.is_dir():
+            _tex_problems.append(f"貼圖目錄不存在: {os.path.relpath(_tex_dir, REPO)}"
+                                 "（框架核心資產整包缺失，跑 python -B scripts/gen_ui_textures.py）")
             continue
         for _name in _TEX_NAMES:
             _p = _tex_dir / _name
@@ -323,13 +325,33 @@ else:
             try:
                 _verify_texture(_p)
                 _tex_count += 1
-            except AssertionError as _ae:
-                _tex_problems.append(f"{os.path.relpath(_p, REPO)}: {_ae}")
+            except Exception as _ae:   # AssertionError／PIL 解碼錯誤（UnidentifiedImageError/OSError）都算壞
+                _tex_problems.append(f"{os.path.relpath(_p, REPO)}: {type(_ae).__name__}: {_ae}")
     if _tex_count == 0 and not _tex_problems:
-        skip("UI 皮膚貼圖", "找不到 ui/MinidoracatUI 貼圖目錄")
+        fail("UI 皮膚貼圖", ["MEDIA_DIRS 掃不到任何 ui/MinidoracatUI 貼圖——框架不可無資產發版"])
     else:
         fail("UI 皮膚貼圖（gen_ui_textures.verify_image）", _tex_problems) if _tex_problems \
             else ok(f"UI 皮膚貼圖（{_tex_count} 張過 verify_image）")
+
+# ---- 13. Lua 煙霧測試 ----
+# scripts/smoke_harness.lua：假 PZ 全域驅動真 V1.lua 跑四情境（facade 半初始化／
+# NinePatch 三態／theme 隔離／fits 邊界）。靜態掃描抓不到「改簽章漏改呼叫點」「刪
+# scroll 補償」「快取重試」這類要執行才炸的回歸——雙閘門缺一不可，缺 lua 列 SKIP
+# 而非 PASS（SKIP＝該防線沒跑到）。
+_lua_bin = shutil.which("lua")
+if not _lua_bin:
+    skip("Lua 煙霧測試（smoke_harness.lua）", "PATH 沒有 lua")
+else:
+    _r = subprocess.run([_lua_bin, "scripts/smoke_harness.lua"], capture_output=True, cwd=REPO)
+    _lines = [l for l in (_r.stdout or b"").decode("utf-8", "replace").splitlines() if l.strip()]
+    _err_tail = (_r.stderr or b"").decode("utf-8", "replace").splitlines()[-3:]
+    if _r.returncode != 0:
+        fail("Lua 煙霧測試（smoke_harness.lua）", (_lines[-3:] or []) + _err_tail)
+    elif _lines and _lines[0].startswith("SKIP"):
+        skip("Lua 煙霧測試（smoke_harness.lua）", _lines[0])
+    else:
+        fail("Lua 煙霧測試（smoke_harness.lua）", ["無輸出"]) if not _lines \
+            else ok(f"Lua 煙霧測試（{_lines[-1]}）")
 
 # ---- 總結 ----
 print()
