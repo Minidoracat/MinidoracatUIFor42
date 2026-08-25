@@ -168,8 +168,8 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 | 期 | 內容 | 完成定義（可驗證） |
 |---|---|---|
 | v0.1 Core | V1＋Theme（雙色系）＋Skin＋貼圖資產＋harness | NoticeBoard 與 MiniMap 皮膚改 thin adapter，刪除重複繪製碼與重複 PNG；兩 repo verify 全綠；遊戲內實測無視覺回歸 |
-| v0.2 Widgets | FloatButton＋Toast | 家族三份浮鈕/Toast 實作全部改用框架版 |
-| v0.3 VirtualList | 垂直固定列高 | ≥1 真實 consumer 上線使用 |
+| v0.2 Widgets（**已完成**） | FloatButton＋Toast | 家族三份浮鈕/Toast 實作全部改用框架版 ✅（NBFloatButton／NBToast／MiniMap _FloatIcon 皆為 thin wrapper） |
+| v0.3 VirtualList（**已完成**） | 垂直固定列高 | 初版隨 v0.2 同時交付（使用者定案：交易面板／拍賣場等未來 MOD 的既定需求）；首個 consumer 出現時回填實戰驗證 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 

@@ -404,6 +404,23 @@ do
     check(#rights == 1, "左鍵按住期間右鍵被忽略")
     btn:onMouseUp(5, 5)
 
+    -- 未按下的 move/release 是 no-op（防護自 MiniMap test_key_migration J 情境遷入）
+    local beforeClicks, beforeX = clicks, btn:getX()
+    check(btn:onMouseMove(5, 5) == false and btn:onMouseUp(0, 0) == false,
+        "未按下時 move/release 回 false 無副作用")
+    check(clicks == beforeClicks and btn:getX() == beforeX, "未按下不觸發 onClick 也不動位置")
+
+    -- 跨過門檻後縮回原點仍屬拖曳（_dragged 黏著；自 test_key_migration K 情境遷入）
+    mouseX, mouseY = btn:getX() + 5, btn:getY() + 5
+    btn:onMouseDown(5, 5)
+    mouseX = mouseX + 10 -- 跨門檻
+    btn:onMouseMove(10, 0)
+    mouseX = mouseX - 10 -- 縮回原點
+    btn:onMouseMove(-10, 0)
+    local clicksBeforeRelease = clicks
+    btn:onMouseUp(0, 0)
+    check(clicks == clicksBeforeRelease, "跨門檻後縮回原點仍是拖曳（黏著），不誤判點擊")
+
     -- setPosition 夾回＋無玩家自我隱藏
     btn:setPosition(-50, 9999)
     check(btn:getX() == 0 and btn:getY() == 1040, "setPosition 夾回螢幕（0, 1080-40）")
@@ -556,7 +573,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 90
+local EXPECTED_ASSERTIONS = 93
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

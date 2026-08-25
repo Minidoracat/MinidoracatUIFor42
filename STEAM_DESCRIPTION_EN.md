@@ -18,7 +18,8 @@ This mod [b]does not add any gameplay content by itself[/b] — it is a base lib
 [list]
 [*] [b]Theme system[/b]: token-based palettes with dark / light variants, per-mod overrides
 [*] [b]Rounded skin[/b]: engine-native 9-slice rounded rendering with a safe rectangular fallback when textures are missing — windows never fail to open
-[*] [b]Shared widgets (planned for v0.2, in development)[/b]: floating button (drag + position memory), toast notifications
+[*] [b]Shared widgets[/b]: floating button (drag + position memory), toast notifications (shared stack across mods)
+[*] [b]Virtual list[/b]: large tables (trading/auction-style UIs) only build visible rows
 [*] [b]Versioned API[/b]: dependent mods declare the API revision they need, so library updates never silently break them
 [/list]
 
