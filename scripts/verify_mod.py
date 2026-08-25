@@ -297,6 +297,40 @@ if os.path.isfile(_cl):
                     leaks.append(f"CHANGELOG.md:{lineno} {desc}（{mm.group()[:40]}）")
     fail("CHANGELOG 無基礎設施洩漏樣式", leaks) if leaks else ok("CHANGELOG 無基礎設施洩漏樣式")
 
+# ---- 12. UI 皮膚貼圖 ----
+# 42/media/ui/MinidoracatUI/ 的 5 張 PNG 逐張過 gen_ui_textures.verify_image（尺寸／IHDR／
+# 純白 RGB／照 NinePatchTexture.java:262-298 反解析切線＝(6,4,6)×(6,4,6)｜(6,10,0)／
+# 拉伸區逐列相同／參考 alpha 表逐像素比對）。Lua 測試全用 stub、從不讀 PNG，貼圖壞了
+# 只會靜默退回直角——這是唯一擋住壞資產上 Workshop 的閘門。缺 Pillow 列 SKIP。
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gen_ui_textures import OUTPUT_NAMES as _TEX_NAMES, verify_image as _verify_texture
+except ImportError as _e:   # Pillow 沒裝（gen_ui_textures 頂層 import PIL）
+    skip("UI 皮膚貼圖", f"無法載入 gen_ui_textures（{_e}）")
+else:
+    from pathlib import Path as _Path
+    _tex_problems = []
+    _tex_count = 0
+    for _m in MEDIA_DIRS:
+        _tex_dir = _Path(_m) / "ui" / "MinidoracatUI"
+        if not _tex_dir.is_dir():
+            continue
+        for _name in _TEX_NAMES:
+            _p = _tex_dir / _name
+            if not _p.is_file():
+                _tex_problems.append(f"缺檔: {os.path.relpath(_p, REPO)}")
+                continue
+            try:
+                _verify_texture(_p)
+                _tex_count += 1
+            except AssertionError as _ae:
+                _tex_problems.append(f"{os.path.relpath(_p, REPO)}: {_ae}")
+    if _tex_count == 0 and not _tex_problems:
+        skip("UI 皮膚貼圖", "找不到 ui/MinidoracatUI 貼圖目錄")
+    else:
+        fail("UI 皮膚貼圖（gen_ui_textures.verify_image）", _tex_problems) if _tex_problems \
+            else ok(f"UI 皮膚貼圖（{_tex_count} 張過 verify_image）")
+
 # ---- 總結 ----
 print()
 print(f"PASS {len(passed)} / FAIL {len(failed)} / SKIP {len(skipped)}")
