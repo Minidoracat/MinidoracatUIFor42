@@ -340,14 +340,17 @@ end
 
 MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
-    VERSION = "0.1.0",
+    VERSION = "0.3.0",
     API_MAJOR = 1,
-    API_REVISION = 1,
+    API_REVISION = 2, -- rev 2：FloatButton＋Toast＋VirtualList（additive）
     CAPABILITIES = {
         theme = true,
         skin = true,
-        floatButton = false, -- v0.2
-        toast = false,       -- v0.2
+        -- 以下三項由各 widget 檔載入成功後翻 true（Widgets/FloatButton.lua、
+        -- Widgets/Toast.lua、VirtualList.lua 檔尾）——widget 檔壞掉只影響
+        -- 對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
+        floatButton = false,
+        toast = false,
         virtualList = false, -- v0.3
     },
     Theme = Theme,

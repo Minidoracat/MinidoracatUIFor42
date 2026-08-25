@@ -257,9 +257,306 @@ do
     Skin._resetForTests()
 end
 
+-- ============================================================
+-- Widget 情境共用 stub：最小 ISPanel 面＋可控滑鼠/時間/螢幕
+-- ============================================================
+local mouseX, mouseY = 0, 0
+local nowMs = 5000000 -- 大數起跳：週期邏輯 lastAt 初值 0 的家族慣例
+getMouseX = function() return mouseX end
+getMouseY = function() return mouseY end
+getTimestampMs = function() return nowMs end
+getCore = function()
+    return { getScreenWidth = function() return 1920 end, getScreenHeight = function() return 1080 end }
+end
+getTextManager = function()
+    return {
+        -- 每字元 10px 的可控量測（fitText 二分可測）；字型高 12
+        MeasureStringX = function(_, _, text) return string.len(text) * 10 end,
+        getFontHeight = function() return 12 end,
+    }
+end
+UIFont = { NewSmall = "NewSmall", Small = "Small", Medium = "Medium" }
+getText = function(key) return "[" .. tostring(key) .. "]" end
+local playerPresent = true
+getSpecificPlayer = function() if playerPresent then return {} end return nil end
+
+ISPanel = {}
+ISPanel.__index = ISPanel
+function ISPanel:derive(name)
+    local class = setmetatable({ Type = name }, self)
+    class.__index = class
+    return class
+end
+function ISPanel.new(class, x, y, w, h)
+    local o = setmetatable({}, class)
+    o.x, o.y, o.width, o.height = x, y, w, h
+    o.visible = true
+    o.children = {}
+    o.stencil = { set = 0, clear = 0, repaint = 0 }
+    o.rects, o.borders = {}, {}
+    return o
+end
+function ISPanel:initialise() end
+function ISPanel:setX(x) self.x = x end
+function ISPanel:setY(y) self.y = y end
+function ISPanel:getX() return self.x end
+function ISPanel:getY() return self.y end
+function ISPanel:setWidth(w) self.width = w end
+function ISPanel:setHeight(h) self.height = h end
+function ISPanel:getWidth() return self.width end
+function ISPanel:getHeight() return self.height end
+function ISPanel:getAbsoluteX() return self.x end
+function ISPanel:getAbsoluteY() return self.y end
+function ISPanel:getXScroll() return 0 end
+function ISPanel:getYScroll() return 0 end
+function ISPanel:setVisible(v) self.visible = v end
+function ISPanel:getIsVisible() return self.visible end
+function ISPanel:addToUIManager() end
+function ISPanel:removeFromUIManager() end
+function ISPanel:bringToTop() end
+function ISPanel:setCapture(v) self.captured = v end
+function ISPanel:isMouseOver() return self._mouseOver == true end
+function ISPanel:getMouseX() return mouseX - self.x end
+function ISPanel:getMouseY() return mouseY - self.y end
+function ISPanel:addChild(c) self.children[#self.children + 1] = c end
+function ISPanel:removeChild(c)
+    for i = #self.children, 1, -1 do
+        if self.children[i] == c then table.remove(self.children, i) end
+    end
+end
+function ISPanel:setStencilRect() self.stencil.set = self.stencil.set + 1 end
+function ISPanel:clearStencilRect() self.stencil.clear = self.stencil.clear + 1 end
+function ISPanel:repaintStencilRect() self.stencil.repaint = self.stencil.repaint + 1 end
+function ISPanel:drawText() end
+function ISPanel:drawTextCentre() end
+function ISPanel:drawRect(x, y, w, h, a, r, g, b)
+    self.rects[#self.rects + 1] = { x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b }
+end
+function ISPanel:drawRectBorder(x, y, w, h, a, r, g, b)
+    self.borders[#self.borders + 1] = { x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b }
+end
+
+-- 載入三個 widget 檔（V1 已在情境一載入；E0 環境＝無 NinePatchTexture，皮膚走直角）
+local MOD_LUA = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/"
+dofile(MOD_LUA .. "Widgets/FloatButton.lua")
+dofile(MOD_LUA .. "Widgets/Toast.lua")
+dofile(MOD_LUA .. "VirtualList.lua")
+
+-- ============================================================
+print("情境五：FloatButton（拖曳門檻／點擊／右鍵守衛／clamp／能力旗標）")
+-- ============================================================
+do
+    check(UI.CAPABILITIES.floatButton == true and UI.FloatButton ~= nil,
+        "FloatButton 載入成功且 capability 翻 true")
+
+    local clicks, moves, rights = 0, 0, {}
+    local btn = UI.FloatButton.new{
+        size = 40, x = 100, y = 100,
+        onClick = function() clicks = clicks + 1 end,
+        onRightClick = function() rights[#rights + 1] = nowMs end,
+        onMoved = function(_, x, y) moves = { x = x, y = y } end,
+    }
+    check(btn.width == 40 and btn:getX() == 100, "建構尺寸與位置正確")
+
+    -- 點擊：門檻內位移（3px）仍算點擊
+    mouseX, mouseY = 110, 110
+    btn:onMouseDown(10, 10)
+    mouseX = 113 -- 位移 3 ≤ 門檻 4
+    btn:onMouseMove(3, 0)
+    btn:onMouseUp(13, 10)
+    check(clicks == 1 and type(moves) ~= "table", "門檻內位移＝點擊（onClick 觸發、onMoved 未觸發）")
+    check(btn:getX() == 100, "門檻內位移不移動按鈕")
+
+    -- 拖曳：超過門檻 → 移動＋onMoved、不觸發 onClick
+    mouseX, mouseY = 110, 110
+    btn:onMouseDown(10, 10)
+    mouseX, mouseY = 160, 130 -- 位移 (50,20)
+    btn:onMouseMove(50, 20)
+    btn:onMouseUp(60, 30)
+    check(clicks == 1, "拖曳不觸發 onClick")
+    check(type(moves) == "table" and moves.x == 150 and moves.y == 120,
+        "拖曳落點經 onMoved 回報（100+50, 100+20）")
+
+    -- clamp：拖出右緣 → 夾回（螢幕 1920、寬 40 → max x=1880）
+    mouseX, mouseY = 160, 130
+    btn:onMouseDown(10, 10)
+    mouseX, mouseY = 3000, 130
+    btn:onMouseMove(0, 0)
+    btn:onMouseUp(0, 0)
+    check(btn:getX() == 1880 and moves.x == 1880, "拖出螢幕右緣夾回 1880")
+
+    -- 右鍵：800ms 內配對觸發；過期丟棄
+    btn:onRightMouseDown(0, 0)
+    nowMs = nowMs + 500
+    btn:onRightMouseUp(0, 0)
+    check(#rights == 1, "右鍵 500ms 內配對觸發")
+    btn:onRightMouseDown(0, 0)
+    nowMs = nowMs + 900
+    btn:onRightMouseUp(0, 0)
+    check(#rights == 1, "右鍵 900ms 過期不觸發")
+
+    -- 左鍵拖曳中不接右鍵
+    mouseX, mouseY = btn:getX() + 5, btn:getY() + 5
+    btn:onMouseDown(5, 5)
+    btn:onRightMouseDown(0, 0)
+    nowMs = nowMs + 100
+    btn:onRightMouseUp(0, 0)
+    check(#rights == 1, "左鍵按住期間右鍵被忽略")
+    btn:onMouseUp(5, 5)
+
+    -- setPosition 夾回＋無玩家自我隱藏
+    btn:setPosition(-50, 9999)
+    check(btn:getX() == 0 and btn:getY() == 1040, "setPosition 夾回螢幕（0, 1080-40）")
+    playerPresent = false
+    btn:prerender()
+    check(btn:getIsVisible() == false, "無玩家時 prerender 自我隱藏")
+    playerPresent = true
+end
+
+-- ============================================================
+print("情境六：Toast（佇列上限／遞補／動畫時序／截字）")
+-- ============================================================
+do
+    check(UI.CAPABILITIES.toast == true and UI.Toast ~= nil, "Toast 載入成功且 capability 翻 true")
+    local Toast = UI.Toast
+    Toast._resetForTests()
+
+    -- MAX_VISIBLE=3：前三則 active、第 4-8 進 pending、第 9 丟棄
+    local made = {}
+    for i = 1, 9 do
+        made[i] = Toast.show({ title = "T", message = "msg " .. i })
+    end
+    check(made[1] ~= nil and made[3] ~= nil and #Toast.active == 3, "前三則進 active")
+    check(made[4] == nil and #Toast.pending == 5, "第 4-8 則進 pending（上限 5）")
+    check(made[9] == nil and #Toast.pending == 5, "pending 滿後丟棄（回 nil、不增長）")
+
+    -- dismiss → pending 遞補
+    Toast.dismiss(Toast.active[1])
+    check(#Toast.active == 3 and #Toast.pending == 4, "dismiss 後 pending 遞補一則")
+
+    -- 字串簡寫＋空訊息拒絕
+    Toast._resetForTests()
+    check(Toast.show("plain") ~= nil, "字串簡寫可用")
+    check(Toast.show("") == nil and Toast.show(nil) == nil, "空訊息拒絕")
+
+    -- 動畫時序：進場中 x 介於 start 與 target；總時長後自動 dismiss
+    Toast._resetForTests()
+    nowMs = 6000000
+    local t = Toast.show({ message = "anim", holdMs = 1000 })
+    nowMs = nowMs + 100 -- 進場 100/250ms
+    t:prerender()
+    local targetX = 1920 - 300 - 16
+    check(t:getX() > targetX and t:getX() < 1920 + 300, "進場中 x 介於畫面外與定位點之間")
+    nowMs = nowMs + 5000 -- 總時長 250+1000+400 遠超
+    t:prerender()
+    check(#Toast.active == 0, "超過總時長自動 dismiss")
+
+    -- 截字：寬 284px、每字 10px → 超過 28 字截斷帶 ...
+    Toast._resetForTests()
+    local long = string.rep("A", 60)
+    local t2 = Toast.show({ message = long })
+    check(string.len(t2.message) < 60 and string.sub(t2.message, -3) == "...",
+        "超寬訊息二分截字帶省略號")
+    Toast._resetForTests()
+end
+
+-- ============================================================
+print("情境七：VirtualList（revision 重綁／回收／選取／滾動／stencil 成對）")
+-- ============================================================
+do
+    check(UI.CAPABILITIES.virtualList == true and UI.VirtualList ~= nil,
+        "VirtualList 載入成功且 capability 翻 true")
+
+    local binds, unbinds = 0, 0
+    local Cell = ISPanel:derive("TestCell")
+    local items = {}
+    for i = 1, 100 do items[i] = { label = "item " .. i } end
+
+    local list = UI.VirtualList.new{
+        x = 0, y = 0, width = 200, height = 240, rowHeight = 24, padding = 0,
+        createCell = function() return ISPanel.new(Cell, 0, 0, 0, 0) end,
+        bindCell = function(_, cell, item, index)
+            binds = binds + 1
+            cell.boundLabel = item.label
+        end,
+        unbindCell = function(_, cell)
+            unbinds = unbinds + 1
+            cell.boundLabel = nil
+        end,
+    }
+    list:initialise()
+    check(#list.pool == math.ceil(240 / 24) + 2, "pool = 可見列數 + 2（12）")
+
+    list:setItems(items)
+    check(binds == 10, "初始只綁可見 10 列（100 筆資料不全綁）")
+    check(list.pool[1].boundLabel == "item 1" and list.pool[1]:getY() == 0, "第一列綁 item 1、y=0")
+
+    -- revision：同一顆 items 原地改內容 → setItems 重傳 → 可見列全部重綁
+    items[1].label = "CHANGED"
+    local before = binds
+    list:setItems(items)
+    check(binds == before + 10, "重傳同一 items 觸發可見列重綁（revision 失效機制）")
+    check(list.pool[1].boundLabel == "CHANGED", "重綁後看到新內容")
+
+    -- 滾動：一次滾輪 = 3 列；捲到底 clamp
+    list:onMouseWheel(1)
+    check(list.scrollOffset == 72, "滾輪一格 = 3 列（72px）")
+    list:setScrollOffset(999999)
+    check(list.scrollOffset == 100 * 24 - 240, "捲動夾在 maxScrollOffset（2160）")
+    check(list.pool[1].boundLabel ~= nil, "捲到底仍有綁定列")
+
+    -- 注意：滾動不觸發 unbind——pool cell 是「重綁覆蓋」（bindCell 全量重設投影），
+    -- unbindCell 只在 cell 變不可見時觸發（資料縮水／resize），見下方縮水斷言
+
+    -- 選取：狀態在 list；資料縮水清懸空選取
+    local selected
+    list.onSelect = function(_, item, index) selected = index end
+    list:setScrollOffset(0)
+    mouseX, mouseY = 0, 0
+    list:onMouseDown(10, 30) -- 第 2 列（24-47px）
+    check(selected == 2 and list:isSelected(2), "點擊第 2 列選取（狀態在 list）")
+    check(list:getSelectedItem() == items[2], "getSelectedItem 對應資料")
+    list:setItems({ items[1] })
+    check(list:getSelectedIndex() == nil, "資料縮水後懸空選取清除")
+    check(unbinds >= 9, "資料縮水（100→1）讓失效 cell 走 unbindCell 回收")
+    check(list.pool[2].boundLabel == nil, "回收後 consumer 狀態被 unbind 清掉")
+
+    -- indexAt 邊界：padding 間隙不選
+    local padded = UI.VirtualList.new{
+        x = 0, y = 0, width = 200, height = 240, rowHeight = 20, padding = 4,
+        createCell = function() return ISPanel.new(Cell, 0, 0, 0, 0) end,
+        bindCell = function() end,
+    }
+    padded:initialise()
+    local three = { {}, {}, {} }
+    padded:setItems(three)
+    check(padded:indexAt(10, 4) == 1 and padded:indexAt(10, 23) == 1, "列身命中（含首列 padding 後）")
+    check(padded:indexAt(10, 25) == nil, "列間 padding 間隙不選取")
+    check(padded:indexAt(10, 999) == nil and padded:indexAt(10, -1) == nil, "越界回 nil")
+
+    -- resize：pool 重算
+    list:setItems(items)
+    list:resize(200, 480)
+    check(#list.pool == math.ceil(480 / 24) + 2, "resize 後 pool 重算（22）")
+
+    -- stencil 成對＋repaint（家族踩坑錄：只 set→clear 會吃掉外層 clip）
+    local s = list.stencil
+    s.set, s.clear, s.repaint = 0, 0, 0
+    list:prerender()
+    list:render()
+    check(s.set == 1 and s.clear == 1 and s.repaint == 1,
+        "一幀 set/clear/repaint 各一次（成對＋還回父層）")
+
+    -- scrollToIndex：目標列完整可見
+    list:scrollToIndex(50)
+    local top = (50 - 1) * 24
+    check(list.scrollOffset <= top and top + 24 <= list.scrollOffset + 480,
+        "scrollToIndex 讓目標列完整落在 viewport 內")
+end
+
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 48
+local EXPECTED_ASSERTIONS = 90
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount
