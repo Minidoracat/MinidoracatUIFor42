@@ -57,7 +57,7 @@ MinidoracatUI.v1 = {
         virtualList  = false,  -- v0.3
     },
     Theme = <module>,
-    Skin  = <module>,          -- 經 Theme 實例使用；此處僅暴露常數/工具
+    Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits），adapter 直接取用（§3.3）
 }
 ```
 
@@ -103,7 +103,7 @@ local theme = UI.Theme.create({
 ```
 
 - **token 分層**：框架 default 只放跨 MOD token，**v1 共 12 個**（`surface`／`surfaceTitle`／`well`／`border`／`text`／`textMuted`／`textFaint`／`accent`／`hover`／`selected`／`errorSurface`／`errorText`——與 `V1.lua` 的 `DARK`/`LIGHT` 表逐字一致，該表是唯一權威）；MOD 自有 token（如 NoticeBoard 的 `unread`、MiniMap 的 `rowHover`）由 create 時自帶，框架不認識也不管。**未知 token 的 theme 便捷方法呼叫是靜默不畫**（fail-soft），拼錯 token＝元素消失無診斷——寫 consumer 時以 V1.lua 的表為準，勿憑記憶。
-- **雙色系**：`variant` 選 default palette 起點；兩套數值都在 `Theme.lua` 內維護。繪製邏輯與資產完全 variant 無關（白圖×頂點染色）。深色為預設（PZ 本體與家族現有 UI 全深色）；淺色首發標 experimental。variant 由 MOD 開發者決定；玩家層級即時切換是未來項目（牽涉全 consumer token 完整性）。
+- **雙色系**：`variant` 選 default palette 起點；兩套數值都在 `V1.lua` 的 Theme section（`DARK`／`LIGHT` 表）內維護。繪製邏輯與資產完全 variant 無關（白圖×頂點染色）。深色為預設（PZ 本體與家族現有 UI 全深色）；淺色首發標 experimental。variant 由 MOD 開發者決定；玩家層級即時切換是未來項目（牽涉全 consumer token 完整性）。
 - **隔離**：`create()` 深拷貝，禁止 mutate 共享 default——現有 NBSkin↔MiniMap drift 的根源就是「共用色票、各自複製」。
 - **已知取捨（色票三份現況）**：兩個既有 adapter 刻意保留字面 `COLORS`（框架缺席時色票也要在、退回路徑不依賴框架），因此共通數值目前存在三份（NBSkin／MiniMap Skin／框架 DARK）。v0.1 接受此取捨——「消滅重複」在繪製碼與 PNG 已達成，色票的單一權威化留待既有 consumer 改用 `Theme.create`（自然時機：某 MOD 需要 light variant 或玩家換色時）。
 
@@ -160,7 +160,7 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 | 4 | 手拼 9-slice（B42.9 前遺產） | 一律引擎原生 NinePatchTexture |
 | 5 | monkeypatch `ISUIElement` | 禁止；墊片走自有 util |
 | 6 | 「別直接用」的成員公開在 API | 公開面全部可依賴；測試鉤子 `_resetForTests` |
-| 7 | 隱藏載入順序依賴 | facade 單一入口顯式 require |
+| 7 | 隱藏載入順序依賴 | v0.1 核心單檔（無內部順序）；v0.2 起 Widget 檔開頭自檢 `MinidoracatUI.v1`，缺席不掛能力 |
 | 8 | 熱路徑殘留 print | 預設零 log，debug 旗標才輸出 |
 
 ## 5. 分期與完成定義
@@ -188,6 +188,6 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
   4. fits 邊界與 shape 相容（boolean topOnly ≡ "roundTop"、"rect" 強制退回）
   - 條數守門 `EXPECTED_ASSERTIONS`（家族慣例：防整段被註解仍全綠）
   -（v0.2 起）stencil 計數器成對＋repaint（Toast/Widget 才觸碰 stencil）、FloatButton 拖曳門檻／clamp、Toast 佇列上限
-- `scripts/verify_mod.py`：13 項閘門＝家族十項靜態＋UI 貼圖驗證（第 12 項）＋Lua 煙霧測試（第 13 項）。
+- `scripts/verify_mod.py`：13 項閘門＝家族十一項靜態掃描＋UI 貼圖驗證（第 12 項）＋Lua 煙霧測試（第 13 項）。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。
