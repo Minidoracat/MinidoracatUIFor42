@@ -40,7 +40,7 @@ Minidoracat 系列 MOD 共用的 UI 函式庫：主題色票（深色／淺色�
 [h2]📋 MOD 資訊[/h2]
 [list]
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
-[*] [b]支援版本:[/b] Build 42.20.3+
+[*] [b]支援版本:[/b] Build 42.20.1+
 [*] [b]單人 / 多人:[/b] 皆支援
 [/list]
 

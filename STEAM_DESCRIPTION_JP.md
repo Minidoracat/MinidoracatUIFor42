@@ -40,7 +40,7 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 [h2]📋 MOD 情報[/h2]
 [list]
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
-[*] [b]対応バージョン:[/b] Build 42.20.3+
+[*] [b]対応バージョン:[/b] Build 42.20.1+
 [*] [b]シングル / マルチ:[/b] 両対応
 [/list]
 

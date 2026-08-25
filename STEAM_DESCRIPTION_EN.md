@@ -40,7 +40,7 @@ Add it to both lines in your server ini:
 [h2]📋 Mod info[/h2]
 [list]
 [*] [b]Mod ID:[/b] MinidoracatUIFor42
-[*] [b]Supported version:[/b] Build 42.20.3+
+[*] [b]Supported version:[/b] Build 42.20.1+
 [*] [b]Singleplayer / Multiplayer:[/b] both supported
 [/list]
 

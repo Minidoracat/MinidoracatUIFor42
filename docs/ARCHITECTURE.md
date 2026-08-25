@@ -156,7 +156,7 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 |---|---|---|
 | 1 | 6 個裸全域、零版本化 | 唯一全域＋`API_MAJOR/REVISION/CAPABILITIES` |
 | 2 | `_NUI_hasNinePatchTextures` 死碼，缺圖直接 crash | 所有繪製 fail-soft＋直角退回紅線 |
-| 3 | scrollbar 壞貼圖 `nil:render()` 永久 crash；versionMin 42.0.2 與 B42.9 才有的 NinePatch 矛盾 | versionMin 誠實寫 42.20.3；能力探測不假裝相容 |
+| 3 | scrollbar 壞貼圖 `nil:render()` 永久 crash；versionMin 42.0.2 與 B42.9 才有的 NinePatch 矛盾 | versionMin 只寫**查證過**的下限（42.20.1：API 存在性與首呼叫語意已對 42.20.1-20260805 快照逐項核對，見 AGENTS.md API 表）；能力探測不假裝相容 |
 | 4 | 手拼 9-slice（B42.9 前遺產） | 一律引擎原生 NinePatchTexture |
 | 5 | monkeypatch `ISUIElement` | 禁止；墊片走自有 util |
 | 6 | 「別直接用」的成員公開在 API | 公開面全部可依賴；測試鉤子 `_resetForTests` |
