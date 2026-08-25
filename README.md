@@ -14,7 +14,8 @@ Project Zomboid Build 42 MOD。
 
 ## 安裝
 
-- Steam Workshop：（首次上傳後補上連結）
+- Steam Workshop：https://steamcommunity.com/sharedfiles/filedetails/?id=3789836701
+- 本 MOD 是給其他 MOD 用的函式庫；只有當你訂閱的 MOD 把它列為必要項目時才需要訂閱
 - 手動安裝：把 `MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42` 複製到 `%USERPROFILE%\Zomboid\mods\` 並將資料夾改名為 `MinidoracatUIFor42`
 
 ## 開發
