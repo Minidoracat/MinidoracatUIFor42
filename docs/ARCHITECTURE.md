@@ -66,9 +66,13 @@ MinidoracatUI.v1 = {
 - consumer 樣板：
 
 ```lua
-local UI = require "MinidoracatUI/V1"   -- 引擎 require 取第一相符路徑，框架 path 全域唯一
-local ok = UI and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
--- ok == false → 走 adapter 的直角退回，並在 console 記一行（僅一次）
+-- PZ 的 require 不保證回傳值（原版 Lua 全樹零取值用例）——一律走全域取用：
+if not (MinidoracatUI and MinidoracatUI.v1) then
+    pcall(require, "MinidoracatUI/V1")  -- 防禦：正式環境靠 mod.info require= 已先載
+end
+local UI = MinidoracatUI and MinidoracatUI.v1
+local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
+-- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
 ## 3. 模組設計
