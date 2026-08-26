@@ -148,6 +148,12 @@ function VirtualList:rebuildPool()
     self.pool = {}
     for i = 1, self:poolSize() do
         local cell = self.createCell(self)
+        -- ISUIElement:new 預設 wantMouseEvents=true（ISUIElement.lua:1998），ISPanel 衍生
+        -- cell 的 onMouseDown 會因此回 true、把點擊吞在 cell 層（ISPanel.lua:49），本清單的
+        -- onMouseDown（選取/滾動）永遠收不到——實機才會踩到（harness 不跑滑鼠分派），
+        -- Cleaner Picker 首戰即中。清掉讓事件冒泡回 list；cell 尚未 instantiate，之後
+        -- instantiate 會同步 java 端 setConsumeMouseEvents(false)（ISUIElement.lua:1004）
+        cell.wantMouseEvents = nil
         cell:initialise()
         cell:setVisible(false)
         cell.boundIndex = nil

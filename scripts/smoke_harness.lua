@@ -294,6 +294,8 @@ function ISPanel.new(class, x, y, w, h)
     o.children = {}
     o.stencil = { set = 0, clear = 0, repaint = 0 }
     o.rects, o.borders = {}, {}
+    -- 忠於 ISUIElement.lua:1998 的預設：cell 若不清掉這個旗標就會吞滑鼠事件
+    o.wantMouseEvents = true
     return o
 end
 function ISPanel:initialise() end
@@ -503,6 +505,8 @@ do
     }
     list:initialise()
     check(#list.pool == math.ceil(240 / 24) + 2, "pool = 可見列數 + 2（12）")
+    check(list.pool[1].wantMouseEvents == nil,
+        "pool cell 清掉 wantMouseEvents（點擊冒泡回 list 做選取，不被 cell 吞掉）")
 
     list:setItems(items)
     check(binds == 10, "初始只綁可見 10 列（100 筆資料不全綁）")
@@ -573,7 +577,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 93
+local EXPECTED_ASSERTIONS = 94
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount
