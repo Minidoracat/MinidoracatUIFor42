@@ -52,9 +52,4 @@ Minidoracat 系列 MOD 共用的 UI 函式庫：主題色票（深色／淺色�
 [*] [url=https://discord.gg/Gur2V67]Discord 社群[/url]
 [/list]
 
-[h2]📺 關注作者[/h2]
-[list]
-[*] [url=https://www.twitch.tv/minidoracat]Twitch 直播[/url]
-[/list]
-
 [b]#Minidoracat[/b]

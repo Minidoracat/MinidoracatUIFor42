@@ -52,9 +52,4 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 [*] [url=https://discord.gg/Gur2V67]Discord コミュニティ[/url]
 [/list]
 
-[h2]📺 作者をフォロー[/h2]
-[list]
-[*] [url=https://www.twitch.tv/minidoracat]Twitch 配信[/url]
-[/list]
-
 [b]#Minidoracat[/b]
