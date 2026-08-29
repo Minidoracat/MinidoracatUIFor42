@@ -4,7 +4,7 @@
 [hr][/hr]
 
 [h2]✨ What is this[/h2]
-Shared UI library for the Minidoracat mod series: themed color palettes (dark / light), rounded-corner window skins, floating buttons, toast notifications and other reusable components.
+Shared UI library for the Minidoracat mod series: themed color palettes (dark / light), rounded-corner window skins, shared monochrome icons, floating buttons, toast notifications and other reusable components.
 
 This mod [b]does not add any gameplay content by itself[/b] — it is a base library used by other mods. Its visible effects depend entirely on the mods that use it.
 
@@ -19,6 +19,7 @@ This mod [b]does not add any gameplay content by itself[/b] — it is a base lib
 [*] [b]Theme system[/b]: token-based palettes with dark / light variants, per-mod overrides
 [*] [b]Rounded skin[/b]: engine-native 9-slice rounded rendering with a safe rectangular fallback when textures are missing — windows never fail to open
 [*] [b]Shared widgets[/b]: floating button (drag + position memory), toast notifications (shared stack across mods)
+[*] [b]Shared icons[/b]: 8 monochrome icons (sidebar, folder, document, expand/collapse chevrons, language, reload, reset size) tinted to match the active palette; callers fall back to their text markers when an icon asset is missing
 [*] [b]Virtual list[/b]: large tables (trading/auction-style UIs) only build visible rows
 [*] [b]Versioned API[/b]: dependent mods declare the API revision they need, so library updates never silently break them
 [/list]

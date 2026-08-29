@@ -1,6 +1,6 @@
 # Minidoracat UI Library for B42
 
-Minidoracat 家族 MOD 共用 UI 函式庫（主題色票、圓角皮膚、浮動按鈕與 Toast），本體不新增遊戲內容，僅供家族 MOD 依賴使用
+Minidoracat 家族 MOD 共用 UI 函式庫（主題色票、圓角皮膚、單色圖示、浮動按鈕與 Toast），本體不新增遊戲內容，僅供家族 MOD 依賴使用
 
 Project Zomboid Build 42 MOD。
 
@@ -9,6 +9,7 @@ Project Zomboid Build 42 MOD。
 - **v0.1 Core**：版本化 API facade（`API_MAJOR`／`API_REVISION`／`CAPABILITIES`）、主題系統（深／淺雙色系 token 色票，各 MOD 可覆蓋）、圓角皮膚（引擎原生 9-slice，貼圖缺失自動退回直角）
 - **v0.2 Widgets**：浮動按鈕（拖曳＋位置持久化）、Toast 通知（堆疊＋淡入淡出）
 - **v0.3 VirtualList**：垂直固定列高虛擬清單
+- **API rev 2 Icons**：8 個共用單色圖示（`sidebar`／`folder`／`document`／`chevronRight`／`chevronDown`／`language`／`reload`／`resetSize`），32×32 純白貼圖運行時染色、設計供 14–16px 顯示；`UI.Icons.get(name)`／`UI.Icons.draw(element, name, x, y, size, color, alpha)`，未知 key 或貼圖缺失一律回 `nil`／`false`，呼叫端退回原本的文字表示（詳見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §3.6）
 
 設計契約與 NeatUI 分析結論見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 

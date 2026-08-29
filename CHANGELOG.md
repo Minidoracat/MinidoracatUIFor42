@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [42.20.4-0.2.0] - 2026-08-30
+
+### 新增
+
+- **共用的介面小圖示**：依賴本函式庫的 MOD 可以改用同一套小圖示（側邊欄、資料夾、文件、展開／收合箭頭、語言、重新載入、重設大小），取代各自畫的文字符號。圖示會跟著介面配色一起變色，各 MOD 的按鈕與清單不再一個 MOD 一種樣子。圖示資產若缺失，依賴的 MOD 會自動退回原本的文字顯示，功能不受影響
+
+> 技術要點：facade 新增 `Icons`（`get(name)`／`draw(element, name, x, y, size, color, alpha)`），`API_REVISION` 由 1 升 2、`CAPABILITIES.icons=true`；純 additive，rev 1 的呼叫面未變動。八個 key：`sidebar`／`folder`／`document`／`chevronRight`／`chevronDown`／`language`／`reload`／`resetSize`，對應 32×32 純白貼圖（運行時頂點染色，設計供 14–16px 顯示），由 `gen_ui_textures.py` 確定性生成、發版閘門逐張驗證。未知 key、貼圖缺失、繪製拋錯一律回 `nil`／`false` 不拋錯，consumer 依回傳值退回文字表示。
+
 ## [42.20.4-0.1.1] - 2026-08-27
 
 ### 修正

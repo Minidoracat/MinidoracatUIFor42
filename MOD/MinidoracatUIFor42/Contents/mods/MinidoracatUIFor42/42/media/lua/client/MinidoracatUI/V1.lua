@@ -1,6 +1,7 @@
--- MinidoracatUI V1 — 家族共用 UI 函式庫核心（Theme 雙色系 + Skin 圓角繪製 + 版本化 facade）。
+-- MinidoracatUI V1 — 家族共用 UI 函式庫核心（Theme 雙色系 + Skin 圓角繪製 + Icons 單色圖示
+-- + 版本化 facade）。
 --
--- 【單檔設計】Theme／Skin／facade 刻意放同一檔：PZ 的 require 不保證回傳值（原版 Lua
+-- 【單檔設計】Theme／Skin／Icons／facade 刻意放同一檔：PZ 的 require 不保證回傳值（原版 Lua
 -- 全樹零取值用例），跨檔共享只能靠全域；分檔就得靠「全域存在檢查」串接，正是 NeatUI
 -- 隱藏載入順序依賴的坑（其 scrollview 用 NIScrollBar 卻只 require ISUIElement）。單檔
 -- 讓「任何一段 error ＝ 整檔中止 ＝ facade 從未發布」自然成立（Kahlua 執行失敗的檔案
@@ -210,6 +211,65 @@ function Skin.dot(element, x, y, size, color, outline)
 end
 
 -- ============================================================
+-- Icons — 共用單色圖示（rev 2 新增）
+-- ============================================================
+-- 全部 32×32 純白 RGBA、運行時頂點染色（同皮膚一套資產服務所有主題），
+-- 設計供 14–16px 顯示（32→16 是 2:1 縮小、GL_LINEAR 每像素平均 2×2 texel）。
+-- 資產由 scripts/gen_ui_textures.py 程序化生成，verify_mod.py 第 12 項逐張把關。
+--
+-- 【紅線】缺資產不得讓 UI 少一塊功能：get／draw 一律回 nil／false，
+-- consumer 依回傳值退回既有的 ASCII 或純文字表示，絕不拋錯、絕不空白。
+local Icons = {}
+
+-- key 是 consumer 的穩定契約，檔名是實作細節；同 major 只增不改不刪。
+local ICON_FILES = {
+    sidebar      = "mui_icon_sidebar.png",
+    folder       = "mui_icon_folder.png",
+    document     = "mui_icon_document.png",
+    chevronRight = "mui_icon_chevron_right.png",
+    chevronDown  = "mui_icon_chevron_down.png",
+    language     = "mui_icon_language.png",
+    reload       = "mui_icon_reload.png",
+    resetSize    = "mui_icon_reset_size.png",
+}
+
+local ICON_WHITE = { r = 1, g = 1, b = 1, a = 1 }
+
+-- 取貼圖（未知 key／載入失敗回 nil）。共用 Skin 的 plainTexture 快取：
+-- 同一張只探測一次，失敗記 false 不重試，Skin._resetForTests 一併清掉。
+function Icons.get(name)
+    if type(name) ~= "string" then
+        return nil
+    end
+    local file = ICON_FILES[name]
+    if not file then
+        return nil
+    end
+    return plainTexture(file)
+end
+
+-- pcall 具名函式＋傳參（不建立 per-frame closure；理由同 drawNinePatch 上方註解）
+local function drawIconTexture(element, texture, x, y, size, a, r, g, b)
+    element:drawTextureScaled(texture, x, y, size, size, a, r, g, b)
+end
+
+-- 畫圖示（正方形 size×size）。color 預設純白、alpha 預設 color.a（再退 1）。
+-- 回 true＝已畫；false＝未知 key／缺貼圖／繪製拋錯，呼叫端自行退回。
+-- 刻意**不**因繪製拋錯就把貼圖標壞：drawTextureScaled 失敗也可能是 element 契約
+-- 破損（缺存取器），element 壞不是貼圖的錯——與 drawNinePatch 的 E3 準則一致。
+function Icons.draw(element, name, x, y, size, color, alpha)
+    local texture = Icons.get(name)
+    if not texture then
+        return false
+    end
+    local tint = color or ICON_WHITE
+    -- 只回 pcall 的第一個值：契約是單一 boolean，錯誤字串不外流給呼叫端
+    local ok = pcall(drawIconTexture, element, texture, x, y, size,
+        alpha or tint.a or 1, tint.r, tint.g, tint.b)
+    return ok
+end
+
+-- ============================================================
 -- Theme — token 化色票（深／淺雙色系），每 MOD 一個實例
 -- ============================================================
 -- 跨 MOD token（framework default 只認這些；名單見 docs/ARCHITECTURE.md §3.2）：
@@ -342,10 +402,13 @@ MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
     VERSION = "0.1.0",
     API_MAJOR = 1,
-    API_REVISION = 1, -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
+    -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
+    -- rev 2：Icons（8 個共用單色圖示）——純 additive，rev 1 的呼叫面一字未動
+    API_REVISION = 2,
     CAPABILITIES = {
         theme = true,
         skin = true,
+        icons = true, -- 資產缺失時 Icons.get/draw 自行回 nil/false，不影響本旗標
         -- 以下三項由各 widget 檔載入成功後翻 true（Widgets/FloatButton.lua、
         -- Widgets/Toast.lua、VirtualList.lua 檔尾）——widget 檔壞掉只影響
         -- 對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
@@ -355,6 +418,7 @@ MinidoracatUI.v1 = {
     },
     Theme = Theme,
     Skin = Skin,
+    Icons = Icons,
 }
 
 return MinidoracatUI.v1

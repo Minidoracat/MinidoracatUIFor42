@@ -48,22 +48,25 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.1.0",   -- 發布字串，僅供顯示
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 1,          -- additive 變更單調遞增；consumer 宣告最低需求
+    API_REVISION = 2,          -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons（§3.6）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
+        icons        = true,   -- rev 2
         floatButton  = false,  -- v0.2
         toast        = false,  -- v0.2
         virtualList  = false,  -- v0.3
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits），adapter 直接取用（§3.3）
+    Icons = <module>,          -- 共用單色圖示（get/draw），rev 2 新增（§3.6）
 }
 ```
 
 **規則**
 - `MinidoracatUI.v1` 在**全部模組初始化成功後最後賦值**（Kahlua 半初始化風險，AGENTS.md 鐵則）。
-- 同 major 只 additive；刪除／改簽章／改語意＝breaking＝開 `MinidoracatUIV2For42` 新 MOD ID。
+- 同 major 只 additive；刪除／改簽章／改語意＝breaking＝開 `MinidoracatUIV2For42` 新 MOD ID。新增模組／新增 `CAPABILITIES` 旗標屬 additive：`API_REVISION` +1，既有呼叫面一字不動（rev 2 的 Icons 即是此形狀）。
 - consumer 樣板：
 
 ```lua
@@ -73,6 +76,8 @@ if not (MinidoracatUI and MinidoracatUI.v1) then
 end
 local UI = MinidoracatUI and MinidoracatUI.v1
 local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
+-- 要用 rev 2 才有的能力就把門檻寫成該能力的 revision，並一併探 CAPABILITIES：
+--   local canIcon = ok and UI.API_REVISION >= 2 and UI.CAPABILITIES.icons and UI.Icons ~= nil
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -82,7 +87,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 
 | 檔案 | 期 | 職責 |
 |---|---|---|
-| `V1.lua` | v0.1 | **單檔**：Theme＋Skin＋facade 三個 section（詳見檔頭「單檔設計」註解——PZ require 不保證回傳值、跨檔共享只能靠全域，分檔會重演 NeatUI 的隱藏載入順序依賴；單檔讓「中段 error＝facade 從未發布」自然成立） |
+| `V1.lua` | v0.1（rev 2 擴充） | **單檔**：Theme＋Skin＋Icons＋facade 四個 section（詳見檔頭「單檔設計」註解——PZ require 不保證回傳值、跨檔共享只能靠全域，分檔會重演 NeatUI 的隱藏載入順序依賴；單檔讓「中段 error＝facade 從未發布」自然成立） |
 | `Widgets/FloatButton.lua` | v0.2 | 常駐浮鈕：拖曳、位移門檻點擊判定、位置持久化回調、clamp 回螢幕；獨立檔、單向依賴 V1 全域，載入失敗只影響 `CAPABILITIES.floatButton` |
 | `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop；同上 |
 | `VirtualList.lua` | v0.3 | 垂直固定列高虛擬清單（§5） |
@@ -150,6 +155,45 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 | selection 散在 cell | selection/focus 存 list，cell 是投影 |
 | grid 塞同 class＋熱路徑 print（`nigridvirtualscrollview.lua:316`） | 不做 grid；框架預設零 log |
 
+### 3.6 Icons（API rev 2）——共用單色圖示
+
+家族 MOD 各自畫 ASCII 符號（`+`／`-`／`>`）當展開箭頭與工具列標記，同一顆按鈕在兩個 MOD
+長不一樣、也無法隨主題染色。Icons 收編這一層：一套白圖、運行時染色、缺資產就退回原本的
+文字表示。**只收有真實 consumer 的 key**（首批 8 個全部由 NoticeBoard 文件樹與工具列消費），
+不做圖示大全——這是 §0 非目標「不做通用 widget 大全」的同一條線。
+
+| key | 檔名（`42/media/ui/MinidoracatUI/`） | 首個用途 |
+|---|---|---|
+| `sidebar` | `mui_icon_sidebar.png` | 切換側邊文件樹 |
+| `folder` | `mui_icon_folder.png` | 文件樹的目錄節點 |
+| `document` | `mui_icon_document.png` | 文件樹的文件節點 |
+| `chevronRight` | `mui_icon_chevron_right.png` | 目錄收合狀態 |
+| `chevronDown` | `mui_icon_chevron_down.png` | 目錄展開狀態 |
+| `language` | `mui_icon_language.png` | 切換語言 |
+| `reload` | `mui_icon_reload.png` | 重新載入內容 |
+| `resetSize` | `mui_icon_reset_size.png` | 重設視窗大小 |
+
+```lua
+UI.Icons.get(name)                                     -- Texture 或 nil
+UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已畫
+-- color 省略＝純白；alpha 省略＝color.a，再省略＝1；size 同時是寬與高
+```
+
+**規則**
+- 資產規格：32×32 純白 RGBA、alpha 即形狀、外圍 1px 透明邊，程序化生成（§6）。
+  **32px 原稿供 14–16px 顯示**：32→16 是 2:1 縮小、`GL_LINEAR` 每輸出像素平均 2×2 texel，
+  邊緣乾淨；直接做 16px 原稿反而在 hover 放大或高 DPI 下糊掉。
+- 染色同皮膚：白圖 ×`drawTextureScaled` 頂點色，一套資產服務深／淺兩色系（AGENTS.md API 表）。
+- **fail-soft 紅線**：未知 key／`getTexture` 不存在（dedicated）／貼圖缺失／繪製拋錯，
+  `get` 回 `nil`、`draw` 回 `false` 且不拋錯——consumer 依回傳值退回自己的 ASCII 或純文字，
+  絕不因為少一張 PNG 就讓按鈕消失或視窗開不了。
+- 快取與 Skin 共用（同一份檔名表）：每張只探測一次，失敗記 `false` 不重試；
+  測試用 `Skin._resetForTests()` 一併清除。
+- 繪製拋錯**不**把貼圖標壞：`drawTextureScaled` 失敗也可能是 element 契約破損，
+  element 壞不是貼圖的錯（同 §3.3 的 E3 準則）。
+- 新增 key ＝ additive：加檔名對應＋生成器幾何＋`verify_mod.py` 探針＋`API_REVISION` +1；
+  **既有 key 的語意與檔名永不更動**（consumer 只認 key）。
+
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
 | # | NeatUI 事實 | 本框架對應決策 |
@@ -170,14 +214,15 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 | v0.1 Core | V1＋Theme（雙色系）＋Skin＋貼圖資產＋harness | NoticeBoard 與 MiniMap 皮膚改 thin adapter，刪除重複繪製碼與重複 PNG；兩 repo verify 全綠；遊戲內實測無視覺回歸 |
 | v0.2 Widgets（**已完成**） | FloatButton＋Toast | 家族三份浮鈕/Toast 實作全部改用框架版 ✅（NBFloatButton／NBToast／MiniMap _FloatIcon 皆為 thin wrapper） |
 | v0.3 VirtualList（**已完成**） | 垂直固定列高 | 初版隨 v0.2 同時交付（使用者定案：交易面板／拍賣場等未來 MOD 的既定需求）；首個 consumer 出現時回填實戰驗證 |
+| API rev 2 Icons（**已完成**） | 8 個共用單色圖示（§3.6） | 資產由生成器確定性重生、`verify_mod.py` 第 12 項逐張把關；NoticeBoard 文件樹與工具列改用圖示且缺資產時仍走 ASCII 退回 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
 ## 6. 資產管線
 
-- **UI 貼圖（9-slice 圓角、圓點等）**：`scripts/gen_ui_textures.py` 程序化生成（移植 NoticeBoard 現有做法）——9-slice 切線像素要求位元級精確，不走 AI 生圖；`verify_mod.py` 比對尺寸／純白／切線當閘門。
+- **UI 貼圖（9-slice 圓角、圓點、單色圖示）**：`scripts/gen_ui_textures.py` 程序化生成（移植 NoticeBoard 現有做法）——9-slice 切線像素要求位元級精確，圖示要求重跑逐位元組相同，都不走 AI 生圖；生成器不用 `ImageDraw`（跨 Pillow 版本柵格化會變），純浮點謂詞＋8×8 超取樣自算覆蓋率。`verify_mod.py` 第 12 項比對尺寸／IHDR／純白／切線（皮膚）與透明邊／對稱／探針像素／著墨比例（圖示）當閘門。
 - **美術資產（poster.png、preview.png、Workshop 圖）**：AI 生成（codex／grok imagegen）到 `scripts/poster/` 再由 `finish_poster.py` 部署——首發前才做，沿用家族貓娘 mascot 流程。
-- 貼圖一律純白可染色；新增貼圖＝新增 `verify_mod.py` 檢查項。
+- 貼圖一律純白可染色；新增貼圖＝同步新增生成器幾何與 `verify_mod.py` 檢查項（`OUTPUT_NAMES` 是唯一權威，目錄多一張少一張都會 assert）。
 
 ## 7. 測試策略
 
@@ -186,8 +231,10 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
   2. NinePatch 三態＋element 契約破損（無全域／正常／壞路徑／缺存取器）× fill/border/dot 不拋錯、退回旗標正確、element 壞不標壞貼圖
   3. theme 隔離（兩實例互不污染、default 不被 mutate、light variant、token 解析）
   4. fits 邊界與 shape 相容（boolean topOnly ≡ "roundTop"、"rect" 強制退回）
+  5. Icons（rev/capability 探測、八 key 對到不重複貼圖、快取只探一次、未知／非字串 key、
+     無 `getTexture`／貼圖缺失一律回 nil/false、染色與 alpha 預設、繪製拋錯不外洩）
   - 條數守門 `EXPECTED_ASSERTIONS`（家族慣例：防整段被註解仍全綠）
   -（v0.2 起）stencil 計數器成對＋repaint（Toast/Widget 才觸碰 stencil）、FloatButton 拖曳門檻／clamp、Toast 佇列上限
-- `scripts/verify_mod.py`：13 項閘門＝家族十一項靜態掃描＋UI 貼圖驗證（第 12 項）＋Lua 煙霧測試（第 13 項）。
+- `scripts/verify_mod.py`：13 項閘門＝家族十一項靜態掃描＋UI 貼圖驗證（第 12 項，皮膚＋圖示共 13 張）＋Lua 煙霧測試（第 13 項）。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

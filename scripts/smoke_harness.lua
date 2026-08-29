@@ -7,12 +7,14 @@
 - 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
-四情境（docs/ARCHITECTURE.md §7）：
+八情境（docs/ARCHITECTURE.md §7）：
 1. facade 半初始化——檔案中段注入 error，斷言 MinidoracatUI.v1 從未發布
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
 3. theme 隔離——兩實例互不污染、default 不被 mutate、light variant、token 字串解析
 4. fits 邊界——round 12×12／roundTop 12×6 下限、boolean topOnly 相容、"rect" 強制退回
+5. Icons——rev/capability、八 key 對貼圖、快取、未知 key、缺圖、染色與 alpha、拋錯不外洩
+（6-8 為 widget：FloatButton／Toast／VirtualList）
 ]]
 
 local V1_PATH = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/V1.lua"
@@ -258,6 +260,100 @@ do
 end
 
 -- ============================================================
+print("情境五：Icons（rev/capability、八 key、快取、缺圖退回、染色與 alpha）")
+-- ============================================================
+do
+    check(UI.API_REVISION >= 2, "API_REVISION 進到 2（Icons 是 additive 變更）")
+    check(UI.CAPABILITIES.icons == true and UI.Icons ~= nil, "CAPABILITIES.icons 為 true 且 Icons 已公開")
+
+    -- E1：getTexture 正常
+    local loads = {}
+    getTexture = function(path)
+        loads[path] = (loads[path] or 0) + 1
+        return { path = path }
+    end
+    Skin._resetForTests()
+    local el = newElement(0, 0)
+    local folderPath = "media/ui/MinidoracatUI/mui_icon_folder.png"
+    local tex = UI.Icons.get("folder")
+    check(tex ~= nil and tex.path == folderPath, "get 依 key 對應到約定檔名")
+    check(UI.Icons.get("folder") == tex and loads[folderPath] == 1,
+        "第二次 get 命中 Skin 共用快取，不重複呼叫 getTexture")
+
+    local keys = { "sidebar", "folder", "document", "chevronRight",
+        "chevronDown", "language", "reload", "resetSize" }
+    local expectedPaths = {
+        sidebar = "media/ui/MinidoracatUI/mui_icon_sidebar.png",
+        folder = "media/ui/MinidoracatUI/mui_icon_folder.png",
+        document = "media/ui/MinidoracatUI/mui_icon_document.png",
+        chevronRight = "media/ui/MinidoracatUI/mui_icon_chevron_right.png",
+        chevronDown = "media/ui/MinidoracatUI/mui_icon_chevron_down.png",
+        language = "media/ui/MinidoracatUI/mui_icon_language.png",
+        reload = "media/ui/MinidoracatUI/mui_icon_reload.png",
+        resetSize = "media/ui/MinidoracatUI/mui_icon_reset_size.png",
+    }
+    local seen = {}
+    for i = 1, #keys do
+        local key = keys[i]
+        local t = UI.Icons.get(key)
+        check(t ~= nil and t.path == expectedPaths[key],
+            key .. " 必須對到穩定契約指定的貼圖")
+        seen[t.path] = true
+    end
+    local distinct = 0
+    for _ in pairs(seen) do
+        distinct = distinct + 1
+    end
+    check(distinct == 8, "八個 key 必須各自對到一張不重複的貼圖")
+
+    check(UI.Icons.get("noSuchIcon") == nil, "未知 key 回 nil")
+    check(UI.Icons.get(nil) == nil and UI.Icons.get(42) == nil, "非字串 key 回 nil（不炸）")
+
+    check(UI.Icons.draw(el, "document", 4, 9, 16) == true and #el.tex == 1,
+        "draw 成功回 true 且落一次 drawTextureScaled")
+    local d = el.tex[1]
+    check(d.x == 4 and d.y == 9 and d.w == 16 and d.h == 16, "draw 座標原樣傳遞、尺寸取正方形")
+    check(d.r == 1 and d.g == 1 and d.b == 1 and nearly(d.a, 1), "未給 color 時預設純白、alpha 1")
+
+    UI.Icons.draw(el, "document", 0, 0, 14, { r = 0.2, g = 0.4, b = 0.6, a = 0.5 })
+    check(nearly(el.tex[2].r, 0.2) and nearly(el.tex[2].b, 0.6) and nearly(el.tex[2].a, 0.5),
+        "color 進頂點染色、alpha 取 color.a")
+    UI.Icons.draw(el, "document", 0, 0, 14, { r = 1, g = 1, b = 1, a = 0.5 }, 0.25)
+    check(nearly(el.tex[3].a, 0.25), "顯式 alpha 蓋過 color.a")
+    UI.Icons.draw(el, "document", 0, 0, 14, { r = 1, g = 0, b = 0 })
+    check(nearly(el.tex[4].a, 1), "color 未帶 a 時 alpha 退回 1")
+    check(UI.Icons.draw(el, "noSuchIcon", 0, 0, 16) == false and #el.tex == 4,
+        "未知 key 不畫、回 false")
+
+    -- E0：無 getTexture（dedicated／harness 環境）
+    getTexture = nil
+    Skin._resetForTests()
+    local el0 = newElement(0, 0)
+    check(UI.Icons.get("folder") == nil, "無 getTexture 全域時 get 回 nil")
+    check(UI.Icons.draw(el0, "folder", 0, 0, 16) == false and #el0.tex == 0,
+        "無貼圖時 draw 回 false 且完全不畫（呼叫端據此走 ASCII 退回）")
+
+    -- E2：貼圖檔缺失（getTexture 回 nil）→ 只探測一次
+    local probes = 0
+    getTexture = function() probes = probes + 1 return nil end
+    Skin._resetForTests()
+    check(UI.Icons.get("reload") == nil, "getTexture 回 nil 時 get 回 nil")
+    UI.Icons.get("reload")
+    check(probes == 1, "缺圖只探測一次，之後 false 快取不重試")
+
+    -- E3：繪製拋錯（element 契約破損）→ 不外洩、回 false
+    getTexture = function(path) return { path = path } end
+    Skin._resetForTests()
+    local broken = newElement(0, 0)
+    broken.drawTextureScaled = function() error("simulated draw failure") end
+    local okCall, result = pcall(UI.Icons.draw, broken, "language", 0, 0, 16)
+    check(okCall and result == false, "draw 拋錯被 pcall 攔下、回 false（錯誤不外洩）")
+
+    getTexture = nil
+    Skin._resetForTests()
+end
+
+-- ============================================================
 -- Widget 情境共用 stub：最小 ISPanel 面＋可控滑鼠/時間/螢幕
 -- ============================================================
 local mouseX, mouseY = 0, 0
@@ -345,7 +441,7 @@ dofile(MOD_LUA .. "Widgets/Toast.lua")
 dofile(MOD_LUA .. "VirtualList.lua")
 
 -- ============================================================
-print("情境五：FloatButton（拖曳門檻／點擊／右鍵守衛／clamp／能力旗標）")
+print("情境六：FloatButton（拖曳門檻／點擊／右鍵守衛／clamp／能力旗標）")
 -- ============================================================
 do
     check(UI.CAPABILITIES.floatButton == true and UI.FloatButton ~= nil,
@@ -433,7 +529,7 @@ do
 end
 
 -- ============================================================
-print("情境六：Toast（佇列上限／遞補／動畫時序／截字）")
+print("情境七：Toast（佇列上限／遞補／動畫時序／截字）")
 -- ============================================================
 do
     check(UI.CAPABILITIES.toast == true and UI.Toast ~= nil, "Toast 載入成功且 capability 翻 true")
@@ -480,7 +576,7 @@ do
 end
 
 -- ============================================================
-print("情境七：VirtualList（revision 重綁／回收／選取／滾動／stencil 成對）")
+print("情境八：VirtualList（revision 重綁／回收／選取／滾動／stencil 成對）")
 -- ============================================================
 do
     check(UI.CAPABILITIES.virtualList == true and UI.VirtualList ~= nil,
@@ -577,7 +673,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 94
+local EXPECTED_ASSERTIONS = 121
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

@@ -1,16 +1,26 @@
-"""程序化生成 UI 圓角皮膚貼圖（規格沿用 NoticeBoard repo docs/UI_SKIN_TEXTURES.md §2-§4，檔名前綴改 mui_）。
+"""程序化生成 UI 皮膚貼圖與圖示（皮膚規格沿用 NoticeBoard repo docs/UI_SKIN_TEXTURES.md §2-§4，
+檔名前綴改 mui_）。
 
-輸出到 42/media/ui/MinidoracatUI/：4 張 17x17 的 NinePatchTexture 9-slice（半徑 6、切線 6/4/6；
-roundtop 縱向 6/10/0）＋ 1 張 16x16 未讀圓點。全白 RGB、alpha 為形狀（8x8 覆蓋率 AA），
-純確定性計算，重跑產物逐位元組相同；生成後自檢並印 alpha 表／反解析結果／md5。
+輸出到 42/media/ui/MinidoracatUI/，兩類資產：
+  皮膚（5 張）：4 張 17x17 的 NinePatchTexture 9-slice（半徑 6、切線 6/4/6；roundtop 縱向
+    6/10/0）＋ 1 張 16x16 未讀圓點。
+  圖示（8 張）：32x32 單色線性圖示（sidebar/folder/document/chevron 兩向/language/reload/
+    reset_size），描邊 3px、端點與轉折一律圓頭、無漸層無陰影、外圍留 1px 透明邊；
+    32px 原稿供 14-16px 顯示（2:1 降採樣後每輸出像素平均 2x2 texel）。
+
+兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
+純確定性計算（不用 ImageDraw，避免跨 Pillow 版本的柵格化差異），重跑產物逐位元組相同；
+生成後自檢並印統計／皮膚 alpha 表／圖示 16px ASCII 預覽／md5。
 
 用法：python -B scripts/gen_ui_textures.py [--out DIR]
 改半徑／尺寸：改 CONTENT_SIZE／make_nine_patch 內的 6、5、15、16 與參考表後重跑。
+改圖示：改 icon_shapes() 的幾何與 ICON_SPECS 的探針座標後重跑（兩者互為交叉檢查）。
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import math
 import struct
 from pathlib import Path
 
@@ -20,14 +30,27 @@ from PIL import Image
 SUPERSAMPLE = 8
 CONTENT_SIZE = 16
 NINE_PATCH_SIZE = 17
+ICON_SIZE = 32
+ICON_STROKE_HALF = 1.5  # 描邊半寬；總寬 3px＝32px 邊長的 9.4%，縮到 16px 顯示為 1.5px
 WHITE = (255, 255, 255)
-OUTPUT_NAMES = (
+SKIN_NAMES = (
     "mui_round_fill.png",
     "mui_round_border.png",
     "mui_roundtop_fill.png",
     "mui_roundtop_border.png",
     "mui_dot.png",
 )
+ICON_NAMES = (
+    "mui_icon_sidebar.png",
+    "mui_icon_folder.png",
+    "mui_icon_document.png",
+    "mui_icon_chevron_right.png",
+    "mui_icon_chevron_down.png",
+    "mui_icon_language.png",
+    "mui_icon_reload.png",
+    "mui_icon_reset_size.png",
+)
+OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES
 
 
 def parse_alpha_table(text: str) -> tuple[tuple[int, ...], ...]:
@@ -185,18 +208,256 @@ def make_dot() -> Image.Image:
     return image_from_alpha(alpha)
 
 
+# ============================================================
+# 圖示幾何工具（回傳「點在形狀內」謂詞；覆蓋率沿用皮膚同一套 8x8 超取樣）
+# ============================================================
+# 為什麼不用 ImageDraw：柵格化細節跨 Pillow 版本會變，而本檔的契約是「重跑逐位元組
+# 相同」。純浮點謂詞＋自家超取樣是唯一能同時保證確定性與抗鋸齒品質的做法。
+
+
+def segment_distance_sq(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
+    dx, dy = bx - ax, by - ay
+    length_sq = dx * dx + dy * dy
+    if length_sq <= 0.0:
+        return (px - ax) ** 2 + (py - ay) ** 2
+    t = ((px - ax) * dx + (py - ay) * dy) / length_sq
+    t = 0.0 if t < 0.0 else (1.0 if t > 1.0 else t)
+    return (px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2
+
+
+def stroke_path(points, closed: bool = False, half: float = ICON_STROKE_HALF):
+    """折線描邊：與任一段的距離 ≤ half 即命中——端點與轉折自然成為圓頭／圓角。"""
+    segments = list(zip(points, points[1:]))
+    if closed:
+        segments.append((points[-1], points[0]))
+    limit = half * half
+
+    def inside(px: float, py: float) -> bool:
+        for (ax, ay), (bx, by) in segments:
+            if segment_distance_sq(px, py, ax, ay, bx, by) <= limit:
+                return True
+        return False
+
+    return inside
+
+
+def rrect_sdf(px: float, py: float, x0: float, y0: float, x1: float, y1: float,
+              radius: float) -> float:
+    """圓角矩形的有號距離（內負外正）；矩形的內距離也精確，描邊寬度因此處處均勻。"""
+    qx = abs(px - (x0 + x1) / 2.0) - ((x1 - x0) / 2.0 - radius)
+    qy = abs(py - (y0 + y1) / 2.0) - ((y1 - y0) / 2.0 - radius)
+    return math.hypot(max(qx, 0.0), max(qy, 0.0)) + min(max(qx, qy), 0.0) - radius
+
+
+def rrect_fill(x0: float, y0: float, x1: float, y1: float, radius: float):
+    def inside(px: float, py: float) -> bool:
+        return rrect_sdf(px, py, x0, y0, x1, y1, radius) <= 0.0
+
+    return inside
+
+
+def rrect_outline(x0: float, y0: float, x1: float, y1: float, radius: float,
+                  half: float = ICON_STROKE_HALF):
+    def inside(px: float, py: float) -> bool:
+        return abs(rrect_sdf(px, py, x0, y0, x1, y1, radius)) <= half
+
+    return inside
+
+
+def ring(cx: float, cy: float, radius: float, half: float = ICON_STROKE_HALF):
+    def inside(px: float, py: float) -> bool:
+        return abs(math.hypot(px - cx, py - cy) - radius) <= half
+
+    return inside
+
+
+def arc(cx: float, cy: float, radius: float, start_deg: float, end_deg: float,
+        half: float = ICON_STROKE_HALF):
+    """圓弧描邊（兩端圓頭）。角度採螢幕座標：0°＝正右，遞增為順時針（y 向下）。"""
+    span = end_deg - start_deg
+    caps = tuple(
+        (cx + radius * math.cos(math.radians(angle)), cy + radius * math.sin(math.radians(angle)))
+        for angle in (start_deg, end_deg)
+    )
+    limit = half * half
+
+    def inside(px: float, py: float) -> bool:
+        if abs(math.hypot(px - cx, py - cy) - radius) <= half:
+            if (math.degrees(math.atan2(py - cy, px - cx)) - start_deg) % 360.0 <= span:
+                return True
+        for ax, ay in caps:
+            if (px - ax) ** 2 + (py - ay) ** 2 <= limit:
+                return True
+        return False
+
+    return inside
+
+
+def ellipse_outline(cx: float, cy: float, a: float, b: float, half: float = ICON_STROKE_HALF):
+    """橢圓描邊。距離取一階估計 F/|grad F|（本尺度誤差 <0.2px、AA 吃不出來），
+    以免為了解析距離跑逐點牛頓疊代——那會讓「確定性」多背一組收斂條件。"""
+    def inside(px: float, py: float) -> bool:
+        dx, dy = px - cx, py - cy
+        value = (dx / a) ** 2 + (dy / b) ** 2 - 1.0
+        gradient = math.hypot(2.0 * dx / (a * a), 2.0 * dy / (b * b))
+        if gradient <= 1e-9:  # 正中心；離環面極遠，直接判外
+            return False
+        return abs(value / gradient) <= half
+
+    return inside
+
+
+def polygon_fill(points):
+    """凸多邊形填色（箭頭用）：對所有邊的外積同號即在內部，與頂點繞向無關。"""
+    edges = tuple(zip(points, points[1:] + points[:1]))
+
+    def inside(px: float, py: float) -> bool:
+        positive = negative = False
+        for (ax, ay), (bx, by) in edges:
+            cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+            if cross > 0.0:
+                positive = True
+            elif cross < 0.0:
+                negative = True
+            if positive and negative:
+                return False
+        return True
+
+    return inside
+
+
+def icon_shapes() -> dict:
+    """八個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
+
+    共同語彙：主描邊 3px、端點與轉折圓頭、無漸層無陰影、內容全部落在 [1, 31] 之間
+    （外圍 1px 透明邊，verify 會逐張確認——被裁到邊的圖示縮小後會黏在按鈕框上）。
+    節點刻意壓到最少：每個圖示 1-3 個基本形，縮到 16px 時多餘細節只會糊成一團。
+    """
+    return {
+        # 面板框＋左欄實心：16px 下實心色塊比「框內再畫一條分隔線」清楚得多
+        "mui_icon_sidebar.png": (
+            rrect_outline(3, 6, 29, 26, 3.5),
+            rrect_fill(3, 6, 10.5, 26, 2.5),
+        ),
+        # 資料夾：單一封閉折線（左緣→頁籤→斜切→本體），轉折靠圓頭自然成圓角
+        "mui_icon_folder.png": (
+            stroke_path([(3, 25), (3, 7), (11, 7), (13.5, 10), (29, 10), (29, 25)], closed=True),
+        ),
+        # 文件：右上截角的頁面外框＋摺角兩段線
+        "mui_icon_document.png": (
+            stroke_path([(6.5, 3.5), (19.5, 3.5), (25.5, 9.5), (25.5, 28.5), (6.5, 28.5)],
+                        closed=True),
+            stroke_path([(19.5, 3.5), (19.5, 9.5), (25.5, 9.5)]),
+        ),
+        "mui_icon_chevron_right.png": (
+            stroke_path([(12.5, 7), (20.5, 16), (12.5, 25)]),
+        ),
+        # 與 chevron_right 是同一組頂點繞 (16,16) 逆時針轉 90°——兩者筆勢必須一致
+        "mui_icon_chevron_down.png": (
+            stroke_path([(7, 12.5), (16, 20.5), (25, 12.5)]),
+        ),
+        # 地球：外圈＋赤道＋經線橢圓，三筆到底（再加一條緯線在 16px 就糊了）
+        "mui_icon_language.png": (
+            ring(16, 16, 11.5),
+            stroke_path([(4.5, 16), (27.5, 16)]),
+            ellipse_outline(16, 16, 5.5, 11.5),
+        ),
+        # 重新載入：300° 圓弧（缺口留在右上）＋頂端箭頭指向缺口，指示順時針
+        "mui_icon_reload.png": (
+            arc(16, 16, 10.5, -30.0, 270.0),
+            polygon_fill([(20.2, 5.5), (15.2, 2.3), (15.2, 8.7)]),
+        ),
+        # 重設大小：前窗＝預設尺寸的完整框，後窗只露上緣與右緣（避免內部交叉線）
+        "mui_icon_reset_size.png": (
+            rrect_outline(6, 11, 21, 26, 2.5),
+            stroke_path([(11, 11), (11, 6), (26, 6), (26, 21), (21, 21)]),
+        ),
+    }
+
+
+# 圖示驗證探針：symmetry（h＝上下鏡射、v＝左右鏡射）＋必須實心／必須全透明的像素。
+# 探針是幾何定義的獨立交叉檢查——座標由設計時的筆畫位置手算，改幾何而忘了改探針會紅。
+ICON_SPECS = {
+    "mui_icon_sidebar.png": {
+        "symmetry": "h",
+        "solid": ((16, 6), (6, 16)),        # 上緣描邊、左欄實心
+        "clear": ((20, 16), (16, 16)),      # 右側面板留白
+    },
+    "mui_icon_folder.png": {
+        "symmetry": "",
+        "solid": ((16, 25), (3, 16)),       # 下緣、左緣
+        "clear": ((16, 16), (20, 4)),       # 內部留白、頁籤上方無物
+    },
+    "mui_icon_document.png": {
+        "symmetry": "",
+        "solid": ((16, 28), (7, 16), (22, 6)),   # 下緣、左緣、右上斜切
+        "clear": ((16, 16), (24, 4)),            # 內部留白、被切掉的右上角
+    },
+    "mui_icon_chevron_right.png": {
+        "symmetry": "h",
+        "solid": ((19, 15),),
+        "clear": ((12, 16), (16, 3)),       # 尖端朝右：中線左側必須空（朝左就會紅）
+    },
+    "mui_icon_chevron_down.png": {
+        "symmetry": "v",
+        "solid": ((15, 19),),
+        "clear": ((16, 12), (3, 16)),       # 尖端朝下：中線上方必須空
+    },
+    "mui_icon_language.png": {
+        "symmetry": "hv",
+        "solid": ((16, 4), (16, 16)),       # 外圈頂點、赤道
+        "clear": ((8, 12),),                # 經線與外圈之間的鏡片區
+    },
+    "mui_icon_reload.png": {
+        "symmetry": "",
+        "solid": ((16, 5), (16, 26)),       # 箭頭本體、圓弧底部
+        "clear": ((16, 16), (24, 7)),       # 圓心、右上缺口（缺口消失就不是循環箭頭了）
+    },
+    "mui_icon_reset_size.png": {
+        "symmetry": "",
+        "solid": ((16, 6), (16, 26)),       # 後窗上緣、前窗下緣
+        "clear": ((16, 16), (8, 8)),        # 前窗內部、兩窗錯位讓出的左上角
+    },
+}
+
+assert tuple(ICON_SPECS) == ICON_NAMES, "ICON_SPECS 與 ICON_NAMES 必須逐項對應"
+
+
+def shape_coverage(x: int, y: int, shapes) -> float:
+    """圖示版的像素覆蓋率（對應皮膚的 rrect_coverage／circle_coverage）：沿用同一組
+    8x8 取樣點，形狀之間取聯集——重疊處不疊加，交叉筆畫才不會爆成雙倍 alpha。"""
+    covered = 0
+    for j in range(SUPERSAMPLE):
+        py = y + (j + 0.5) / SUPERSAMPLE
+        for i in range(SUPERSAMPLE):
+            px = x + (i + 0.5) / SUPERSAMPLE
+            covered += any(shape(px, py) for shape in shapes)
+    return covered / (SUPERSAMPLE * SUPERSAMPLE)
+
+
+def icon_alpha(shapes) -> list[list[int]]:
+    return [
+        [coverage_alpha(shape_coverage(x, y, shapes)) for x in range(ICON_SIZE)]
+        for y in range(ICON_SIZE)
+    ]
+
+
 def generate_images(output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     gitkeep = output_dir / ".gitkeep"
     if gitkeep.exists():
-        gitkeep.unlink()  # scaffold 佔位檔；貼圖進駐後目錄非空，嚴格 assert 只認 5 張 PNG
-    images = (
+        gitkeep.unlink()  # scaffold 佔位檔；貼圖進駐後目錄非空，嚴格 assert 只認 OUTPUT_NAMES
+    images = [
         ("mui_round_fill.png", make_nine_patch(border=False, top_only=False)),
         ("mui_round_border.png", make_nine_patch(border=True, top_only=False)),
         ("mui_roundtop_fill.png", make_nine_patch(border=False, top_only=True)),
         ("mui_roundtop_border.png", make_nine_patch(border=True, top_only=True)),
         ("mui_dot.png", make_dot()),
-    )
+    ]
+    shapes = icon_shapes()
+    assert tuple(shapes) == ICON_NAMES, "icon_shapes() 與 ICON_NAMES 必須逐項對應"
+    for filename in ICON_NAMES:
+        images.append((filename, image_from_alpha(icon_alpha(shapes[filename]))))
     for filename, image in images:
         with image:
             image.save(output_dir / filename, format="PNG")
@@ -305,8 +566,72 @@ def assert_nine_patch_content(
         assert tuple(map(tuple, alpha[:7])) == ROUND_BORDER_REFERENCE[:7]
 
 
+ASCII_RAMP = " .:-=+*#%@"
+
+
+def ascii_preview(alpha: list[list[int]], block: int = 2) -> list[str]:
+    """把 32x32 alpha 降採樣成 16x16 ASCII——等同遊戲內 16px 的顯示尺寸，
+    人眼一眼就能看出圖示糊掉／筆畫黏死；印 32x32 數字表對圖示毫無可讀性。"""
+    rows = []
+    for y in range(0, len(alpha), block):
+        line = []
+        for x in range(0, len(alpha[y]), block):
+            total = sum(alpha[y + j][x + i] for j in range(block) for i in range(block))
+            level = total // (block * block * 26)
+            line.append(ASCII_RAMP[min(level, len(ASCII_RAMP) - 1)])
+        rows.append("".join(line))
+    return rows
+
+
+def assert_icon_content(filename: str, alpha: list[list[int]]) -> float:
+    spec = ICON_SPECS[filename]
+    last = ICON_SIZE - 1
+    expected_alpha = icon_alpha(icon_shapes()[filename])
+    assert alpha == expected_alpha, (
+        f"{filename}: committed PNG does not match deterministic icon_shapes geometry"
+    )
+
+    # 1px 透明邊：內容貼到邊緣的圖示縮小後會黏在按鈕框上，且左右／上下留白不對稱
+    assert all(alpha[0][x] == 0 and alpha[last][x] == 0 for x in range(ICON_SIZE)), (
+        f"{filename}: 上／下邊未留 1px 透明邊"
+    )
+    assert all(alpha[y][0] == 0 and alpha[y][last] == 0 for y in range(ICON_SIZE)), (
+        f"{filename}: 左／右邊未留 1px 透明邊"
+    )
+
+    if "h" in spec["symmetry"]:
+        assert all(alpha[y] == alpha[last - y] for y in range(ICON_SIZE)), (
+            f"{filename}: 應上下鏡射對稱"
+        )
+    if "v" in spec["symmetry"]:
+        assert all(row == row[::-1] for row in alpha), f"{filename}: 應左右鏡射對稱"
+
+    for x, y in spec["solid"]:
+        assert alpha[y][x] == 255, f"{filename}: ({x},{y}) 應為實心筆畫，實得 {alpha[y][x]}"
+    for x, y in spec["clear"]:
+        assert alpha[y][x] == 0, f"{filename}: ({x},{y}) 應為全透明，實得 {alpha[y][x]}"
+
+    values = [value for row in alpha for value in row]
+    # 純白 RGB 下 alpha 就是整張圖：沒有實心＝沒畫到、沒有透明＝畫成滿版、
+    # 沒有半透明＝AA 失效（超取樣被改壞），三者都是資產級事故
+    assert max(values) == 255, f"{filename}: 沒有任何實心像素"
+    assert min(values) == 0, f"{filename}: 沒有任何全透明像素"
+    assert any(0 < value < 255 for value in values), f"{filename}: 邊緣沒有 AA 過渡"
+
+    # 著墨比例：整張空白（幾何全落在畫布外）或整張實心（謂詞恆真）都會被這條擋下
+    ratio = sum(1 for value in values if value > 0) / float(ICON_SIZE * ICON_SIZE)
+    assert 0.05 <= ratio <= 0.50, f"{filename}: 著墨比例 {ratio:.3f} 不在 0.05-0.50 之間"
+    return ratio
+
+
 def verify_image(path: Path) -> dict[str, object]:
-    expected_size = (16, 16) if path.name == "mui_dot.png" else (17, 17)
+    is_icon = path.name in ICON_SPECS
+    if is_icon:
+        expected_size = (ICON_SIZE, ICON_SIZE)
+    elif path.name == "mui_dot.png":
+        expected_size = (CONTENT_SIZE, CONTENT_SIZE)
+    else:
+        expected_size = (NINE_PATCH_SIZE, NINE_PATCH_SIZE)
 
     with Image.open(path) as verifier:
         verifier.verify()
@@ -330,7 +655,10 @@ def verify_image(path: Path) -> dict[str, object]:
 
     alpha = [[pixels[y * width + x][3] for x in range(width)] for y in range(height)]
     nine_patch = None
-    if path.name != "mui_dot.png":
+    ink = None
+    if is_icon:
+        ink = assert_icon_content(path.name, alpha)
+    elif path.name != "mui_dot.png":
         nine_patch = parse_nine_patch(alpha)
         assert_nine_patch_content(path.name, alpha, *nine_patch)
     else:
@@ -352,11 +680,13 @@ def verify_image(path: Path) -> dict[str, object]:
     }
     return {
         "filename": path.name,
+        "kind": "icon" if is_icon else "skin",
         "size": size,
         "mode": mode,
         "alpha": alpha,
         "stats": stats,
         "nine_patch": nine_patch,
+        "ink": ink,
     }
 
 
@@ -374,6 +704,12 @@ def print_report(reports: list[dict[str, object]], output_dir: Path) -> None:
             f'zero={stats["zero"]}, full={stats["full"]}, partial={stats["partial"]}, '
             f'min={stats["min"]}, max={stats["max"]}'
         )
+        if report["kind"] == "icon":
+            print(f'  ink: {report["ink"]:.3f}')
+            print("  16px 預覽（2x2 降採樣，等同遊戲內顯示尺寸）：")
+            for line in ascii_preview(report["alpha"]):
+                print(f"    |{line}|")
+            continue
         if report["nine_patch"] is None:
             print("  nine-slice: n/a")
         else:
