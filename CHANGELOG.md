@@ -12,6 +12,15 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [42.20.4-0.3.0] - 2026-08-30
+
+### 新增
+
+- **共用的切換開關、滑條與膠囊外觀**：依賴本函式庫的 MOD 現在可呈現一致的膠囊、切換開關與現代滑條外觀，同時保留原有操作方式與設定範圍。介面資產缺失時自動退回直角或方形外觀，功能仍可使用
+- **十二個新的共用圖示**：加入搜尋、向左箭頭、圖層、位置釘選、世界、調整、儀表、鎖定、解除鎖定、關閉、定位玩家與複製座標圖示，供依賴本函式庫的 MOD 共用
+
+> 技術要點：`API_REVISION=3`；`Skin` additive 新增 `shape="pill"`、`toggle(element, x, y, width, height, on, colors, alphaScale)` 與 `slider(element, x, y, width, height, ratio, colors, alphaScale)`；新增 `search`／`chevronLeft`／`layers`／`pin`／`globe`／`sliders`／`gauge`／`lock`／`unlock`／`close`／`locate`／`copy` 十二個 icon key。pill 精確高度 20px；toggle 幾何不足回 `false`。toggle 固定 20px track／16px knob；slider 固定 4px track／12px knob，兩者零 per-frame table/closure 配置。consumer 以 `API_REVISION >= 3`＋函式探測；無對應資產或舊版框架仍走既有直角/文字退回。
+
 ## [42.20.4-0.2.0] - 2026-08-30
 
 ### 新增

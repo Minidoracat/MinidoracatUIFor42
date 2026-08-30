@@ -19,7 +19,8 @@ This mod [b]does not add any gameplay content by itself[/b] — it is a base lib
 [*] [b]Theme system[/b]: token-based palettes with dark / light variants, per-mod overrides
 [*] [b]Rounded skin[/b]: engine-native 9-slice rounded rendering with a safe rectangular fallback when textures are missing — windows never fail to open
 [*] [b]Shared widgets[/b]: floating button (drag + position memory), toast notifications (shared stack across mods)
-[*] [b]Shared icons[/b]: 8 monochrome icons (sidebar, folder, document, expand/collapse chevrons, language, reload, reset size) tinted to match the active palette; callers fall back to their text markers when an icon asset is missing
+[*] [b]Shared painters[/b]: stateless pill, toggle, and slider visuals that dependent mods can compose without replacing their interaction logic; missing textures safely fall back to basic shapes
+[*] [b]Shared icons[/b]: 20 monochrome icons (sidebar, folder, document, expand/collapse, language, reload, reset size, search, layers, pin, globe, sliders, gauge, lock, unlock, close, locate, copy, etc.) tinted to match the active palette; callers fall back to their text markers when an icon asset is missing
 [*] [b]Virtual list[/b]: large tables (trading/auction-style UIs) only build visible rows
 [*] [b]Versioned API[/b]: dependent mods declare the API revision they need, so library updates never silently break them
 [/list]

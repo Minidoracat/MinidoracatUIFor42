@@ -10,6 +10,7 @@ Project Zomboid Build 42 MOD。
 - **v0.2 Widgets**：浮動按鈕（拖曳＋位置持久化）、Toast 通知（堆疊＋淡入淡出）
 - **v0.3 VirtualList**：垂直固定列高虛擬清單
 - **API rev 2 Icons**：8 個共用單色圖示（`sidebar`／`folder`／`document`／`chevronRight`／`chevronDown`／`language`／`reload`／`resetSize`），32×32 純白貼圖運行時染色、設計供 14–16px 顯示；`UI.Icons.get(name)`／`UI.Icons.draw(element, name, x, y, size, color, alpha)`，未知 key 或貼圖缺失一律回 `nil`／`false`，呼叫端退回原本的文字表示（詳見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §3.6）
+- **API rev 3 Painters/Assets**：新增 `shape="pill"`、無狀態 `UI.Skin.toggle(...)` 與 `UI.Skin.slider(...)`；slider 只負責現代化 track／fill／圓形 knob，不接管 consumer 的拖曳與數值邏輯。新增 `search`／`chevronLeft`／`layers`／`pin`／`globe`／`sliders`／`gauge`／`lock`／`unlock`／`close`／`locate`／`copy` 十二個 icon key。consumer 以 `UI.API_REVISION >= 3`＋函式探測；pill 精確膠囊高度 20px，低於 20px 的 shape 退直角，toggle 幾何小於 20px 回 `false`
 
 設計契約與 NeatUI 分析結論見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 

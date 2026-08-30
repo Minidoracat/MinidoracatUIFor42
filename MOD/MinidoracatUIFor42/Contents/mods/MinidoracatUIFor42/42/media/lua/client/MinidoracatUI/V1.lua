@@ -35,13 +35,18 @@
 -- shape 參數（fill／border／fits 共用）：
 --   nil / false / "round"  → 四角圓 r=6（最小 12×12）
 --   true / "roundTop"      → 上兩角圓、下方直角（最小 12×6）
+--   "pill"                 → 膠囊 r=10（最小 20×20；rev 3 新增）
 --   "rect"                 → 強制直角退回（不取貼圖）
 -- boolean 形式與家族既有 topOnly 呼叫慣例逐位相容——adapter 零翻譯。
+--
+-- pill cap 固定 10px，因 renderPatch 永不縮放角落（NinePatchTexture.java:149-222）；
+-- 高 20px 時是精確膠囊，更高則為 r=10 圓角矩形，更小走退回。
 
 local Skin = {}
 
 local TEXTURE_DIR = "media/ui/MinidoracatUI/"
 local CORNER = 6 -- 貼圖角落＝圓角半徑（切線 6/4/6；規格 docs/UI_SKIN_TEXTURES.md）
+local PILL_CORNER = 10 -- pill 專用 cap 半徑；來源切線 10/4/10
 
 -- 檔名 -> NinePatchTexture／Texture；false = 載入失敗，session 內不再重試
 -- （引擎那端同名已進永久黑名單，重試只是每幀白繳一次 pcall）
@@ -56,6 +61,9 @@ local function shapeName(shape)
     if shape == true or shape == "roundTop" then
         return "roundTop"
     end
+    if shape == "pill" then
+        return "pill"
+    end
     if shape == "rect" then
         return "rect"
     end
@@ -68,6 +76,9 @@ function Skin.fits(width, height, shape)
     local kind = shapeName(shape)
     if kind == "rect" then
         return false
+    end
+    if kind == "pill" then
+        return width >= PILL_CORNER * 2 and height >= PILL_CORNER * 2
     end
     local minimumHeight = CORNER * 2
     if kind == "roundTop" then
@@ -163,13 +174,24 @@ local function drawNinePatch(element, name, x, y, width, height, color, alpha)
     return true
 end
 
+-- shape kind → 9-slice 貼圖。fits 已把 "rect" 擋在外面，故三個 kind 全有對應檔。
+local FILL_TEXTURES = {
+    round = "mui_round_fill.png",
+    roundTop = "mui_roundtop_fill.png",
+    pill = "mui_pill_fill.png",
+}
+local BORDER_TEXTURES = {
+    round = "mui_round_border.png",
+    roundTop = "mui_roundtop_border.png",
+    pill = "mui_pill_border.png",
+}
+
 -- 圓角填色。alphaScale 是動畫用的 alpha 乘數。
 function Skin.fill(element, x, y, width, height, color, shape, alphaScale)
     local alpha = (color.a or 1) * (alphaScale or 1)
     if Skin.fits(width, height, shape) then
-        local name = shapeName(shape) == "roundTop"
-            and "mui_roundtop_fill.png" or "mui_round_fill.png"
-        if drawNinePatch(element, name, x, y, width, height, color, alpha) then
+        if drawNinePatch(element, FILL_TEXTURES[shapeName(shape)],
+                x, y, width, height, color, alpha) then
             return
         end
     end
@@ -180,9 +202,8 @@ end
 function Skin.border(element, x, y, width, height, color, shape, alphaScale)
     local alpha = (color.a or 1) * (alphaScale or 1)
     if Skin.fits(width, height, shape) then
-        local name = shapeName(shape) == "roundTop"
-            and "mui_roundtop_border.png" or "mui_round_border.png"
-        if drawNinePatch(element, name, x, y, width, height, color, alpha) then
+        if drawNinePatch(element, BORDER_TEXTURES[shapeName(shape)],
+                x, y, width, height, color, alpha) then
             return
         end
     end
@@ -192,29 +213,113 @@ end
 -- 圓點（未讀徽章等）：外圈放大 1px 當光暈（描邊色），再疊主點。
 -- 貼圖走 GL_LINEAR，16→8 是 2:1 縮小、每像素平均 2×2 texel，邊緣乾淨。
 -- 貼圖缺時退回方點＋描邊。outline 可省略（只畫主點）。
-function Skin.dot(element, x, y, size, color, outline)
+function Skin.dot(element, x, y, size, color, outline, alphaScale)
+    local scale = alphaScale or 1
     local texture = plainTexture("mui_dot.png")
     if texture then
         if outline then
             element:drawTextureScaled(texture, x - 1, y - 1, size + 2, size + 2,
-                outline.a or 1, outline.r, outline.g, outline.b)
+                (outline.a or 1) * scale, outline.r, outline.g, outline.b)
         end
         element:drawTextureScaled(texture, x, y, size, size,
-            color.a or 1, color.r, color.g, color.b)
+            (color.a or 1) * scale, color.r, color.g, color.b)
         return
     end
-    element:drawRect(x, y, size, size, color.a or 1, color.r, color.g, color.b)
+    element:drawRect(x, y, size, size, (color.a or 1) * scale, color.r, color.g, color.b)
     if outline then
         element:drawRectBorder(x, y, size, size,
-            outline.a or 1, outline.r, outline.g, outline.b)
+            (outline.a or 1) * scale, outline.r, outline.g, outline.b)
     end
 end
 
+local TOGGLE_OFF = { r = 0.25, g = 0.25, b = 0.25, a = 1 }
+local TOGGLE_ON = { r = 0.25, g = 0.65, b = 0.35, a = 1 }
+local TOGGLE_KNOB = { r = 1, g = 1, b = 1, a = 1 }
+local TOGGLE_BORDER = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
+local TOGGLE_TRACK_HEIGHT = 20
+local TOGGLE_KNOB_SIZE = 16
+local TOGGLE_INSET = 2
+
+-- toggle 與 slider 共用的色票取用：缺表／缺鍵／壞色一律落預設，不讓 painter 拋錯。
+local function resolveColor(colors, key, fallback)
+    if type(colors) ~= "table" then
+        return fallback
+    end
+    local color = colors[key]
+    if type(color) ~= "table" or color.r == nil or color.g == nil or color.b == nil then
+        return fallback
+    end
+    return color
+end
+
+local function drawToggle(element, x, y, width, height, on, colors, alphaScale)
+    local trackY = y + math.floor((height - TOGGLE_TRACK_HEIGHT) / 2)
+    local trackColor = resolveColor(colors, on and "on" or "off", on and TOGGLE_ON or TOGGLE_OFF)
+    local knobColor = resolveColor(colors, "knob", TOGGLE_KNOB)
+    local borderColor = resolveColor(colors, "border", TOGGLE_BORDER)
+    local knobX = on and x + width - TOGGLE_KNOB_SIZE - TOGGLE_INSET or x + TOGGLE_INSET
+
+    Skin.fill(element, x, trackY, width, TOGGLE_TRACK_HEIGHT, trackColor, "pill", alphaScale)
+    Skin.border(element, x, trackY, width, TOGGLE_TRACK_HEIGHT, borderColor, "pill", alphaScale)
+    Skin.dot(element, knobX, trackY + TOGGLE_INSET, TOGGLE_KNOB_SIZE,
+        knobColor, borderColor, alphaScale)
+end
+
+-- rev 3 無狀態 painter：只在幾何／element 無效或繪製錯誤被攔下時回 false。
+function Skin.toggle(element, x, y, width, height, on, colors, alphaScale)
+    if not element or type(x) ~= "number" or type(y) ~= "number"
+            or type(width) ~= "number" or type(height) ~= "number"
+            or width < PILL_CORNER * 2 or height < TOGGLE_TRACK_HEIGHT then
+        return false
+    end
+    return pcall(drawToggle, element, x, y, width, height, on == true, colors, alphaScale)
+end
+
+local SLIDER_TRACK = { r = 0.22, g = 0.22, b = 0.22, a = 1 }
+local SLIDER_FILL = { r = 0.75, g = 0.55, b = 0.20, a = 1 }
+local SLIDER_KNOB = { r = 1, g = 1, b = 1, a = 1 }
+local SLIDER_BORDER = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
+local SLIDER_TRACK_HEIGHT = 4
+local SLIDER_KNOB_SIZE = 12
+
+local function drawSlider(element, x, y, width, height, ratio, colors, alphaScale)
+    local track = resolveColor(colors, "track", SLIDER_TRACK)
+    local fill = resolveColor(colors, "fill", SLIDER_FILL)
+    local knob = resolveColor(colors, "knob", SLIDER_KNOB)
+    local border = resolveColor(colors, "border", SLIDER_BORDER)
+    local scale = alphaScale or 1
+    local trackY = y + math.floor((height - SLIDER_TRACK_HEIGHT) / 2)
+    element:drawRect(x, trackY, width, SLIDER_TRACK_HEIGHT,
+        (track.a or 1) * scale, track.r, track.g, track.b)
+    element:drawRectBorder(x, trackY - 1, width, SLIDER_TRACK_HEIGHT + 2,
+        (border.a or 1) * scale, border.r, border.g, border.b)
+    local fillW = math.floor(width * ratio + 0.5)
+    if fillW > 0 then
+        element:drawRect(x, trackY, fillW, SLIDER_TRACK_HEIGHT,
+            (fill.a or 1) * scale, fill.r, fill.g, fill.b)
+    end
+    local knobX = x + fillW - math.floor(SLIDER_KNOB_SIZE / 2)
+    local knobY = y + math.floor((height - SLIDER_KNOB_SIZE) / 2)
+    Skin.dot(element, knobX, knobY, SLIDER_KNOB_SIZE, knob, border, scale)
+end
+
+-- rev 3 無狀態 slider painter：只換皮、不接管原生滑條的拖曳／步進／上下限。
+function Skin.slider(element, x, y, width, height, ratio, colors, alphaScale)
+    if not element or type(x) ~= "number" or type(y) ~= "number"
+            or type(width) ~= "number" or type(height) ~= "number"
+            or type(ratio) ~= "number" or ratio ~= ratio
+            or width < SLIDER_KNOB_SIZE or height < SLIDER_KNOB_SIZE then
+        return false
+    end
+    if ratio < 0 then ratio = 0 elseif ratio > 1 then ratio = 1 end
+    return pcall(drawSlider, element, x, y, width, height, ratio, colors, alphaScale)
+end
+
 -- ============================================================
--- Icons — 共用單色圖示（rev 2 新增）
+-- Icons：共用單色資產（rev 2 首發；rev 3 additive 加 key）
 -- ============================================================
 -- 全部 32×32 純白 RGBA、運行時頂點染色（同皮膚一套資產服務所有主題），
--- 設計供 14–16px 顯示（32→16 是 2:1 縮小、GL_LINEAR 每像素平均 2×2 texel）。
+-- 設計供 14–20px 顯示；16px 是乾淨的 2:1 縮小，rev 3 標題列狀態圖示可放大到 20px。
 -- 資產由 scripts/gen_ui_textures.py 程序化生成，verify_mod.py 第 12 項逐張把關。
 --
 -- 【紅線】缺資產不得讓 UI 少一塊功能：get／draw 一律回 nil／false，
@@ -231,6 +336,18 @@ local ICON_FILES = {
     language     = "mui_icon_language.png",
     reload       = "mui_icon_reload.png",
     resetSize    = "mui_icon_reset_size.png",
+    search       = "mui_icon_search.png",
+    chevronLeft  = "mui_icon_chevron_left.png",
+    layers       = "mui_icon_layers.png",
+    pin          = "mui_icon_pin.png",
+    globe        = "mui_icon_globe.png",
+    sliders      = "mui_icon_sliders.png",
+    gauge        = "mui_icon_gauge.png",
+    lock         = "mui_icon_lock.png",
+    unlock       = "mui_icon_unlock.png",
+    close        = "mui_icon_close.png",
+    locate       = "mui_icon_locate.png",
+    copy         = "mui_icon_copy.png",
 }
 
 local ICON_WHITE = { r = 1, g = 1, b = 1, a = 1 }
@@ -400,11 +517,12 @@ end
 
 MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
-    VERSION = "0.1.0",
+    VERSION = "0.3.0",
     API_MAJOR = 1,
     -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
     -- rev 2：Icons（8 個共用單色圖示）——純 additive，rev 1 的呼叫面一字未動
-    API_REVISION = 2,
+    -- rev 3：pill／toggle／slider painters＋12 個新增 icon key
+    API_REVISION = 3,
     CAPABILITIES = {
         theme = true,
         skin = true,

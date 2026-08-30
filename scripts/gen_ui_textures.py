@@ -2,18 +2,18 @@
 檔名前綴改 mui_）。
 
 輸出到 42/media/ui/MinidoracatUI/，兩類資產：
-  皮膚（5 張）：4 張 17x17 的 NinePatchTexture 9-slice（半徑 6、切線 6/4/6；roundtop 縱向
-    6/10/0）＋ 1 張 16x16 未讀圓點。
-  圖示（8 張）：32x32 單色線性圖示（sidebar/folder/document/chevron 兩向/language/reload/
-    reset_size），描邊 3px、端點與轉折一律圓頭、無漸層無陰影、外圍留 1px 透明邊；
-    32px 原稿供 14-16px 顯示（2:1 降採樣後每輸出像素平均 2x2 texel）。
+  皮膚（7 張）：既有 4 張 17x17 NinePatchTexture、1 張 16x16 圓點，以及 rev 3
+    專用的 2 張 25x25 pill 9-slice（10/4/10 cap，精確 20px 高）。
+  圖示（20 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
+    外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
 兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
 純確定性計算（不用 ImageDraw，避免跨 Pillow 版本的柵格化差異），重跑產物逐位元組相同；
 生成後自檢並印統計／皮膚 alpha 表／圖示 16px ASCII 預覽／md5。
 
 用法：python -B scripts/gen_ui_textures.py [--out DIR]
-改半徑／尺寸：改 CONTENT_SIZE／make_nine_patch 內的 6、5、15、16 與參考表後重跑。
+改半徑／尺寸：同步改 CONTENT_SIZE／PILL_CONTENT_SIZE／PILL_CORNER、make_nine_patch
+    與 make_pill_patch 的切線常數及對應參考表後重跑。
 改圖示：改 icon_shapes() 的幾何與 ICON_SPECS 的探針座標後重跑（兩者互為交叉檢查）。
 """
 from __future__ import annotations
@@ -30,6 +30,9 @@ from PIL import Image
 SUPERSAMPLE = 8
 CONTENT_SIZE = 16
 NINE_PATCH_SIZE = 17
+PILL_CONTENT_SIZE = 24
+PILL_NINE_PATCH_SIZE = 25
+PILL_CORNER = 10
 ICON_SIZE = 32
 ICON_STROKE_HALF = 1.5  # 描邊半寬；總寬 3px＝32px 邊長的 9.4%，縮到 16px 顯示為 1.5px
 WHITE = (255, 255, 255)
@@ -38,6 +41,8 @@ SKIN_NAMES = (
     "mui_round_border.png",
     "mui_roundtop_fill.png",
     "mui_roundtop_border.png",
+    "mui_pill_fill.png",
+    "mui_pill_border.png",
     "mui_dot.png",
 )
 ICON_NAMES = (
@@ -49,6 +54,18 @@ ICON_NAMES = (
     "mui_icon_language.png",
     "mui_icon_reload.png",
     "mui_icon_reset_size.png",
+    "mui_icon_search.png",
+    "mui_icon_chevron_left.png",
+    "mui_icon_layers.png",
+    "mui_icon_pin.png",
+    "mui_icon_globe.png",
+    "mui_icon_sliders.png",
+    "mui_icon_gauge.png",
+    "mui_icon_lock.png",
+    "mui_icon_unlock.png",
+    "mui_icon_close.png",
+    "mui_icon_locate.png",
+    "mui_icon_copy.png",
 )
 OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES
 
@@ -198,6 +215,26 @@ def make_nine_patch(border: bool, top_only: bool) -> Image.Image:
     return image_from_alpha(alpha)
 
 
+def make_pill_patch(border: bool) -> Image.Image:
+    alpha = [[0] * PILL_NINE_PATCH_SIZE for _ in range(PILL_NINE_PATCH_SIZE)]
+    for cy in range(PILL_CONTENT_SIZE):
+        for cx in range(PILL_CONTENT_SIZE):
+            outer = rrect_coverage(cx, cy, 0, 0, PILL_CONTENT_SIZE, PILL_CONTENT_SIZE,
+                                   PILL_CORNER, False)
+            if border:
+                inner = rrect_coverage(cx, cy, 1, 1, PILL_CONTENT_SIZE - 1,
+                                       PILL_CONTENT_SIZE - 1, PILL_CORNER - 1, False)
+                coverage = max(0.0, outer - inner)
+            else:
+                coverage = outer
+            alpha[cy + 1][cx + 1] = coverage_alpha(coverage)
+
+    for position in range(PILL_CORNER + 1, PILL_CORNER + 5):
+        alpha[0][position] = 255
+        alpha[position][0] = 255
+    return image_from_alpha(alpha)
+
+
 def make_dot() -> Image.Image:
     alpha = []
     for y in range(CONTENT_SIZE):
@@ -327,11 +364,11 @@ def polygon_fill(points):
 
 
 def icon_shapes() -> dict:
-    """八個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
+    """二十個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
 
     共同語彙：主描邊 3px、端點與轉折圓頭、無漸層無陰影、內容全部落在 [1, 31] 之間
     （外圍 1px 透明邊，verify 會逐張確認——被裁到邊的圖示縮小後會黏在按鈕框上）。
-    節點刻意壓到最少：每個圖示 1-3 個基本形，縮到 16px 時多餘細節只會糊成一團。
+    基本形刻意壓到最少：多數圖示 1-3 個，定位／座標複合語意最多 5 個；縮到 16px 仍須可辨。
     """
     return {
         # 面板框＋左欄實心：16px 下實心色塊比「框內再畫一條分隔線」清楚得多
@@ -371,6 +408,70 @@ def icon_shapes() -> dict:
         "mui_icon_reset_size.png": (
             rrect_outline(6, 11, 21, 26, 2.5),
             stroke_path([(11, 11), (11, 6), (26, 6), (26, 21), (21, 21)]),
+        ),
+        "mui_icon_search.png": (
+            ring(13, 13, 8.5),
+            stroke_path([(19, 19), (27.5, 27.5)]),
+        ),
+        "mui_icon_chevron_left.png": (
+            stroke_path([(19.5, 7), (11.5, 16), (19.5, 25)]),
+        ),
+        "mui_icon_layers.png": (
+            stroke_path([(5, 11), (16, 5), (27, 11), (16, 17)], closed=True),
+            stroke_path([(5, 16), (16, 22), (27, 16)]),
+            stroke_path([(5, 21), (16, 27), (27, 21)]),
+        ),
+        "mui_icon_pin.png": (
+            stroke_path([(16, 28), (8, 12), (8, 9), (10, 5), (13, 3), (16, 2.5),
+                         (19, 3), (22, 5), (24, 9), (24, 12)], closed=True),
+            ring(16, 10, 3),
+        ),
+        "mui_icon_globe.png": (
+            ring(16, 16, 11.5),
+            stroke_path([(16, 4.5), (16, 27.5)]),
+            ellipse_outline(16, 16, 11.5, 5.5),
+        ),
+        "mui_icon_sliders.png": (
+            stroke_path([(4, 7), (28, 7)]),
+            stroke_path([(4, 16), (28, 16)]),
+            stroke_path([(4, 25), (28, 25)]),
+            rrect_fill(8, 4, 14, 10, 3),
+            rrect_fill(19, 13, 25, 19, 3),
+            rrect_fill(11, 22, 17, 28, 3),
+        ),
+        "mui_icon_gauge.png": (
+            arc(16, 21, 11, 180, 360),
+            stroke_path([(16, 21), (22, 12)]),
+            ring(16, 21, 2.5),
+        ),
+        "mui_icon_lock.png": (
+            rrect_outline(6, 12, 26, 28, 3),
+            arc(16, 12, 7, 180, 360),
+            rrect_fill(14, 18, 18, 24, 2),
+        ),
+        "mui_icon_unlock.png": (
+            rrect_outline(6, 13, 26, 28, 3),
+            stroke_path([(10, 13), (10, 10)]),
+            arc(17, 10, 7, 180, 350),
+            rrect_fill(14, 19, 18, 25, 2),
+        ),
+        "mui_icon_close.png": (
+            stroke_path([(8, 8), (24, 24)]),
+            stroke_path([(24, 8), (8, 24)]),
+        ),
+        "mui_icon_locate.png": (
+            stroke_path([(12, 4), (4, 4), (4, 12)]),
+            stroke_path([(20, 4), (28, 4), (28, 12)]),
+            stroke_path([(4, 20), (4, 28), (12, 28)]),
+            stroke_path([(28, 20), (28, 28), (20, 28)]),
+            ring(16, 16, 3.5),
+        ),
+        "mui_icon_copy.png": (
+            rrect_outline(7, 7, 25, 29, 2.5),
+            rrect_outline(12, 3, 20, 9, 2),
+            stroke_path([(12, 17), (20, 17)]),
+            stroke_path([(16, 13), (16, 21)]),
+            stroke_path([(12, 25), (20, 25)]),
         ),
     }
 
@@ -418,6 +519,66 @@ ICON_SPECS = {
         "solid": ((16, 6), (16, 26)),       # 後窗上緣、前窗下緣
         "clear": ((16, 16), (8, 8)),        # 前窗內部、兩窗錯位讓出的左上角
     },
+    "mui_icon_search.png": {
+        "symmetry": "",
+        "solid": ((13, 4), (24, 24)),
+        "clear": ((13, 13), (27, 4)),
+    },
+    "mui_icon_chevron_left.png": {
+        "symmetry": "h",
+        "solid": ((12, 15),),
+        "clear": ((20, 16), (16, 3)),
+    },
+    "mui_icon_layers.png": {
+        "symmetry": "v",
+        "solid": ((16, 5), (16, 27)),
+        "clear": ((16, 12), (3, 3)),
+    },
+    "mui_icon_pin.png": {
+        "symmetry": "v",
+        "solid": ((16, 27), (16, 7)),
+        "clear": ((16, 10), (5, 10)),
+    },
+    "mui_icon_globe.png": {
+        "symmetry": "hv",
+        "solid": ((16, 4), (16, 16)),
+        "clear": ((11, 8),),
+    },
+    "mui_icon_sliders.png": {
+        "symmetry": "",
+        "solid": ((11, 7), (22, 16), (14, 25)),
+        "clear": ((16, 4), (4, 12)),
+    },
+    "mui_icon_gauge.png": {
+        "symmetry": "",
+        "solid": ((5, 20), (16, 10), (21, 13)),
+        "clear": ((16, 27), (6, 7)),
+    },
+    "mui_icon_lock.png": {
+        "symmetry": "v",
+        "solid": ((16, 5), (16, 20), (16, 27)),
+        "clear": ((10, 18), (4, 4)),
+    },
+    "mui_icon_unlock.png": {
+        "symmetry": "",
+        "solid": ((10, 12), (17, 3), (16, 21), (16, 27)),
+        "clear": ((25, 11), (17, 10), (4, 4)),
+    },
+    "mui_icon_close.png": {
+        "symmetry": "hv",
+        "solid": ((16, 16), (9, 9)),
+        "clear": ((16, 5), (4, 4)),
+    },
+    "mui_icon_locate.png": {
+        "symmetry": "hv",
+        "solid": ((4, 8), (16, 12), (24, 28)),
+        "clear": ((16, 4), (4, 16), (16, 16)),
+    },
+    "mui_icon_copy.png": {
+        "symmetry": "v",
+        "solid": ((7, 16), (16, 3), (16, 17), (16, 28)),
+        "clear": ((10, 12), (4, 4)),
+    },
 }
 
 assert tuple(ICON_SPECS) == ICON_NAMES, "ICON_SPECS 與 ICON_NAMES 必須逐項對應"
@@ -452,6 +613,8 @@ def generate_images(output_dir: Path) -> None:
         ("mui_round_border.png", make_nine_patch(border=True, top_only=False)),
         ("mui_roundtop_fill.png", make_nine_patch(border=False, top_only=True)),
         ("mui_roundtop_border.png", make_nine_patch(border=True, top_only=True)),
+        ("mui_pill_fill.png", make_pill_patch(border=False)),
+        ("mui_pill_border.png", make_pill_patch(border=True)),
         ("mui_dot.png", make_dot()),
     ]
     shapes = icon_shapes()
@@ -523,6 +686,25 @@ def assert_nine_patch_content(
     widths: tuple[int, int, int],
     heights: tuple[int, int, int],
 ) -> None:
+    if filename.startswith("mui_pill_"):
+        border = "border" in filename
+        assert widths == (10, 4, 10), f"Unexpected widths for {filename}: {widths}"
+        assert heights == (10, 4, 10), f"Unexpected heights for {filename}: {heights}"
+        assert alpha[0][0] == 0
+        assert all(alpha[0][x] == (255 if 11 <= x <= 14 else 0)
+                   for x in range(PILL_NINE_PATCH_SIZE))
+        assert all(alpha[y][0] == (255 if 11 <= y <= 14 else 0)
+                   for y in range(PILL_NINE_PATCH_SIZE))
+        content = [row[1:] for row in alpha[1:]]
+        assert all(row == row[::-1] for row in content)
+        assert all(content[y] == content[-1 - y] for y in range(PILL_CONTENT_SIZE))
+        assert alpha[1][1] == 0 and alpha[1][24] == 0
+        assert alpha[12][12] == (0 if border else 255)
+        assert alpha[1][11] == 255 and alpha[24][14] == 255
+        values = [value for row in content for value in row]
+        assert any(0 < value < 255 for value in values)
+        return
+
     top_only = "roundtop" in filename
     border = "border" in filename
     expected_heights = (6, 10, 0) if top_only else (6, 4, 6)
@@ -628,6 +810,8 @@ def verify_image(path: Path) -> dict[str, object]:
     is_icon = path.name in ICON_SPECS
     if is_icon:
         expected_size = (ICON_SIZE, ICON_SIZE)
+    elif path.name.startswith("mui_pill_"):
+        expected_size = (PILL_NINE_PATCH_SIZE, PILL_NINE_PATCH_SIZE)
     elif path.name == "mui_dot.png":
         expected_size = (CONTENT_SIZE, CONTENT_SIZE)
     else:

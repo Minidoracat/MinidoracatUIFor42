@@ -12,8 +12,8 @@
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
 3. theme 隔離——兩實例互不污染、default 不被 mutate、light variant、token 字串解析
-4. fits 邊界——round 12×12／roundTop 12×6 下限、boolean topOnly 相容、"rect" 強制退回
-5. Icons——rev/capability、八 key 對貼圖、快取、未知 key、缺圖、染色與 alpha、拋錯不外洩
+4. fits 邊界——round／roundTop／pill 下限、boolean topOnly 相容、"rect" 強制退回
+5. rev 3 painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與二十個 icon key
 （6-8 為 widget：FloatButton／Toast／VirtualList）
 ]]
 
@@ -87,7 +87,7 @@ do
     check(MinidoracatUI ~= nil and MinidoracatUI.v1 ~= nil, "全域 MinidoracatUI.v1 已發布")
     local v1 = MinidoracatUI.v1
     check(ret == v1, "檔尾 return 與全域是同一實體")
-    check(v1.API_MAJOR == 1 and v1.API_REVISION >= 1, "API_MAJOR/API_REVISION 形狀正確")
+    check(v1.API_MAJOR == 1 and v1.API_REVISION == 3, "API v1 revision 3 已發布")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
     check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
         and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
@@ -149,6 +149,12 @@ do
     Skin.border(el1, 0, 0, 100, 40, BORDER_C, "roundTop")
     check(good.patches[#good.patches].path == "media/ui/MinidoracatUI/mui_roundtop_border.png",
         "E1 shape 字串 roundTop 取 roundtop border")
+    Skin.fill(el1, 0, 0, 44, 20, SURFACE, "pill")
+    check(good.patches[#good.patches].path == "media/ui/MinidoracatUI/mui_pill_fill.png",
+        "E1 shape 字串 pill 取專用 fill 貼圖")
+    Skin.border(el1, 0, 0, 44, 20, BORDER_C, "pill")
+    check(good.patches[#good.patches].path == "media/ui/MinidoracatUI/mui_pill_border.png",
+        "E1 shape 字串 pill 取專用 border 貼圖")
 
     -- E1 dot：getTexture stub（光暈＋主點兩次繪製、白圖染色引數順序 a,r,g,b）
     getTexture = function(path) return { path = path } end
@@ -245,6 +251,10 @@ do
     check(Skin.fits(12, 6, true) == true, "roundTop（boolean）下限 12x6 可畫")
     check(Skin.fits(12, 5, "roundTop") == false, "roundTop 低於下限退回")
     check(Skin.fits(12, 6, "roundTop") == Skin.fits(12, 6, true), "boolean topOnly 與字串 roundTop 等價")
+    check(Skin.fits(20, 20, "pill") == true, "pill 下限 20x20 可畫")
+    check(Skin.fits(19, 20, "pill") == false and Skin.fits(20, 19, "pill") == false,
+        "pill 低於 20px cap 下限退回")
+    check(Skin.fits(12, 12, "round") == Skin.fits(12, 12), "pill 新增不改 round 相容行為")
     check(Skin.fits(500, 500, "rect") == false, "rect 形狀永遠走直角（強制退回）")
 
     -- 小矩形實繪驗證：貼圖存在也不走 9-slice
@@ -260,10 +270,81 @@ do
 end
 
 -- ============================================================
-print("情境五：Icons（rev/capability、八 key、快取、缺圖退回、染色與 alpha）")
+print("情境五：rev 3 toggle／slider 與 Icons（二十 key、快取、缺圖退回）")
 -- ============================================================
 do
-    check(UI.API_REVISION >= 2, "API_REVISION 進到 2（Icons 是 additive 變更）")
+    local toggleColors = {
+        off = { r = 0.1, g = 0.2, b = 0.3, a = 0.8 },
+        on = { r = 0.2, g = 0.7, b = 0.4, a = 0.9 },
+        knob = { r = 0.9, g = 0.8, b = 0.7, a = 1 },
+        border = { r = 0.6, g = 0.5, b = 0.4, a = 0.5 },
+    }
+    local togglePatches = {}
+    NinePatchTexture = makeNinePatchStub(togglePatches)
+    getTexture = function(path) return { path = path } end
+    Skin._resetForTests()
+    local offEl = newElement(0, 0)
+    check(Skin.toggle(offEl, 10, 20, 44, 30, false, toggleColors, 0.5) == true
+        and #togglePatches.patches == 2, "toggle off 畫 pill fill/border 且回 true")
+    check(togglePatches.patches[1].y == 25 and togglePatches.patches[1].h == 20,
+        "20px track 在 30px row 內垂直置中")
+    check(offEl.tex[2].x == 12 and offEl.tex[2].y == 27
+        and nearly(offEl.tex[2].r, 0.9), "toggle off knob 在左側 2px inset 且使用 knob 色")
+    check(nearly(togglePatches.patches[1].r, 0.1) and nearly(togglePatches.patches[2].r, 0.6),
+        "toggle off track/border 使用各自色彩")
+
+    local onEl = newElement(0, 0)
+    check(Skin.toggle(onEl, 10, 20, 44, 30, true, toggleColors, 0.5) == true
+        and onEl.tex[2].x == 36 and nearly(onEl.tex[2].g, 0.8),
+        "toggle on knob 在右側 2px inset 且色彩不變")
+    check(nearly(togglePatches.patches[3].g, 0.7) and nearly(togglePatches.patches[3].a, 0.45)
+        and nearly(onEl.tex[2].a, 0.5), "toggle on 色彩與 alphaScale 套用到 track/knob")
+
+    local sliderColors = {
+        track = { r = 0.1, g = 0.1, b = 0.1, a = 0.8 },
+        fill = { r = 0.9, g = 0.6, b = 0.2, a = 0.9 },
+        knob = { r = 0.8, g = 0.9, b = 1, a = 1 },
+        border = { r = 0.4, g = 0.5, b = 0.6, a = 0.5 },
+    }
+    local sliderEl = newElement(0, 0)
+    check(type(Skin.slider) == "function"
+        and Skin.slider(sliderEl, 10, 20, 100, 30, 0.5, sliderColors, 0.5) == true,
+        "rev 3 slider painter 可探測且回 true")
+    check(#sliderEl.rects == 2 and #sliderEl.borders == 1 and #sliderEl.tex == 2,
+        "slider 畫 track、fill、border 與圓形 knob")
+    check(sliderEl.rects[1].y == 33 and sliderEl.rects[2].w == 50
+        and sliderEl.tex[2].x == 54 and sliderEl.tex[2].y == 29,
+        "slider 50%% 幾何置中且 knob 落在半程")
+    check(nearly(sliderEl.rects[1].a, 0.4) and nearly(sliderEl.rects[2].r, 0.9)
+        and nearly(sliderEl.tex[2].a, 0.5),
+        "slider 色票與 alphaScale 套用到 track/fill/knob")
+    local clampedSlider = newElement(0, 0)
+    check(Skin.slider(clampedSlider, 0, 0, 100, 20, 2, nil, 1) == true
+        and clampedSlider.tex[2].x == 94,
+        "slider ratio 夾在 0..1，max knob 中心對齊原生 hit endpoint")
+    check(Skin.slider(newElement(), 0, 0, 10, 10, 0 / 0, nil, 1) == false,
+        "slider 非有限 ratio／過小幾何 fail-soft 回 false")
+
+    NinePatchTexture = nil
+    getTexture = nil
+    Skin._resetForTests()
+    local fallback = newElement(0, 0)
+    check(Skin.toggle(fallback, 0, 0, 40, 20, false, nil, 1) == true,
+        "toggle 缺 colors 與全部資產時不拋錯")
+    check(#fallback.rects == 2 and #fallback.borders == 2
+        and nearly(fallback.rects[1].r, 0.25) and nearly(fallback.rects[2].r, 1),
+        "toggle 資產失敗經 Skin 直角路徑退回並使用安全預設色")
+    local fallbackSlider = newElement(0, 0)
+    check(Skin.slider(fallbackSlider, 0, 0, 100, 20, 0.5, nil, 1) == true
+        and #fallbackSlider.rects == 3 and #fallbackSlider.borders == 2,
+        "slider 缺資產仍以直線 track／方形 knob 完整退回")
+    check(Skin.toggle(nil, 0, 0, 40, 20, false, nil, 1) == false,
+        "toggle 無 element 時 fail-soft 回 false")
+    check(Skin.toggle(newElement(), 0, 0, 19, 19, false, nil, 1) == false,
+        "toggle 小於 pill 幾何下限時 fail-soft 回 false")
+
+    check(UI.API_REVISION == 3 and type(UI.Skin.toggle) == "function",
+        "rev 3 可由 revision 與 Skin.toggle 函式共同探測")
     check(UI.CAPABILITIES.icons == true and UI.Icons ~= nil, "CAPABILITIES.icons 為 true 且 Icons 已公開")
 
     -- E1：getTexture 正常
@@ -281,7 +362,9 @@ do
         "第二次 get 命中 Skin 共用快取，不重複呼叫 getTexture")
 
     local keys = { "sidebar", "folder", "document", "chevronRight",
-        "chevronDown", "language", "reload", "resetSize" }
+        "chevronDown", "language", "reload", "resetSize", "search", "chevronLeft",
+        "layers", "pin", "globe", "sliders", "gauge", "lock", "unlock", "close",
+        "locate", "copy" }
     local expectedPaths = {
         sidebar = "media/ui/MinidoracatUI/mui_icon_sidebar.png",
         folder = "media/ui/MinidoracatUI/mui_icon_folder.png",
@@ -291,6 +374,18 @@ do
         language = "media/ui/MinidoracatUI/mui_icon_language.png",
         reload = "media/ui/MinidoracatUI/mui_icon_reload.png",
         resetSize = "media/ui/MinidoracatUI/mui_icon_reset_size.png",
+        search = "media/ui/MinidoracatUI/mui_icon_search.png",
+        chevronLeft = "media/ui/MinidoracatUI/mui_icon_chevron_left.png",
+        layers = "media/ui/MinidoracatUI/mui_icon_layers.png",
+        pin = "media/ui/MinidoracatUI/mui_icon_pin.png",
+        globe = "media/ui/MinidoracatUI/mui_icon_globe.png",
+        sliders = "media/ui/MinidoracatUI/mui_icon_sliders.png",
+        gauge = "media/ui/MinidoracatUI/mui_icon_gauge.png",
+        lock = "media/ui/MinidoracatUI/mui_icon_lock.png",
+        unlock = "media/ui/MinidoracatUI/mui_icon_unlock.png",
+        close = "media/ui/MinidoracatUI/mui_icon_close.png",
+        locate = "media/ui/MinidoracatUI/mui_icon_locate.png",
+        copy = "media/ui/MinidoracatUI/mui_icon_copy.png",
     }
     local seen = {}
     for i = 1, #keys do
@@ -304,7 +399,7 @@ do
     for _ in pairs(seen) do
         distinct = distinct + 1
     end
-    check(distinct == 8, "八個 key 必須各自對到一張不重複的貼圖")
+    check(distinct == 20, "二十個 key 必須各自對到一張不重複的貼圖")
 
     check(UI.Icons.get("noSuchIcon") == nil, "未知 key 回 nil")
     check(UI.Icons.get(nil) == nil and UI.Icons.get(42) == nil, "非字串 key 回 nil（不炸）")
@@ -673,7 +768,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 121
+local EXPECTED_ASSERTIONS = 155
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

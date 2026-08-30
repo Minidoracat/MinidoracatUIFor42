@@ -298,9 +298,9 @@ if os.path.isfile(_cl):
     fail("CHANGELOG 無基礎設施洩漏樣式", leaks) if leaks else ok("CHANGELOG 無基礎設施洩漏樣式")
 
 # ---- 12. UI 貼圖（皮膚＋圖示）----
-# 42/media/ui/MinidoracatUI/ 的 13 張 PNG（5 張皮膚＋8 張圖示）逐張過
+# 42/media/ui/MinidoracatUI/ 的 27 張 PNG（7 張皮膚＋20 張圖示）逐張過
 # gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）／純白 RGB。
-# 皮膚另驗：照 NinePatchTexture.java:262-298 反解析切線＝(6,4,6)×(6,4,6)｜(6,10,0)／
+# 皮膚另驗：照 NinePatchTexture.java:262-298 反解析切線＝既有 (6,4,6) 與 pill (10,4,10)／
 # 拉伸區逐列相同／參考 alpha 表逐像素比對。圖示另驗：32x32／1px 透明邊／鏡射對稱／
 # 手算探針像素（該實心的實心、該透空的透空）／著墨比例區間／有 AA 過渡。
 # Lua 測試全用 stub、從不讀 PNG，貼圖壞了只會靜默退回直角或不畫圖示——這是唯一擋住
