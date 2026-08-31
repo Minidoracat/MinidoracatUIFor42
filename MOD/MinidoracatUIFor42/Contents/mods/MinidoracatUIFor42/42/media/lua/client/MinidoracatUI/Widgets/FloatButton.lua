@@ -43,10 +43,6 @@ local FALLBACK = {
     border = { r = 0.4, g = 0.4, b = 0.4, a = 1.0 },
 }
 
-function FloatButton:initialise()
-    ISPanel.initialise(self)
-end
-
 -- 夾回螢幕內；prerender 每幀呼叫，純數值比較成本可忽略
 local function clampToScreen(btn)
     local x = math.max(0, math.min(btn:getX(), getCore():getScreenWidth() - btn.width))
@@ -83,9 +79,8 @@ local function updateTooltip(btn)
             tip.maxLineWidth = maxLineWidth or 300
         end
         tip:setDesiredPosition(getMouseX(), btn:getAbsoluteY() + btn:getHeight() + 8)
-    elseif btn._tooltipUI and btn._tooltipUI:getIsVisible() then
-        btn._tooltipUI:setVisible(false)
-        btn._tooltipUI:removeFromUIManager()
+    else
+        btn:hideTooltip()
     end
 end
 

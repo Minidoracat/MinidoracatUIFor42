@@ -259,7 +259,6 @@ end
 function VirtualList:onMouseDown(x, y)
     -- scrollbar 區：thumb 拖曳／track 跳頁
     if self:maxScrollOffset() > 0 and x >= self.width - SCROLLBAR_WIDTH then
-        local trackH = self.height
         local thumbH, thumbY = self:thumbMetrics()
         if y >= thumbY and y < thumbY + thumbH then
             self._thumbDrag = true
@@ -291,7 +290,7 @@ local function dragThumb(list)
         return false
     end
     local y = list:getMouseY()
-    local thumbH = select(1, list:thumbMetrics())
+    local thumbH = list:thumbMetrics()
     local trackRange = list.height - thumbH
     if trackRange <= 0 then
         return true
