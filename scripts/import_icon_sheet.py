@@ -26,7 +26,6 @@ from gen_ui_textures import ART_ICON_NAMES, ICON_SIZE, default_output_dir  # noq
 DEFAULT_KEYS = [name[len("mui_art_"):-len(".png")] for name in ART_ICON_NAMES]
 INNER = ICON_SIZE - 4      # 內容最大邊長 28：四邊留 ≥2px（verify 只要求 1px，多留給 AA 暈）
 NOISE = 24                 # 亮度低於此值視為背景（AI 黑底常有 3-10 的雜訊）
-SUPERSAMPLE_MIN = 96       # 裁切後內容短邊低於此值時先放大再縮，避免細節被 LANCZOS 吃掉
 
 
 def cell_to_alpha(cell: Image.Image) -> Image.Image:
@@ -43,15 +42,9 @@ def fit_icon(alpha: Image.Image) -> Image.Image:
     w, h = content.size
     scale = INNER / float(max(w, h))
     nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
-    if min(w, h) < SUPERSAMPLE_MIN:
-        content = content.resize((w * 4, h * 4), Image.BICUBIC)
     content = content.resize((nw, nh), Image.LANCZOS)
     out = Image.new("L", (ICON_SIZE, ICON_SIZE), 0)
     out.paste(content, ((ICON_SIZE - nw) // 2, (ICON_SIZE - nh) // 2))
-    # 保證四邊 1px 透明（縮放 AA 不會外溢到邊，但保險清一次）
-    px = out.load()
-    for i in range(ICON_SIZE):
-        px[i, 0] = px[i, ICON_SIZE - 1] = px[0, i] = px[ICON_SIZE - 1, i] = 0
     white = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (255, 255, 255, 0))
     white.putalpha(out)
     return white
