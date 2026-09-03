@@ -348,6 +348,22 @@ local ICON_FILES = {
     close        = "mui_icon_close.png",
     locate       = "mui_icon_locate.png",
     copy         = "mui_icon_copy.png",
+    -- rev 4：art 圖示（AI 生成剪影、scripts/import_icon_sheet.py 轉 32×32 白 glyph；
+    -- 非幾何確定性生成，verify 只驗尺寸／純白／透明邊／著墨比例）。地圖符號類
+    -- 供 consumer 畫在地圖上與設定視窗同用，同一 key 同一張
+    house         = "mui_art_house.png",
+    skull         = "mui_art_skull.png",
+    pawprint      = "mui_art_pawprint.png",
+    steeringwheel = "mui_art_steeringwheel.png",
+    chicken       = "mui_art_chicken.png",
+    cow           = "mui_art_cow.png",
+    pig           = "mui_art_pig.png",
+    sheep         = "mui_art_sheep.png",
+    deer          = "mui_art_deer.png",
+    rabbit        = "mui_art_rabbit.png",
+    raccoon       = "mui_art_raccoon.png",
+    rodent        = "mui_art_rodent.png",
+    turkey        = "mui_art_turkey.png",
 }
 
 local ICON_WHITE = { r = 1, g = 1, b = 1, a = 1 }
@@ -522,7 +538,8 @@ MinidoracatUI.v1 = {
     -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
     -- rev 2：Icons（8 個共用單色圖示）——純 additive，rev 1 的呼叫面一字未動
     -- rev 3：pill／toggle／slider painters＋12 個新增 icon key
-    API_REVISION = 3,
+    -- rev 4：13 個 art icon key（house／skull／pawprint／steeringwheel＋9 物種）
+    API_REVISION = 4,
     CAPABILITIES = {
         theme = true,
         skin = true,

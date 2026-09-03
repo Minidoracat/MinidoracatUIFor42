@@ -67,7 +67,16 @@ ICON_NAMES = (
     "mui_icon_locate.png",
     "mui_icon_copy.png",
 )
-OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES
+# art 圖示：AI 生成剪影經 scripts/import_icon_sheet.py 轉成 32×32 純白 alpha PNG
+# 後 commit；不由本檔幾何生成（generate_images 不覆寫、不刪），verify 走 assert_art_icon_content
+# （尺寸／純白／1px 透明邊／著墨比例／有 AA 過渡），不比對幾何。缺檔＝verify FAIL。
+ART_ICON_NAMES = tuple(
+    f"mui_art_{key}.png" for key in (
+        "house", "skull", "pawprint", "steeringwheel",
+        "chicken", "cow", "pig", "sheep", "deer", "rabbit", "raccoon", "rodent", "turkey",
+    )
+)
+OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES
 
 
 def parse_alpha_table(text: str) -> tuple[tuple[int, ...], ...]:
@@ -626,7 +635,10 @@ def generate_images(output_dir: Path) -> None:
             image.save(output_dir / filename, format="PNG")
 
     actual_entries = {entry.name for entry in output_dir.iterdir()}
-    assert actual_entries == set(OUTPUT_NAMES), (
+    missing_art = sorted(set(ART_ICON_NAMES) - actual_entries)
+    if missing_art:
+        print(f"注意：art 圖示尚未匯入（scripts/import_icon_sheet.py）：{missing_art}")
+    assert actual_entries - set(OUTPUT_NAMES) == set(), (
         f"Unexpected output directory entries: {sorted(actual_entries - set(OUTPUT_NAMES))}"
     )
 
@@ -806,9 +818,26 @@ def assert_icon_content(filename: str, alpha: list[list[int]]) -> float:
     return ratio
 
 
+
+def assert_art_icon_content(filename: str, alpha: list[list[int]]) -> float:
+    """art 圖示驗證：非幾何生成，只驗與 consumer 契約相關的性質。"""
+    last = ICON_SIZE - 1
+    assert all(alpha[0][x] == 0 and alpha[last][x] == 0 for x in range(ICON_SIZE)), (
+        f"{filename}: 上／下邊未留 1px 透明邊"
+    )
+    assert all(alpha[y][0] == 0 and alpha[y][last] == 0 for y in range(ICON_SIZE)), (
+        f"{filename}: 左／右邊未留 1px 透明邊"
+    )
+    values = [value for row in alpha for value in row]
+    assert any(0 < value < 255 for value in values), f"{filename}: 無 AA 過渡（未經 import_icon_sheet 縮放）"
+    ratio = sum(1 for value in values if value > 0) / float(ICON_SIZE * ICON_SIZE)
+    assert 0.10 <= ratio <= 0.70, f"{filename}: 著墨比例 {ratio:.3f} 不在 0.10-0.70 之間（剪影應為實心）"
+    return ratio
+
 def verify_image(path: Path) -> dict[str, object]:
     is_icon = path.name in ICON_SPECS
-    if is_icon:
+    is_art = path.name in ART_ICON_NAMES
+    if is_icon or is_art:
         expected_size = (ICON_SIZE, ICON_SIZE)
     elif path.name.startswith("mui_pill_"):
         expected_size = (PILL_NINE_PATCH_SIZE, PILL_NINE_PATCH_SIZE)
@@ -842,6 +871,8 @@ def verify_image(path: Path) -> dict[str, object]:
     ink = None
     if is_icon:
         ink = assert_icon_content(path.name, alpha)
+    elif is_art:
+        ink = assert_art_icon_content(path.name, alpha)
     elif path.name != "mui_dot.png":
         nine_patch = parse_nine_patch(alpha)
         assert_nine_patch_content(path.name, alpha, *nine_patch)
@@ -864,7 +895,7 @@ def verify_image(path: Path) -> dict[str, object]:
     }
     return {
         "filename": path.name,
-        "kind": "icon" if is_icon else "skin",
+        "kind": "icon" if (is_icon or is_art) else "skin",
         "size": size,
         "mode": mode,
         "alpha": alpha,
@@ -905,7 +936,8 @@ def print_report(reports: list[dict[str, object]], output_dir: Path) -> None:
 
     print("MD5:")
     for filename in OUTPUT_NAMES:
-        print(f"{filename}: {md5_hex(output_dir / filename)}")
+        if (output_dir / filename).exists():
+            print(f"{filename}: {md5_hex(output_dir / filename)}")
     print("OK")
 
 
@@ -932,7 +964,9 @@ def main() -> None:
     output_dir = args.out.expanduser().resolve() if args.out else default_output_dir()
 
     generate_images(output_dir)
-    reports = [verify_image(output_dir / filename) for filename in OUTPUT_NAMES]
+    # art 圖示未匯入時生成器仍可跑（只印提示）；缺檔由 verify_mod.py 第 12 項擋
+    reports = [verify_image(output_dir / filename) for filename in OUTPUT_NAMES
+               if (output_dir / filename).exists()]
     print_report(reports, output_dir)
 
 

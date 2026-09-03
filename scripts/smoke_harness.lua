@@ -87,7 +87,7 @@ do
     check(MinidoracatUI ~= nil and MinidoracatUI.v1 ~= nil, "全域 MinidoracatUI.v1 已發布")
     local v1 = MinidoracatUI.v1
     check(ret == v1, "檔尾 return 與全域是同一實體")
-    check(v1.API_MAJOR == 1 and v1.API_REVISION == 3, "API v1 revision 3 已發布")
+    check(v1.API_MAJOR == 1 and v1.API_REVISION == 4, "API v1 revision 4 已發布")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
     check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
         and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
@@ -343,7 +343,7 @@ do
     check(Skin.toggle(newElement(), 0, 0, 19, 19, false, nil, 1) == false,
         "toggle 小於 pill 幾何下限時 fail-soft 回 false")
 
-    check(UI.API_REVISION == 3 and type(UI.Skin.toggle) == "function",
+    check(UI.API_REVISION >= 3 and type(UI.Skin.toggle) == "function",
         "rev 3 可由 revision 與 Skin.toggle 函式共同探測")
     check(UI.CAPABILITIES.icons == true and UI.Icons ~= nil, "CAPABILITIES.icons 為 true 且 Icons 已公開")
 
@@ -364,7 +364,8 @@ do
     local keys = { "sidebar", "folder", "document", "chevronRight",
         "chevronDown", "language", "reload", "resetSize", "search", "chevronLeft",
         "layers", "pin", "globe", "sliders", "gauge", "lock", "unlock", "close",
-        "locate", "copy" }
+        "locate", "copy", "house", "skull", "pawprint", "steeringwheel", "chicken", "cow",
+        "pig", "sheep", "deer", "rabbit", "raccoon", "rodent", "turkey" }
     local expectedPaths = {
         sidebar = "media/ui/MinidoracatUI/mui_icon_sidebar.png",
         folder = "media/ui/MinidoracatUI/mui_icon_folder.png",
@@ -386,6 +387,19 @@ do
         close = "media/ui/MinidoracatUI/mui_icon_close.png",
         locate = "media/ui/MinidoracatUI/mui_icon_locate.png",
         copy = "media/ui/MinidoracatUI/mui_icon_copy.png",
+        house = "media/ui/MinidoracatUI/mui_art_house.png",
+        skull = "media/ui/MinidoracatUI/mui_art_skull.png",
+        pawprint = "media/ui/MinidoracatUI/mui_art_pawprint.png",
+        steeringwheel = "media/ui/MinidoracatUI/mui_art_steeringwheel.png",
+        chicken = "media/ui/MinidoracatUI/mui_art_chicken.png",
+        cow = "media/ui/MinidoracatUI/mui_art_cow.png",
+        pig = "media/ui/MinidoracatUI/mui_art_pig.png",
+        sheep = "media/ui/MinidoracatUI/mui_art_sheep.png",
+        deer = "media/ui/MinidoracatUI/mui_art_deer.png",
+        rabbit = "media/ui/MinidoracatUI/mui_art_rabbit.png",
+        raccoon = "media/ui/MinidoracatUI/mui_art_raccoon.png",
+        rodent = "media/ui/MinidoracatUI/mui_art_rodent.png",
+        turkey = "media/ui/MinidoracatUI/mui_art_turkey.png",
     }
     local seen = {}
     for i = 1, #keys do
@@ -399,7 +413,7 @@ do
     for _ in pairs(seen) do
         distinct = distinct + 1
     end
-    check(distinct == 20, "二十個 key 必須各自對到一張不重複的貼圖")
+    check(distinct == 33, "三十三個 key 必須各自對到一張不重複的貼圖")
 
     check(UI.Icons.get("noSuchIcon") == nil, "未知 key 回 nil")
     check(UI.Icons.get(nil) == nil and UI.Icons.get(42) == nil, "非字串 key 回 nil（不炸）")
@@ -768,7 +782,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 155
+local EXPECTED_ASSERTIONS = 168
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

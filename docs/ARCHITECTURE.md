@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.1.0",   -- 發布字串，僅供顯示
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 3,          -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets
+    API_REVISION = 4,          -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -245,6 +245,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **UI 貼圖（9-slice 圓角、圓點、單色圖示）**：`scripts/gen_ui_textures.py` 程序化生成（移植 NoticeBoard 現有做法）——9-slice 切線像素要求位元級精確，圖示要求重跑逐位元組相同，都不走 AI 生圖；生成器不用 `ImageDraw`（跨 Pillow 版本柵格化會變），純浮點謂詞＋8×8 超取樣自算覆蓋率。`verify_mod.py` 第 12 項比對尺寸／IHDR／純白／切線（皮膚）與透明邊／對稱／探針像素／著墨比例（圖示）當閘門。
 - **美術資產（poster.png、preview.png、Workshop 圖）**：AI 生成（codex／grok imagegen）到 `scripts/poster/` 再由 `finish_poster.py` 部署——首發前才做，沿用家族貓娘 mascot 流程。
 - 貼圖一律純白可染色；新增貼圖＝同步新增生成器幾何與 `verify_mod.py` 檢查項（`OUTPUT_NAMES` 是唯一權威，目錄多一張少一張都會 assert）。
+- **art 圖示（rev 4 起，`mui_art_*.png`）**：幾何線條畫不出可辨識的動物剪影，這批改走 AI 生成——`scripts/icons/sheet.png`（codex `image_generation`，黑底純白實心剪影、4×4 等分格、無文字）→ `scripts/import_icon_sheet.py`（亮度→alpha、去雜訊、bbox 裁切、縮 28px 置中、四邊透明）→ commit PNG。`ART_ICON_NAMES` 在 `OUTPUT_NAMES` 內但生成器不產不覆寫；verify 只驗尺寸／純白／1px 透明邊／有 AA／著墨 0.10-0.70。重生單格：`import_icon_sheet.py <cell.png> --grid 1x1 --keys cow`。
 
 ## 7. 測試策略
 
@@ -254,10 +255,10 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
   3. theme 隔離（兩實例互不污染、default 不被 mutate、light variant、token 解析）
   4. fits 邊界與 shape 相容（boolean topOnly ≡ "roundTop"、"rect" 強制退回）
   5. rev 3 painters/assets（revision/function 探測、pill fits 與舊 shape 相容、toggle on/off
-     與 slider 比例／色彩／alpha／缺資產退回；Icons 二十 key 對到不重複貼圖、快取
+     與 slider 比例／色彩／alpha／缺資產退回；Icons 三十三 key 對到不重複貼圖、快取
      只探一次、未知／非字串 key、無 `getTexture`／貼圖缺失回 nil/false、錯誤不外洩）
   - 條數守門 `EXPECTED_ASSERTIONS`（家族慣例：防整段被註解仍全綠）
   -（v0.2 起）stencil 計數器成對＋repaint（Toast/Widget 才觸碰 stencil）、FloatButton 拖曳門檻／clamp、Toast 佇列上限
-- `scripts/verify_mod.py`：13 項閘門＝家族十一項靜態掃描＋UI 貼圖驗證（第 12 項，皮膚＋圖示共 27 張）＋Lua 煙霧測試（第 13 項）。
+- `scripts/verify_mod.py`：13 項閘門＝家族十一項靜態掃描＋UI 貼圖驗證（第 12 項，皮膚＋幾何圖示＋art 圖示共 40 張）＋Lua 煙霧測試（第 13 項）。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **十三個新的共用剪影圖示**：加入房屋、骷髏、爪印、方向盤，以及雞、牛、豬、羊、鹿、兔、浣熊、鼠、火雞的實心剪影圖示，供依賴本函式庫的 MOD 在地圖與設定視窗上共用（小地圖 MOD 的安全屋、殭屍、動物、載具圖標即改用這組）。資產缺失時依賴的 MOD 自行退回原有圖示
+
+> 技術要點：API rev 3→4，`Icons` 新增 13 個 key（`house`／`skull`／`pawprint`／`steeringwheel`／`chicken`／`cow`／`pig`／`sheep`／`deer`／`rabbit`／`raccoon`／`rodent`／`turkey` → `mui_art_*.png`）。與既有 20 個幾何圖示不同：這批由 AI 生成剪影表（`scripts/icons/sheet.png`，codex image_generation）經 `scripts/import_icon_sheet.py` 轉 32×32 純白 alpha，`verify_mod.py` 第 12 項只驗尺寸／純白／1px 透明邊／AA／著墨比例，不比對幾何；`gen_ui_textures.py` 不生成、不覆寫這批檔。
+
 ## [42.20.4-0.3.0] - 2026-08-30
 
 ### 新增
