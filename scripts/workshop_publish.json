@@ -11,5 +11,11 @@
         "tchinese": "STEAM_DESCRIPTION.md",
         "schinese": "STEAM_DESCRIPTION.md",
         "japanese": "STEAM_DESCRIPTION_JP.md"
+    },
+    "titles": {
+        "english": "Minidoracat UI Library for B42",
+        "tchinese": "[B42] Minidoracat UI 函式庫 UI Library",
+        "schinese": "[B42] Minidoracat UI 函数库 UI Library",
+        "japanese": "[B42] Minidoracat UI ライブラリ UI Library"
     }
 }
