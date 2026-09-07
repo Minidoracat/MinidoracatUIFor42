@@ -87,7 +87,7 @@ do
     check(MinidoracatUI ~= nil and MinidoracatUI.v1 ~= nil, "全域 MinidoracatUI.v1 已發布")
     local v1 = MinidoracatUI.v1
     check(ret == v1, "檔尾 return 與全域是同一實體")
-    check(v1.API_MAJOR == 1 and v1.API_REVISION == 4, "API v1 revision 4 已發布")
+    check(v1.API_MAJOR == 1 and v1.API_REVISION == 5, "API v1 revision 5 已發布")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
     check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
         and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
@@ -681,6 +681,19 @@ do
     local t2 = Toast.show({ message = long })
     check(string.len(t2.message) < 60 and string.sub(t2.message, -3) == "...",
         "超寬訊息二分截字帶省略號")
+    -- rev 5 換行：maxLines=3、每字 10px、寬 284 → 60 字切成 28+28+4，不帶省略號、高度長兩行
+    Toast._resetForTests()
+    local t3 = Toast.show({ message = long, maxLines = 3 })
+    check(#t3.lines == 3 and string.len(t3.lines[1]) == 28 and string.len(t3.lines[3]) == 4 and t3.message == t3.lines[1],
+        "maxLines=3 換成三行且 message 仍是第一行")
+    check(t3.height == 56 + t3.fontHeight * 2, "Toast 高度隨行數增加")
+    local t4 = Toast.show({ message = string.rep("B", 100), maxLines = 2 })
+    check(#t4.lines == 2 and string.sub(t4.lines[2], -3) == "...", "超過 maxLines 時最後一行帶省略號")
+    local t5 = Toast.show({ message = "aaaa bbbb cccc dddd eeee ffff gggg hhhh", maxLines = 2 })
+    check(string.sub(t5.lines[1], -1) ~= " " and string.find(t5.lines[1], " ", 1, true) ~= nil and string.sub(t5.lines[2], 1, 1) ~= " ",
+        "拉丁文在空白處換行、下一行不以空白開頭")
+    Toast._resetForTests()
+    check(#Toast.show({ message = "short", maxLines = 3 }).lines == 1, "放得下就一行")
     Toast._resetForTests()
 end
 
@@ -782,7 +795,7 @@ end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 168
+local EXPECTED_ASSERTIONS = 173
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

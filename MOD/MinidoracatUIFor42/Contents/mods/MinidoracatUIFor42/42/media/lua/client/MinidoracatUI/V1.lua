@@ -533,13 +533,14 @@ end
 
 MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
-    VERSION = "0.4.0",
+    VERSION = "0.5.0",
     API_MAJOR = 1,
     -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
     -- rev 2：Icons（8 個共用單色圖示）——純 additive，rev 1 的呼叫面一字未動
     -- rev 3：pill／toggle／slider painters＋12 個新增 icon key
     -- rev 4：13 個 art icon key（house／skull／pawprint／steeringwheel＋9 物種）
-    API_REVISION = 4,
+    -- rev 5：Toast.show 的 maxLines（多行換行、隨行數長高）
+    API_REVISION = 5,
     CAPABILITIES = {
         theme = true,
         skin = true,

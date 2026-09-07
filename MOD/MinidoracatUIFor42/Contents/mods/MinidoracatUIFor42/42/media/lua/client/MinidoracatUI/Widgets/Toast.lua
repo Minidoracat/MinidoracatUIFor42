@@ -84,6 +84,50 @@ local function fitText(text, maximumWidth)
     return best or suffix
 end
 
+-- 最多 maxLines 行的換行（rev 5）：每行二分找最長可放前綴（CJK 無空白，按字元切；
+-- 拉丁文若前綴內有空白則退到最後一個空白後切），最後一行超出時交給 fitText 帶省略號。
+-- 量測次數 O(lines × log n)。maxLines ≤ 1 就是原本的單行截字。
+local function wrapText(text, maximumWidth, maxLines)
+    if type(maxLines) ~= "number" or maxLines <= 1 then
+        return { fitText(text, maximumWidth) }
+    end
+    local manager = getTextManager()
+    if string.len(text) > MAX_FIT_UNITS * maxLines then
+        text = string.sub(text, 1, MAX_FIT_UNITS * maxLines)
+    end
+    local lines = {}
+    local rest = text
+    while #lines < maxLines - 1 do
+        if manager:MeasureStringX(UIFont.NewSmall, rest) <= maximumWidth then
+            lines[#lines + 1] = rest
+            return lines
+        end
+        local low, high, best = 1, string.len(rest), 1
+        while low <= high do
+            local mid = math.floor((low + high) / 2)
+            local cut = mid
+            if isHighSurrogate(string.byte(rest, cut)) then cut = cut - 1 end
+            if cut >= 1 and manager:MeasureStringX(UIFont.NewSmall, string.sub(rest, 1, cut)) <= maximumWidth then
+                best = cut
+                low = mid + 1
+            else
+                high = mid - 1
+            end
+        end
+        local head = string.sub(rest, 1, best)
+        local space = nil
+        for i = string.len(head), 1, -1 do
+            if string.byte(head, i) == 32 then space = i break end
+        end
+        if space and space > 1 and string.len(rest) > best then head = string.sub(head, 1, space - 1) end
+        lines[#lines + 1] = head
+        rest = string.gsub(string.sub(rest, string.len(head) + 1), "^%s+", "")
+        if rest == "" then return lines end
+    end
+    lines[#lines + 1] = fitText(rest, maximumWidth)
+    return lines
+end
+
 local function activeIndex(toast)
     for index = 1, #Toast.active do
         if Toast.active[index] == toast then
@@ -116,7 +160,8 @@ function Toast.dismiss(toast)
     end
 end
 
--- opts: { title=, message=, colors={surface,border,text}, holdMs= }
+-- opts: { title=, message=, colors={surface,border,text}, holdMs=, maxLines= }
+-- （rev 5 起 maxLines>1 時訊息自動換行、Toast 隨行數長高；預設 1＝單行截字）
 -- 或直接傳字串（僅 message、無標題列）。
 -- 回傳 toast 實例；進 pending 或被丟棄時回 nil。
 function Toast.show(opts)
@@ -131,6 +176,7 @@ function Toast.show(opts)
         message = opts.message,
         colors = opts.colors or {},
         holdMs = opts.holdMs or DEFAULT_HOLD_MS,
+        maxLines = opts.maxLines,
     }
     if #Toast.active >= MAX_VISIBLE then
         if #Toast.pending >= MAX_PENDING then
@@ -178,24 +224,33 @@ function Toast:prerender()
     if self.titleText then
         self:drawText(self.titleText, 8, 7,
             textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
-        self:drawText(self.message, 8, 10 + self.fontHeight,
-            textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+        for i, line in ipairs(self.lines) do
+            self:drawText(line, 8, 10 + self.fontHeight * i,
+                textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+        end
     else
         -- 無標題：訊息置中於垂直空間
-        self:drawText(self.message, 8, (self.height - self.fontHeight) / 2,
-            textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+        local top = (self.height - self.fontHeight * #self.lines) / 2
+        for i, line in ipairs(self.lines) do
+            self:drawText(line, 8, top + self.fontHeight * (i - 1),
+                textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+        end
     end
 end
 
 function Toast._create(entry)
     local x = getCore():getScreenWidth() + WIDTH
-    local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, HEIGHT)
+    local fontHeight = getTextManager():getFontHeight(UIFont.NewSmall)
+    local lines = wrapText(entry.message, WIDTH - 16, entry.maxLines)
+    local height = HEIGHT + fontHeight * (#lines - 1)
+    local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, height)
     o.background = false
     o.alwaysOnTop = true
     o.startedAtMs = getTimestampMs()
-    o.fontHeight = getTextManager():getFontHeight(UIFont.NewSmall)
+    o.fontHeight = fontHeight
     o.titleText = entry.title
-    o.message = fitText(entry.message, WIDTH - 16)
+    o.lines = lines
+    o.message = lines[1]           -- rev 1-4 的單行欄位：第一行（測試與舊 consumer 讀它）
     o.colors = entry.colors
     o.holdMs = entry.holdMs
     return o
