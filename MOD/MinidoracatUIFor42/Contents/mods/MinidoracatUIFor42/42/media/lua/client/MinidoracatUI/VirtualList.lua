@@ -136,13 +136,21 @@ function VirtualList:poolSize()
     return math.ceil(self.height / stride(self)) + 2
 end
 
+local function recycle(list, cell)
+    if cell.boundIndex ~= nil and list.unbindCell then
+        list.unbindCell(list, cell)
+    end
+    cell.boundIndex = nil
+    cell.boundRevision = nil
+    cell:setVisible(false)
+end
 function VirtualList:rebuildPool()
     if not self.createCell then
         return
     end
     for i = 1, #self.pool do
         local cell = self.pool[i]
-        cell:setVisible(false)
+        recycle(self, cell)
         self:removeChild(cell)
     end
     self.pool = {}
@@ -172,14 +180,6 @@ function VirtualList:resize(width, height)
     self:rebuildPool()
 end
 
-local function recycle(list, cell)
-    if cell.boundIndex ~= nil and list.unbindCell then
-        list.unbindCell(list, cell)
-    end
-    cell.boundIndex = nil
-    cell.boundRevision = nil
-    cell:setVisible(false)
-end
 
 -- 可見範圍計算＋pool 指派。只有 index 或 revision 變才呼叫 bindCell。
 function VirtualList:refreshCells()
@@ -201,11 +201,12 @@ function VirtualList:refreshCells()
         local needBind = cell.boundIndex ~= dataIndex or cell.boundRevision ~= self.revision
         if needBind then
             cell.boundIndex = dataIndex
-            cell.boundRevision = self.revision
+            cell.boundRevision = nil -- 綁定中不算完成；失敗後同 index 也能重試。
             cell:setWidth(cellW)
             cell:setHeight(self.rowHeight)
             self.bindCell(self, cell, self.items[dataIndex], dataIndex)
             cell:setVisible(true)
+            cell.boundRevision = self.revision
         end
         cell:setX(0)
         cell:setY(self.padding + (dataIndex - 1) * rowStride - self.scrollOffset)

@@ -1,0 +1,94 @@
+{
+  "tool": "image_gen.imagegen",
+  "callable_tool": "image_gen__imagegen",
+  "output_path": "scripts/icons/navigation-sheet.png",
+  "request": {
+    "asset": "square 1024x1024 PNG navigation icon sheet",
+    "icon_count": 16,
+    "layout": "invisible equal 4x4 cells; each glyph centered within the central 60% of its cell",
+    "appearance": "white filled silhouettes, uniform pure black background, matching the supplied family sheet",
+    "row_major_order": [
+      [
+        "wallet",
+        "gift",
+        "shop",
+        "market"
+      ],
+      [
+        "auction",
+        "mail",
+        "users",
+        "chart"
+      ],
+      [
+        "coins",
+        "plug",
+        "shieldCheck",
+        "tag"
+      ],
+      [
+        "transactions",
+        "clipboardCheck",
+        "server",
+        "settings"
+      ]
+    ]
+  },
+  "provenance": {
+    "method": "actual raster image generation using image_gen.imagegen",
+    "reference_image_path": "scripts/icons/sheet.png",
+    "reference_role": "user-supplied family sheet used as style reference",
+    "tool_arguments": {
+      "prompt": "Create a square 1024x1024 PNG raster navigation icon sheet. Use the attached family sheet only as a STYLE REFERENCE: bold solid white silhouettes, pure black background, clean organic contours and generous open black cutouts. Replace ALL original glyphs with exactly the sixteen navigation glyphs below.\n\nComposition: invisible equal 4x4 cells, each 256x256 pixels. Exactly one centered glyph per cell, exactly sixteen glyphs total. Centers at x=128,384,640,896 and y=128,384,640,896. Each glyph fits within the central 60% of its cell (approximately 154x154 pixels), with balanced optical sizing and bold consistent visual weight. Keep generous identical black gutters. Recognizable at 20-24px. Flat filled silhouettes, never thin outline icons.\n\nStrict row-major order, left to right:\nROW 1:\n1. wallet: billfold with closure tab, bold filled silhouette and a clear black opening.\n2. gift: wrapped box with a bow, broad ribbon cutouts.\n3. shop: storefront with a scalloped awning, doorway/window cutouts.\n4. market: two-handled shopping basket with open handles and broad basket cutouts, definitely a basket.\nROW 2:\n5. auction: gavel above its horizontal base, both forming one icon.\n6. mail: closed envelope with strong diagonal flap cutout.\n7. users: two human busts with circular heads and broad shoulders.\n8. chart: three solid ascending vertical bars, no extra axes.\nROW 3:\n9. coins: two coin stacks, broad horizontal black separation cutouts, blank faces without any markings.\n10. plug: two-prong electrical plug, chunky filled body.\n11. shieldCheck: solid white shield with a large clearly recognizable black checkmark cutout.\n12. tag: solid price tag with a large black round hole, otherwise blank.\nROW 4:\n13. transactions: two horizontal arrows pointing in opposite directions, one above the other.\n14. clipboardCheck: filled clipboard silhouette with top clip and a large black checkmark cutout.\n15. server: two horizontal filled rack units stacked with a black gap, bold indicator cutouts.\n16. settings: bold filled gear with a large black center hole.\n\nBackground uniformly pure opaque black #000000 over the entire square; glyph interiors pure white #FFFFFF, black negative-space cutouts. Clean contours, strong open cutouts, no fragile details. No text, letters, numbers, grid lines, cell borders, checkerboard, transparency, shadows, gradients, textures, decorations, watermarks, outlines around cells, extra icons, or any original animal/house glyphs. The row and column instructions are placement directions and must never appear visibly. Deliver one complete raster PNG.",
+      "referenced_image_paths": [
+        "scripts/icons/sheet.png"
+      ]
+    },
+    "model_and_effort_overrides": false,
+    "save_operation": "Copied generator-owned PNG, then losslessly re-encoded RGB PNG using Pillow; no drawn geometry, crop, rescale, or pixel edits to the source sheet.",
+    "validation_performed": false,
+    "actual_source_dimensions": [
+      1254,
+      1254
+    ],
+    "actual_source_format": "PNG",
+    "codex_thread_id": "01a08994-c853-7b02-a52f-07b664c84932",
+    "cli": "codex exec -C <ui-repo> -i scripts/icons/sheet.png --skip-git-repo-check --json <image-generation request>",
+    "configuration": "Inherited configured gpt-6-astra / ultra; no model or effort override. Underlying raster image model not reported by tool.",
+    "reproduction_note": "The retained original AI raster and deterministic importer reproduce the 16 shipped glyphs. Regenerating the AI sheet from the prompt can produce different artwork."
+  },
+  "import": {
+    "command": "python scripts/import_icon_sheet.py scripts/icons/navigation-sheet.png --grid 4x4 --keys wallet,gift,shop,market,auction,mail,users,chart,coins,plug,shieldCheck,tag,transactions,clipboardCheck,server,settings",
+    "working_directory": "<ui-repo>",
+    "output_directory": "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/ui/MinidoracatUI",
+    "output_files": [
+      "mui_art_wallet.png",
+      "mui_art_gift.png",
+      "mui_art_shop.png",
+      "mui_art_market.png",
+      "mui_art_auction.png",
+      "mui_art_mail.png",
+      "mui_art_users.png",
+      "mui_art_chart.png",
+      "mui_art_coins.png",
+      "mui_art_plug.png",
+      "mui_art_shieldCheck.png",
+      "mui_art_tag.png",
+      "mui_art_transactions.png",
+      "mui_art_clipboardCheck.png",
+      "mui_art_server.png",
+      "mui_art_settings.png"
+    ],
+    "pipeline": "Existing importer unchanged: brightness-to-alpha, NOISE=24, cell inset=4%, bounding-box crop, max content edge=28, centered in 32x32 pure-white RGBA."
+  },
+  "visual_review": {
+    "scope": "Only generated source sheet and 16 imported glyph contact sheets; no project validation or pixel/AA assertions.",
+    "result": "All 16 semantic subjects match row-major contract and remain distinguishable at displayed 20/24px. Storefront and basket are distinct; shield and clipboard checks retain open cutouts.",
+    "contact_sheets": [
+      "navigation-contact-small.png (20/24/32px)",
+      "navigation-contact-large.png (112px nearest-neighbor enlargement)"
+    ],
+    "contact_sheet_location": "Parent staging operation directory; not shipped framework textures.",
+    "pending_main_validation": "RGBA/AA/transparent-edge checks, consumer loading, framework gates and integrated UI rendering."
+  }
+}

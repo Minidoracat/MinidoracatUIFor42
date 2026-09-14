@@ -298,7 +298,7 @@ if os.path.isfile(_cl):
     fail("CHANGELOG 無基礎設施洩漏樣式", leaks) if leaks else ok("CHANGELOG 無基礎設施洩漏樣式")
 
 # ---- 12. UI 貼圖（皮膚＋圖示）----
-# 42/media/ui/MinidoracatUI/ 的 40 張 PNG（7 張皮膚＋20 張幾何圖示＋13 張 art 圖示）逐張過
+# 42/media/ui/MinidoracatUI/ 的 OUTPUT_NAMES（皮膚＋幾何圖示＋art 圖示）逐張過
 # gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）／純白 RGB。
 # 皮膚另驗：照 NinePatchTexture.java:262-298 反解析切線＝既有 (6,4,6) 與 pill (10,4,10)／
 # 拉伸區逐列相同／參考 alpha 表逐像素比對。圖示另驗：32x32／1px 透明邊／鏡射對稱／
@@ -310,6 +310,7 @@ try:
     from gen_ui_textures import OUTPUT_NAMES as _TEX_NAMES, verify_image as _verify_texture
 except ImportError as _e:   # Pillow 沒裝（gen_ui_textures 頂層 import PIL）
     skip("UI 貼圖（皮膚＋圖示）", f"無法載入 gen_ui_textures（{_e}）")
+    skip("圖表匯入相容性", f"無法載入 gen_ui_textures（{_e}）")
 else:
     from pathlib import Path as _Path
     _tex_problems = []
@@ -335,6 +336,12 @@ else:
     else:
         fail("UI 貼圖（皮膚＋圖示，gen_ui_textures.verify_image）", _tex_problems) if _tex_problems \
             else ok(f"UI 貼圖（皮膚＋圖示，{_tex_count} 張過 verify_image）")
+    _import_check = subprocess.run(
+        [sys.executable, "scripts/test_icon_import.py"], capture_output=True, cwd=REPO)
+    if _import_check.returncode:
+        fail("圖表匯入相容性", [(_import_check.stdout + _import_check.stderr).decode("utf-8", errors="replace")])
+    else:
+        ok("圖表匯入相容性（舊圖表預設排列＋導覽圖示重建）")
 
 # ---- 13. Lua 煙霧測試 ----
 # scripts/smoke_harness.lua：假 PZ 全域驅動真 V1.lua 跑情境（facade 半初始化／

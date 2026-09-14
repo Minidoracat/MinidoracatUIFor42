@@ -141,6 +141,7 @@ local function activate(entry)
     local toast = Toast._create(entry)
     toast:initialise()
     toast:addToUIManager()
+    toast:setAlwaysOnTop(toast.alwaysOnTop)
     toast:setVisible(true)
     Toast.active[#Toast.active + 1] = toast
     return toast
@@ -198,7 +199,10 @@ function Toast:prerender()
 
     local index = activeIndex(self)
     local targetX = getCore():getScreenWidth() - self.width - SCREEN_MARGIN
-    local targetY = STACK_TOP + (index - 1) * (self.height + STACK_GAP)
+    local targetY = STACK_TOP
+    for i = 1, index - 1 do
+        targetY = targetY + Toast.active[i].height + STACK_GAP
+    end
     local x, y, alpha = targetX, targetY, 1
 
     if elapsed < ENTER_MS then

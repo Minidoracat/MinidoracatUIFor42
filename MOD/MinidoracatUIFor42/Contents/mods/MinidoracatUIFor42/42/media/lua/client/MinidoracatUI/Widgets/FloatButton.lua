@@ -229,6 +229,7 @@ function FloatButton.new(opts)
     o.getTooltipText = opts.getTooltip
     o:initialise()
     o:addToUIManager()
+    o:setAlwaysOnTop(o.alwaysOnTop)
     return o
 end
 

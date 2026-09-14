@@ -10,7 +10,7 @@
 RGB 一律寫 255（verify 要求純白）。輸出直接落框架貼圖目錄；之後跑
 `python scripts/gen_ui_textures.py` 印 16px ASCII 預覽、`python scripts/verify_mod.py` 把關。
 
-預設 key 順序＝gen_ui_textures.ART_ICON_NAMES（逐列由左到右）；格數多於 key 數的尾格忽略。
+預設 key 順序為原始 scripts/icons/sheet.png 的 13 格；其他圖表以 --keys 指定，尾端空格忽略。
 """
 from __future__ import annotations
 
@@ -23,7 +23,11 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gen_ui_textures import ART_ICON_NAMES, ICON_SIZE, default_output_dir  # noqa: E402
 
-DEFAULT_KEYS = [name[len("mui_art_"):-len(".png")] for name in ART_ICON_NAMES]
+DEFAULT_KEYS = (
+    "house", "skull", "pawprint", "steeringwheel",
+    "chicken", "cow", "pig", "sheep", "deer", "rabbit", "raccoon", "rodent", "turkey",
+)
+VALID_KEYS = {name[len("mui_art_"):-len(".png")] for name in ART_ICON_NAMES}
 INNER = ICON_SIZE - 4      # 內容最大邊長 28：四邊留 ≥2px（verify 只要求 1px，多留給 AA 暈）
 NOISE = 24                 # 亮度低於此值視為背景（AI 黑底常有 3-10 的雜訊）
 
@@ -54,13 +58,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Slice an AI icon sheet into mui_art_*.png.")
     parser.add_argument("sheet", type=Path)
     parser.add_argument("--grid", default="4x4", help="欄x列（單張圖用 1x1）")
-    parser.add_argument("--keys", help="逗號分隔 key 順序（預設 ART_ICON_NAMES 順序）")
+    parser.add_argument("--keys", help="逗號分隔 key 順序（預設原始 sheet.png 的 13 格）")
     parser.add_argument("--out", type=Path, help="輸出目錄（預設框架貼圖目錄）")
     args = parser.parse_args()
 
     cols, rows = (int(v) for v in args.grid.lower().split("x"))
     keys = args.keys.split(",") if args.keys else DEFAULT_KEYS
-    unknown = sorted(set(keys) - set(DEFAULT_KEYS))
+    unknown = sorted(set(keys) - VALID_KEYS)
     if unknown:
         raise SystemExit(f"未知 key（不在 ART_ICON_NAMES）：{unknown}")
     if len(keys) > cols * rows:

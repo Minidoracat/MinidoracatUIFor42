@@ -12,13 +12,23 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
-## [Unreleased]
+## [42.20.4-0.5.0] - 2026-09-14
 
 ### 新增
 
+- **十六個新的共用導覽圖示**：加入錢包、獎勵、商店、市場、拍賣、信箱、玩家、圖表、貨幣、整合、白名單、刊登、金流、稽核、系統與設定的實心剪影，供依賴本函式庫的 MOD 共用。
 - **通知可以多行顯示**：依賴本函式庫的 MOD 可讓較長的通知自動換行（最多指定行數），不再被截成一行省略號；通知框會隨行數長高
 
-> 技術要點：API rev 4→5，`Toast.show` 新增 `maxLines`（預設 1＝原本單行截字，純 additive）；換行以 `MeasureStringX` 二分找每行最長前綴，拉丁文退到最後一個空白切，最後一行超出仍帶省略號；`toast.lines` 為各行、`toast.message` 維持第一行。
+### 修正
+
+- 修正新增多行通知後，較長通知與其他 MOD 的單行通知同時出現會互相遮蓋；通知移除後也會依實際高度重新排列。更新後需完整重開客戶端。
+- 修正共用清單自初版起在視窗縮放時未通知依賴 MOD 清理舊列的問題，讓列附帶的提示與操作狀態可正常釋放；不變更既有操作介面。更新後需完整重開客戶端。
+- 修正通知原先未真正置頂、可能被後開視窗遮住的問題；浮動入口可明確維持一般視窗層級。更新後需完整重開客戶端。
+- 修正共用清單單次內容更新失敗後，後續重新整理仍留下空白或舊內容的問題；正常選取與捲動方式不變。
+
+> 技術要點：API rev 4→6。rev 5 的 `Toast.show` 新增 `maxLines`（預設 1＝原本單行截字，純 additive）；換行以 `MeasureStringX` 二分找每行最長前綴，拉丁文退到最後一個空白切，最後一行超出仍帶省略號；`toast.lines` 為各行、`toast.message` 維持第一行。rev 6 新增 16 個 `Icons` key：`wallet`、`gift`、`shop`、`market`、`auction`、`mail`、`users`、`chart`、`coins`、`plug`、`shieldCheck`、`tag`、`transactions`、`clipboardCheck`、`server`、`settings`；AI 原圖經既有 art 匯入流程轉為 32×32 純白 alpha，舊 key 與呼叫介面不變。
+>
+> `FloatButton.alwaysOnTop` 選項在實例化後套用，家族入口明確傳 `false` 保留原生層級；本版須搭配 MiniMap 0.28.1／NoticeBoard 0.4.1 的入口相容更新。VirtualList 綁定失敗後可重新整理恢復，正常選取與捲動介面不變。
 
 ## [42.20.4-0.4.0] - 2026-09-03
 

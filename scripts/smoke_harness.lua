@@ -13,7 +13,7 @@
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
 3. theme 隔離——兩實例互不污染、default 不被 mutate、light variant、token 字串解析
 4. fits 邊界——round／roundTop／pill 下限、boolean topOnly 相容、"rect" 強制退回
-5. rev 3 painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與二十個 icon key
+5. painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與四十九個 icon key
 （6-8 為 widget：FloatButton／Toast／VirtualList）
 ]]
 
@@ -87,7 +87,6 @@ do
     check(MinidoracatUI ~= nil and MinidoracatUI.v1 ~= nil, "全域 MinidoracatUI.v1 已發布")
     local v1 = MinidoracatUI.v1
     check(ret == v1, "檔尾 return 與全域是同一實體")
-    check(v1.API_MAJOR == 1 and v1.API_REVISION == 5, "API v1 revision 5 已發布")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
     check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
         and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
@@ -415,6 +414,16 @@ do
     end
     check(distinct == 33, "三十三個 key 必須各自對到一張不重複的貼圖")
 
+    local navigationKeys = { "wallet", "gift", "shop", "market", "auction", "mail",
+        "users", "chart", "coins", "plug", "shieldCheck", "tag", "transactions",
+        "clipboardCheck", "server", "settings" }
+    check(UI.API_MAJOR == 1 and UI.API_REVISION >= 6, "導覽圖示能力可由 rev 6 探測")
+    for _, key in ipairs(navigationKeys) do
+        local texture = UI.Icons.get(key)
+        check(texture ~= nil and texture.path == "media/ui/MinidoracatUI/mui_art_" .. key .. ".png",
+            key .. " 導覽圖示對應正確")
+    end
+
     check(UI.Icons.get("noSuchIcon") == nil, "未知 key 回 nil")
     check(UI.Icons.get(nil) == nil and UI.Icons.get(42) == nil, "非字串 key 回 nil（不炸）")
 
@@ -518,7 +527,13 @@ function ISPanel:getXScroll() return 0 end
 function ISPanel:getYScroll() return 0 end
 function ISPanel:setVisible(v) self.visible = v end
 function ISPanel:getIsVisible() return self.visible end
-function ISPanel:addToUIManager() end
+function ISPanel:addToUIManager()
+    self._nativeAlwaysOnTop = self._nativeAlwaysOnTop or false
+end
+function ISPanel:setAlwaysOnTop(value)
+    -- 原版 setter 只作用於已建立的 Java 元件，不讀 Lua 的 alwaysOnTop 欄位。
+    if self._nativeAlwaysOnTop ~= nil then self._nativeAlwaysOnTop = value end
+end
 function ISPanel:removeFromUIManager() end
 function ISPanel:bringToTop() end
 function ISPanel:setCapture(v) self.captured = v end
@@ -564,6 +579,9 @@ do
         onMoved = function(_, x, y) moves = { x = x, y = y } end,
     }
     check(btn.width == 40 and btn:getX() == 100, "建構尺寸與位置正確")
+    check(btn._nativeAlwaysOnTop == true, "預設浮鈕在原生層級置頂")
+    local regular = UI.FloatButton.new({ alwaysOnTop = false })
+    check(regular._nativeAlwaysOnTop == false, "浮鈕可明確選擇一般視窗層級")
 
     -- 點擊：門檻內位移（3px）仍算點擊
     mouseX, mouseY = 110, 110
@@ -651,12 +669,14 @@ do
         made[i] = Toast.show({ title = "T", message = "msg " .. i })
     end
     check(made[1] ~= nil and made[3] ~= nil and #Toast.active == 3, "前三則進 active")
+    check(made[1]._nativeAlwaysOnTop == true, "通知在原生層級置頂")
     check(made[4] == nil and #Toast.pending == 5, "第 4-8 則進 pending（上限 5）")
     check(made[9] == nil and #Toast.pending == 5, "pending 滿後丟棄（回 nil、不增長）")
 
     -- dismiss → pending 遞補
     Toast.dismiss(Toast.active[1])
     check(#Toast.active == 3 and #Toast.pending == 4, "dismiss 後 pending 遞補一則")
+    check(Toast.active[3]._nativeAlwaysOnTop == true, "遞補的通知同樣在原生層級置頂")
 
     -- 字串簡寫＋空訊息拒絕
     Toast._resetForTests()
@@ -694,6 +714,25 @@ do
         "拉丁文在空白處換行、下一行不以空白開頭")
     Toast._resetForTests()
     check(#Toast.show({ message = "short", maxLines = 3 }).lines == 1, "放得下就一行")
+
+    -- 同一佇列混合 consumer 的不同通知高度；包含 pending 遞補。
+    Toast._resetForTests()
+    local tall = Toast.show({ message = long, maxLines = 3 })
+    local short = Toast.show("short")
+    local last = Toast.show("last")
+    Toast.show({ message = long, maxLines = 3 })
+    nowMs = nowMs + 300
+    tall:prerender(); short:prerender(); last:prerender()
+    check(tall.y == 60 and short.y == tall.y + tall.height + 8,
+        "三行通知後的單行通知保留八像素間距")
+    check(last.y == short.y + short.height + 8, "第三則累加所有前則高度")
+    Toast.dismiss(tall)
+    local promoted = Toast.active[3]
+    nowMs = nowMs + 300
+    short:prerender(); last:prerender(); promoted:prerender()
+    check(short.y == 60 and last.y == 124, "移除後單行通知保留原有堆疊位置")
+    check(promoted.y == last.y + last.height + 8 and #promoted.lines == 3,
+        "待顯示的多行通知遞補在單行通知之後")
     Toast._resetForTests()
 end
 
@@ -775,8 +814,20 @@ do
 
     -- resize：pool 重算
     list:setItems(items)
+    local oldPool, beforeUnbind = list.pool, unbinds
     list:resize(200, 480)
     check(#list.pool == math.ceil(480 / 24) + 2, "resize 後 pool 重算（22）")
+    check(unbinds == beforeUnbind + 10, "resize 對十個已綁定列各解除一次，空列不解除")
+    local cleared = true
+    for _, cell in ipairs(oldPool) do
+        if cell.boundLabel ~= nil or cell.boundIndex ~= nil or cell.boundRevision ~= nil
+            or cell:getIsVisible() then cleared = false end
+    end
+    check(cleared, "resize 丟棄的列已解除 consumer 狀態並隱藏")
+    check(list.pool[1].boundLabel == "CHANGED" and list.pool[20].boundLabel == "item 20",
+        "resize 後新列完整重綁目前資料")
+    list:refreshCells()
+    check(unbinds == beforeUnbind + 10, "後續 refresh 不重複解除已移除列")
 
     -- stencil 成對＋repaint（家族踩坑錄：只 set→clear 會吃掉外層 clip）
     local s = list.stencil
@@ -791,11 +842,39 @@ do
     local top = (50 - 1) * 24
     check(list.scrollOffset <= top and top + 24 <= list.scrollOffset + 480,
         "scrollToIndex 讓目標列完整落在 viewport 內")
+
+    -- bind 失敗不可留下已完成標記；同 revision 捲動重綁也必須可重試。
+    local failBind = true
+    local recoverable = UI.VirtualList.new{
+        x = 0, y = 0, width = 200, height = 24, rowHeight = 24,
+        createCell = function() return ISPanel.new(Cell, 0, 0, 0, 0) end,
+        bindCell = function(_, cell, item)
+            if failBind then error("simulated bind failure") end
+            cell.boundLabel = item.label
+        end,
+    }
+    recoverable:initialise()
+    local bound, bindError = pcall(recoverable.setItems, recoverable,
+        { { label = "first" }, { label = "second" } })
+    check(not bound and string.find(bindError, "simulated bind failure", 1, true) ~= nil,
+        "首次綁定錯誤原樣傳出，不假裝完成")
+    failBind = false
+    recoverable:refreshCells()
+    check(recoverable.pool[1].boundLabel == "first" and recoverable.pool[1]:getIsVisible(),
+        "首次綁定失敗後 refresh 可恢復可見內容")
+    failBind = true
+    local scrolled, scrollError = pcall(recoverable.setScrollOffset, recoverable, 24)
+    check(not scrolled and string.find(scrollError, "simulated bind failure", 1, true) ~= nil,
+        "捲動重綁錯誤原樣傳出")
+    failBind = false
+    recoverable:refreshCells()
+    check(recoverable.pool[1].boundLabel == "second" and recoverable.pool[1]:getIsVisible(),
+        "同 revision 的捲動重綁失敗後 refresh 仍可恢復正確資料")
 end
 
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 173
+local EXPECTED_ASSERTIONS = 205
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

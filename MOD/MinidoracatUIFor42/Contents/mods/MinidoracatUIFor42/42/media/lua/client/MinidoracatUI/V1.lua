@@ -364,6 +364,23 @@ local ICON_FILES = {
     raccoon       = "mui_art_raccoon.png",
     rodent        = "mui_art_rodent.png",
     turkey        = "mui_art_turkey.png",
+    -- rev 6：玩家／管理導覽 art 圖示，同一套黑底白剪影匯入管線
+    wallet         = "mui_art_wallet.png",
+    gift           = "mui_art_gift.png",
+    shop           = "mui_art_shop.png",
+    market         = "mui_art_market.png",
+    auction        = "mui_art_auction.png",
+    mail           = "mui_art_mail.png",
+    users          = "mui_art_users.png",
+    chart          = "mui_art_chart.png",
+    coins          = "mui_art_coins.png",
+    plug           = "mui_art_plug.png",
+    shieldCheck    = "mui_art_shieldCheck.png",
+    tag            = "mui_art_tag.png",
+    transactions   = "mui_art_transactions.png",
+    clipboardCheck = "mui_art_clipboardCheck.png",
+    server         = "mui_art_server.png",
+    settings       = "mui_art_settings.png",
 }
 
 local ICON_WHITE = { r = 1, g = 1, b = 1, a = 1 }
@@ -540,7 +557,8 @@ MinidoracatUI.v1 = {
     -- rev 3：pill／toggle／slider painters＋12 個新增 icon key
     -- rev 4：13 個 art icon key（house／skull／pawprint／steeringwheel＋9 物種）
     -- rev 5：Toast.show 的 maxLines（多行換行、隨行數長高）
-    API_REVISION = 5,
+    -- rev 6：16 個玩家／管理導覽 art icon key
+    API_REVISION = 6,
     CAPABILITIES = {
         theme = true,
         skin = true,

@@ -54,4 +54,8 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 [*] [url=https://discord.gg/Gur2V67]Discord コミュニティ[/url]
 [/list]
 
+[h2]☕ 作者を応援[/h2]
+この MOD は今後もずっと無料です。気に入ったらコーヒーを一杯おごってください。支援はサーバーと MOD 開発に使います。
+[url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url]
+
 [b]#Minidoracat[/b]

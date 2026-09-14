@@ -74,6 +74,10 @@ ART_ICON_NAMES = tuple(
     f"mui_art_{key}.png" for key in (
         "house", "skull", "pawprint", "steeringwheel",
         "chicken", "cow", "pig", "sheep", "deer", "rabbit", "raccoon", "rodent", "turkey",
+        "wallet", "gift", "shop", "market",
+        "auction", "mail", "users", "chart",
+        "coins", "plug", "shieldCheck", "tag",
+        "transactions", "clipboardCheck", "server", "settings",
     )
 )
 OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES

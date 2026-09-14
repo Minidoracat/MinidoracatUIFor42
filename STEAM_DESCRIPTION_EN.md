@@ -54,4 +54,8 @@ Add it to both lines in your server ini:
 [*] [url=https://discord.gg/Gur2V67]Discord community[/url]
 [/list]
 
+[h2]☕ Support the author[/h2]
+The mod is free and always will be. If you enjoy it, consider buying me a coffee - tips go straight into servers and mod development.
+[url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url]
+
 [b]#Minidoracat[/b]
