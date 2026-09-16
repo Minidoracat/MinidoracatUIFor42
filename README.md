@@ -29,6 +29,13 @@ Project Zomboid Build 42 MOD。
 
 版本號格式：`{PZ 版本}-{mod 版本}`（例 `42.20.3-0.1.0`），詳見 [CHANGELOG.md](CHANGELOG.md)。
 
+## 授權
+
+本專案程式碼與自製資產採 [MIT License](LICENSE)（Copyright (c) 2026 Minidoracat）。
+
+- UI 貼圖（`mui_*.png`）由 `scripts/gen_ui_textures.py` 程序化生成，art 圖示與封面為本專案自行以 AI 生圖產出後匯入（來源記於 `scripts/icons/navigation-source.json` 與 `docs/ARCHITECTURE.md` §6），同受 MIT。
+- 本 repo 不包含 The Indie Stone／Project Zomboid 的遊戲素材或反編譯產物；`Project Zomboid` 商標與遊戲內容權利屬原權利人，MIT 不及於此。
+
 ## 作者
 
 Minidoracat — [Discord](https://discord.gg/Gur2V67) | [Twitch](https://www.twitch.tv/minidoracat)
