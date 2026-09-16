@@ -55,6 +55,7 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 [/list]
 
 [h2]☕ 作者を応援[/h2]
+役に立ったら、このページに 👍 と GitHub に ⭐ をお願いします。より多くのプレイヤーに届きやすくなります。
 この MOD は今後もずっと無料で、ソースコードは GitHub で公開しています。気に入ったらコーヒーを一杯おごってください。支援はサーバーと MOD 開発に使います。
 [url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url] [url=https://github.com/Minidoracat/MinidoracatUIFor42][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_github.png[/img][/url]
 
