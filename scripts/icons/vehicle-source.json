@@ -1,0 +1,95 @@
+{
+  "tool": "image_gen.imagegen",
+  "callable_tool": "image_gen__imagegen",
+  "output_path": "scripts/icons/vehicle-sheet.png",
+  "request": {
+    "asset": "square 1024x1024 PNG vehicle and map-marker icon sheet",
+    "icon_count": 16,
+    "layout": "invisible equal 4x4 cells; each glyph centered within the central 64% of its cell",
+    "appearance": "white filled silhouettes, uniform pure black background, matching the supplied family sheet; vehicles in pure side view facing right with black window cutouts and gap-ringed wheels",
+    "row_major_order": [
+      [
+        "carSedan",
+        "carHatchback",
+        "carSports",
+        "carSuv"
+      ],
+      [
+        "carPickup",
+        "carVan",
+        "carStepVan",
+        "carTruck"
+      ],
+      [
+        "carAmbulance",
+        "carPolice",
+        "carFiretruck",
+        "carTrailer"
+      ],
+      [
+        "markerStar",
+        "markerHeart",
+        "markerFlag",
+        "markerCrown"
+      ]
+    ]
+  },
+  "provenance": {
+    "method": "actual raster image generation using image_gen.imagegen inside codex exec",
+    "reference_image_path": "scripts/icons/sheet.png",
+    "reference_role": "family sheet used as style reference only",
+    "codex_request": "Use your built-in image generation tool (image_gen / imagegen) to produce ONE actual raster image. Do NOT draw it with code, SVG, Pillow, canvas, or any procedural geometry; the image must come from the image generation model. After generation, copy the generator-owned PNG byte-for-byte to scripts/icons/vehicle-sheet.png (create nothing else, edit no other file), then reply with the absolute path of the generator-owned source PNG and its pixel dimensions.\n\nImage request:\n\nCreate a square 1024x1024 PNG raster vehicle icon sheet. Use the attached family sheet only as a STYLE REFERENCE: bold solid white silhouettes, pure black background, clean organic contours and generous open black cutouts. Replace ALL original glyphs with exactly the sixteen glyphs below.\n\nComposition: invisible equal 4x4 cells, each 256x256 pixels. Exactly one centered glyph per cell, exactly sixteen glyphs total. Centers at x=128,384,640,896 and y=128,384,640,896. Each glyph fits within the central 64% of its cell (approximately 164 pixels wide), with balanced optical sizing and bold consistent visual weight. Keep generous identical black gutters. Must be recognizable at 20px. Flat filled silhouettes, never thin outline icons.\n\nAll twelve vehicles: pure SIDE VIEW (profile), facing RIGHT, sitting on the same baseline, chunky filled white body. Window glass is a black cutout. Each wheel is a solid white disc separated from the body by a thin black gap ring, with a small black hub dot. Every vehicle must have a clearly different outline so the vehicle type is readable from the silhouette alone.\n\nStrict row-major order, left to right:\nROW 1:\n1. carSedan: classic four-door sedan, three-box profile: low hood, cabin with two side windows, distinct trunk step at the rear.\n2. carHatchback: short compact hatchback, cabin roof slopes straight down to a vertical rear, no trunk step, two wheels close together.\n3. carSports: very low wide sports coupe, long hood, small low swept cabin with one small window, rear spoiler.\n4. carSuv: tall boxy SUV, high flat roof reaching the rear, three side windows, big wheels, spare wheel bump on the rear.\nROW 2:\n5. carPickup: pickup truck with a two-door cab on the front half and an open low cargo bed on the rear half.\n6. carVan: minivan / passenger van, one long rounded box body, short sloped nose, row of side windows.\n7. carStepVan: tall square delivery step van, flat vertical front, tall box body, only one small front window, no side windows.\n8. carTruck: semi truck tractor cab on the right with a tall box trailer attached behind it, three or more wheels.\nROW 3:\n9. carAmbulance: boxy ambulance van with a large black plus-shaped medical cross cutout on the rear box, small light bar on the roof.\n10. carPolice: sedan profile identical in shape to a sedan but with a prominent two-part light bar on the roof and a black horizontal stripe cutout along the doors.\n11. carFiretruck: long fire engine with a ladder lying along the top (ladder shown as a bar with black rung cutouts), cab at the front right, three wheels.\n12. carTrailer: detached box cargo trailer with a single wheel axle and a thin tow bar with hitch pointing to the right, no cab, no engine.\nROW 4:\n13. markerStar: bold five-pointed star, solid white.\n14. markerHeart: bold solid heart.\n15. markerFlag: waving pennant flag on a vertical pole, solid flag cloth.\n16. markerCrown: bold three-point royal crown with round balls on the points and a solid band.\n\nBackground uniformly pure opaque black #000000 over the entire square; glyph interiors pure white #FFFFFF, black negative-space cutouts only. Clean contours, strong open cutouts, no fragile details, no thin lines. No text, letters, numbers, license plates, grid lines, cell borders, checkerboard, transparency, shadows, gradients, textures, reflections, 3D perspective, decorations, watermarks, extra icons, or any original animal/house glyphs from the reference. The row and column instructions are placement directions and must never appear visibly. Deliver one complete raster PNG.\n",
+    "tool_arguments": {
+      "prompt": "Create exactly ONE finished raster image, a square 1024x1024 PNG vehicle icon sheet. The attached family sheet (Image #1, scripts/icons/sheet.png) is ONLY a STYLE REFERENCE: bold solid white silhouettes, pure black background, clean organic contours, generous open black negative-space cutouts. Do NOT retain, redraw or include any glyph from the reference. This is a new sheet replacing ALL subjects with the sixteen specified glyphs.\n\nCANVAS AND PLACEMENT: Exactly 1024x1024 pixels. An invisible equal 4x4 grid of 256x256 cells; exactly one centered glyph per cell and exactly sixteen glyphs total. Centers x=128,384,640,896 and y=128,384,640,896. Every glyph stays within the central 64% of its own cell, approximately 164px wide maximum, also at most approximately 164px high. Maintain identical generous black gutters and balanced optical sizing. Do not enlarge trucks beyond their cells. Vehicles in each row have a consistent relative ground baseline. No visible grid, labels, cell borders or dividing lines.\n\nSTYLE: Game UI silhouette icons legible at 20px. Chunky flat filled WHITE masses on uniform opaque PURE BLACK #000000. Glyph interiors PURE WHITE #FFFFFF, with black cutouts only. Flat filled silhouettes, never thin outline icons; bold consistent visual weight, clean organic contours, large strong open cutouts, no fragile microdetails.\n\nDIRECTION FOR ALL TWELVE VEHICLES: PURE SIDE VIEW in profile, ALL FACING RIGHT. Nose/front cab on RIGHT, rear/cargo bed/trailer on LEFT. No perspective and no front or three-quarter views. Window glass is a black cutout. Each wheel is a solid white disc separated from the body by a thin black gap ring, with one small black hub dot. Different vehicle types must be recognizable from their outlines. Police intentionally shares the sedan body outline, distinguished by its prominent roof lightbar and black stripe.\n\nEXACT ROW-MAJOR CONTENT, left to right (names and row numbers are instructions only, NEVER visible text):\nROW 1, y=128:\n1 at x=128, carSedan: classic four-door sedan, three-box profile, RIGHT-side low hood, cabin with two black side windows, distinct trunk step at the LEFT rear.\n2 at x=384, carHatchback: short compact hatchback, cabin roof slopes down directly to a vertical LEFT rear, no trunk step, two wheels close together, nose RIGHT.\n3 at x=640, carSports: very low wide sports coupe, long RIGHT hood, small low swept cabin with one small black window, prominent spoiler at LEFT rear.\n4 at x=896, carSuv: tall boxy SUV, high flat roof extending to LEFT rear, three black side windows, big wheels, spare-wheel bump at LEFT rear, nose RIGHT.\nROW 2, y=384:\n5 at x=128, carPickup: pickup truck, two-door cab on the RIGHT front half, open low cargo bed on LEFT rear half.\n6 at x=384, carVan: minivan/passenger van, one long rounded box body, short sloped RIGHT nose, row of black side windows.\n7 at x=640, carStepVan: tall square delivery step van, flat vertical RIGHT front, tall box body, only one small black window at the RIGHT front, no rear side windows.\n8 at x=896, carTruck: semi truck tractor cab on RIGHT, tall box trailer attached behind it on LEFT, at least three wheels, recognizable tractor-trailer connection.\nROW 3, y=640:\n9 at x=128, carAmbulance: boxy ambulance van facing RIGHT, large black PLUS-SHAPED medical cross cutout in the LEFT rear box, small light bar on roof.\n10 at x=384, carPolice: same classic sedan body profile as carSedan, nose RIGHT, prominent two-part roof light bar, black horizontal stripe cutout across doors.\n11 at x=640, carFiretruck: long fire engine, cab at RIGHT front, three wheels, ladder lying horizontally on top represented by a thick white bar with black rung cutouts.\n12 at x=896, carTrailer: detached box cargo trailer, single wheel axle (one wheel visible in pure profile), thin tow bar and hitch pointing RIGHT. NO cab, NO engine.\nROW 4, y=896:\n13 at x=128, markerStar: bold five-point star, solid white.\n14 at x=384, markerHeart: bold solid white heart.\n15 at x=640, markerFlag: waving pennant flag on a vertical pole, solid white flag cloth, bold sturdy silhouette.\n16 at x=896, markerCrown: bold three-point royal crown, round balls on each of three points, solid white band.\n\nSTRICT EXCLUSIONS: No text, letters, numbers, labels, license plates, grid lines, cell borders, checkerboard, transparency, shadows, gradients, textures, reflections, 3D perspective, decorations, watermark, extra icons, animals, houses, skulls, paws or original reference glyphs. Background must remain uniform opaque pure black over the whole square. Deliver only one complete 1024x1024 raster PNG.",
+      "referenced_image_paths": [
+        "scripts/icons/sheet.png"
+      ]
+    },
+    "model_and_effort_overrides": false,
+    "save_operation": "Generator-owned PNG copied byte-for-byte (SHA256 verified identical); no drawn geometry, crop, rescale, re-encode or pixel edits.",
+    "generator_source_file": "~/.codex/generated_images/01a0de83-bc6f-7093-905b-6c4c91e87457/exec-3b39b80f-bbe0-4949-a0cd-bd6e416e754b.png",
+    "sha256": "0d7426d95db4a4104d5f616db15d93c5e66281e01a02d2458f4feeeca5fba59b",
+    "actual_source_dimensions": [
+      1254,
+      1254
+    ],
+    "actual_source_format": "PNG (RGB)",
+    "codex_thread_id": "01a0de83-bc6f-7093-905b-6c4c91e87457",
+    "cli": "codex exec -C <ui-repo> -i scripts/icons/sheet.png --skip-git-repo-check --json -s workspace-write - (codex_request on stdin)",
+    "configuration": "codex-cli 0.157.1, inherited configured model gpt-6-astra; no model or effort override. Codex expanded codex_request into tool_arguments.prompt (after a critic sub-agent review of orientation/slot constraints). Underlying raster image model not reported by tool.",
+    "reproduction_note": "The retained original AI raster and deterministic importer reproduce the 16 shipped glyphs. Regenerating the AI sheet from the prompt can produce different artwork."
+  },
+  "import": {
+    "command": "python scripts/import_icon_sheet.py scripts/icons/vehicle-sheet.png --grid 4x4 --keys carSedan,carHatchback,carSports,carSuv,carPickup,carVan,carStepVan,carTruck,carAmbulance,carPolice,carFiretruck,carTrailer,markerStar,markerHeart,markerFlag,markerCrown",
+    "working_directory": "<ui-repo>",
+    "output_directory": "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/ui/MinidoracatUI",
+    "output_files": [
+      "mui_art_carSedan.png",
+      "mui_art_carHatchback.png",
+      "mui_art_carSports.png",
+      "mui_art_carSuv.png",
+      "mui_art_carPickup.png",
+      "mui_art_carVan.png",
+      "mui_art_carStepVan.png",
+      "mui_art_carTruck.png",
+      "mui_art_carAmbulance.png",
+      "mui_art_carPolice.png",
+      "mui_art_carFiretruck.png",
+      "mui_art_carTrailer.png",
+      "mui_art_markerStar.png",
+      "mui_art_markerHeart.png",
+      "mui_art_markerFlag.png",
+      "mui_art_markerCrown.png"
+    ],
+    "pipeline": "Existing importer unchanged: brightness-to-alpha, NOISE=24, cell inset=4%, bounding-box crop, max content edge=28, centered in 32x32 pure-white RGBA."
+  },
+  "visual_review": {
+    "scope": "Generated source sheet plus 16 imported glyphs rendered tinted at 16/20/24/32px and a 5x nearest-neighbor enlargement of the 32px assets.",
+    "result": "All 16 subjects match the row-major contract and all vehicles face right. Every source glyph bbox stays inside the importer's 4% cell inset (min margin 19px), so no glyph is clipped. At 20px each vehicle type is distinguishable by outline: sedan trunk step, hatchback vertical rear, sports spoiler, SUV spare wheel, pickup open bed, van window row, step van tall box, semi tractor-trailer, ambulance cross, police roof lightbar, fire engine ladder, trailer tow bar. Side-view vehicles are wide, so their silhouettes are about 8-11px tall at 20-28px display; 16px is legible only for markers and the boxier vehicles.",
+    "contact_sheets": [
+      "vehicle-contact-small.png (16/20/24/32px tinted, 3x)",
+      "vehicle-contact-large.png (32px, 5x nearest-neighbor)"
+    ],
+    "contact_sheet_location": "temp/ (gitignored scratch); not shipped framework textures."
+  }
+}

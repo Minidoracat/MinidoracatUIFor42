@@ -381,6 +381,23 @@ local ICON_FILES = {
     clipboardCheck = "mui_art_clipboardCheck.png",
     server         = "mui_art_server.png",
     settings       = "mui_art_settings.png",
+    -- rev 8：車輛側視剪影與地圖標記 art 圖示（同一套黑底白剪影匯入管線）
+    carSedan       = "mui_art_carSedan.png",
+    carHatchback   = "mui_art_carHatchback.png",
+    carSports      = "mui_art_carSports.png",
+    carSuv         = "mui_art_carSuv.png",
+    carPickup      = "mui_art_carPickup.png",
+    carVan         = "mui_art_carVan.png",
+    carStepVan     = "mui_art_carStepVan.png",
+    carTruck       = "mui_art_carTruck.png",
+    carAmbulance   = "mui_art_carAmbulance.png",
+    carPolice      = "mui_art_carPolice.png",
+    carFiretruck   = "mui_art_carFiretruck.png",
+    carTrailer     = "mui_art_carTrailer.png",
+    markerStar     = "mui_art_markerStar.png",
+    markerHeart    = "mui_art_markerHeart.png",
+    markerFlag     = "mui_art_markerFlag.png",
+    markerCrown    = "mui_art_markerCrown.png",
 }
 
 local ICON_WHITE = { r = 1, g = 1, b = 1, a = 1 }
@@ -558,17 +575,26 @@ MinidoracatUI.v1 = {
     -- rev 4：13 個 art icon key（house／skull／pawprint／steeringwheel＋9 物種）
     -- rev 5：Toast.show 的 maxLines（多行換行、隨行數長高）
     -- rev 6：16 個玩家／管理導覽 art icon key
-    API_REVISION = 6,
+    -- rev 7：現代控制元件 Button／TextField／Checkbox／Tabs（Widgets/Controls.lua）＋
+    --        Window／Dialog（Widgets/Window.lua）
+    -- rev 8：16 個車輛／地圖標記 art icon key＋ColorPicker（Widgets/Controls.lua）
+    -- rev 9：Slider（Widgets/Controls.lua）；ColorPicker 的 R/G/B 改為滑桿（公開面不變）
+    API_REVISION = 9,
     CAPABILITIES = {
         theme = true,
         skin = true,
         icons = true, -- 資產缺失時 Icons.get/draw 自行回 nil/false，不影響本旗標
-        -- 以下三項由各 widget 檔載入成功後翻 true（Widgets/FloatButton.lua、
-        -- Widgets/Toast.lua、VirtualList.lua 檔尾）——widget 檔壞掉只影響
-        -- 對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
+        -- 以下由各 widget 檔載入成功後翻 true（Widgets/FloatButton.lua、Widgets/Toast.lua、
+        -- VirtualList.lua、Widgets/Controls.lua、Widgets/Window.lua 檔尾）——widget 檔壞掉
+        -- 只影響對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
         floatButton = false,
         toast = false,
         virtualList = false,
+        controls = false, -- rev 7：Button／TextField／Checkbox／Tabs
+        window = false,   -- rev 7：Window
+        dialog = false,   -- rev 7：Dialog（另需 controls 載入成功）
+        colorPicker = false, -- rev 8：ColorPicker（Widgets/Controls.lua）
+        slider = false,   -- rev 9：Slider（Widgets/Controls.lua）
     },
     Theme = Theme,
     Skin = Skin,

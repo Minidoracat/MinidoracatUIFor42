@@ -27,14 +27,15 @@ def main():
         assert set(default) == {f"mui_art_{key}.png" for key in LEGACY_KEYS.split(",")}
         assert default == explicit, "預設舊圖表的 key 排列或像素發生改變"
 
-        source = json.loads((REPO / "scripts/icons/navigation-source.json").read_text(encoding="utf-8"))
-        keys = ",".join(key for row in source["request"]["row_major_order"] for key in row)
-        navigation = run_import(REPO / source["output_path"], root / "navigation", keys)
-        shipped = REPO / source["import"]["output_directory"]
-        assert set(navigation) == set(source["import"]["output_files"])
-        for name, data in navigation.items():
-            assert data == (shipped / name).read_bytes(), f"導覽圖示無法重現：{name}"
-    print("Icon import passed: legacy default/explicit match; navigation matches shipped assets")
+        for record in ("navigation", "vehicle"):
+            source = json.loads((REPO / f"scripts/icons/{record}-source.json").read_text(encoding="utf-8"))
+            keys = ",".join(key for row in source["request"]["row_major_order"] for key in row)
+            imported = run_import(REPO / source["output_path"], root / record, keys)
+            shipped = REPO / source["import"]["output_directory"]
+            assert set(imported) == set(source["import"]["output_files"])
+            for name, data in imported.items():
+                assert data == (shipped / name).read_bytes(), f"{record} 圖示無法重現：{name}"
+    print("Icon import passed: legacy default/explicit match; navigation/vehicle match shipped assets")
 
 
 if __name__ == "__main__":

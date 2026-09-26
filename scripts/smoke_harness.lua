@@ -7,14 +7,16 @@
 - 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
-八情境（docs/ARCHITECTURE.md §7）：
+十七情境（docs/ARCHITECTURE.md §7）：
 1. facade 半初始化——檔案中段注入 error，斷言 MinidoracatUI.v1 從未發布
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
 3. theme 隔離——兩實例互不污染、default 不被 mutate、light variant、token 字串解析
 4. fits 邊界——round／roundTop／pill 下限、boolean topOnly 相容、"rect" 強制退回
-5. painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與四十九個 icon key
-（6-8 為 widget：FloatButton／Toast／VirtualList）
+5. painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與六十五個 icon key
+（6-8 為 widget：FloatButton／Toast／VirtualList；9-15 為 rev 7 控制元件：載入自檢／Button／
+ TextField／Checkbox／Tabs／Window／Dialog；16 為 rev 8 ColorPicker（rev 9 起 R/G/B 為滑桿）；
+ 17 為 rev 9 Slider）
 ]]
 
 local V1_PATH = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/V1.lua"
@@ -423,6 +425,16 @@ do
         check(texture ~= nil and texture.path == "media/ui/MinidoracatUI/mui_art_" .. key .. ".png",
             key .. " 導覽圖示對應正確")
     end
+    local vehicleKeys = { "carSedan", "carHatchback", "carSports", "carSuv", "carPickup", "carVan",
+        "carStepVan", "carTruck", "carAmbulance", "carPolice", "carFiretruck", "carTrailer",
+        "markerStar", "markerHeart", "markerFlag", "markerCrown" }
+    local vehicleOk = UI.API_REVISION >= 8
+    for _, key in ipairs(vehicleKeys) do
+        local texture = UI.Icons.get(key)
+        vehicleOk = vehicleOk and texture ~= nil
+            and texture.path == "media/ui/MinidoracatUI/mui_art_" .. key .. ".png"
+    end
+    check(vehicleOk, "rev 8：十六個車輛／標記 key 各自對到 mui_art_<key>.png")
 
     check(UI.Icons.get("noSuchIcon") == nil, "未知 key 回 nil")
     check(UI.Icons.get(nil) == nil and UI.Icons.get(42) == nil, "非字串 key 回 nil（不炸）")
@@ -507,7 +519,7 @@ function ISPanel.new(class, x, y, w, h)
     o.visible = true
     o.children = {}
     o.stencil = { set = 0, clear = 0, repaint = 0 }
-    o.rects, o.borders = {}, {}
+    o.rects, o.borders, o.texts = {}, {}, {}
     -- 忠於 ISUIElement.lua:1998 的預設：cell 若不清掉這個旗標就會吞滑鼠事件
     o.wantMouseEvents = true
     return o
@@ -529,12 +541,14 @@ function ISPanel:setVisible(v) self.visible = v end
 function ISPanel:getIsVisible() return self.visible end
 function ISPanel:addToUIManager()
     self._nativeAlwaysOnTop = self._nativeAlwaysOnTop or false
+    self.inUIManager = true
 end
 function ISPanel:setAlwaysOnTop(value)
     -- 原版 setter 只作用於已建立的 Java 元件，不讀 Lua 的 alwaysOnTop 欄位。
     if self._nativeAlwaysOnTop ~= nil then self._nativeAlwaysOnTop = value end
 end
-function ISPanel:removeFromUIManager() end
+function ISPanel:removeFromUIManager() self.inUIManager = false end
+function ISPanel:setWantKeyEvents(v) self.wantKeyEvents = v end
 function ISPanel:bringToTop() end
 function ISPanel:setCapture(v) self.captured = v end
 function ISPanel:isMouseOver() return self._mouseOver == true end
@@ -549,8 +563,12 @@ end
 function ISPanel:setStencilRect() self.stencil.set = self.stencil.set + 1 end
 function ISPanel:clearStencilRect() self.stencil.clear = self.stencil.clear + 1 end
 function ISPanel:repaintStencilRect() self.stencil.repaint = self.stencil.repaint + 1 end
-function ISPanel:drawText() end
-function ISPanel:drawTextCentre() end
+function ISPanel:drawText(text, x, y, r, g, b, a)
+    self.texts[#self.texts + 1] = { text = text, x = x, y = y, r = r, g = g, b = b, a = a }
+end
+function ISPanel:drawTextCentre(text, x, y, r, g, b, a)
+    self.texts[#self.texts + 1] = { text = text, x = x, y = y, r = r, g = g, b = b, a = a }
+end
 function ISPanel:drawRect(x, y, w, h, a, r, g, b)
     self.rects[#self.rects + 1] = { x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b }
 end
@@ -872,9 +890,586 @@ do
         "同 revision 的捲動重綁失敗後 refresh 仍可恢復正確資料")
 end
 
+-- ============================================================
+-- rev 7 控制元件共用 stub：原生 ISButton／ISTextEntryBox 的最小語意面
+-- ============================================================
+getSoundManager = function() return { playUISound = function() end } end
+Keyboard = { KEY_ESCAPE = 1, KEY_RETURN = 28, KEY_NUMPADENTER = 156 }
+
+ISButton = ISPanel:derive("ISButton")
+function ISButton.new(class, x, y, w, h, title, target, onclick)
+    -- 忠於 ISButton.lua:493-495：過窄的寬度撐到標題寬＋10
+    local minW = getTextManager():MeasureStringX(UIFont.Small, title) + 10
+    local o = ISPanel.new(class, x, y, math.max(w, minW), h)
+    o.title, o.target, o.onclick, o.onClickArgs = title, target, onclick, {}
+    o.enable, o.font, o.pressed = true, UIFont.Small, false
+    return o
+end
+-- 忠於 ISButton.lua:33-64：down 記 pressed；up 只在 pressed 且 enable 時呼叫 onclick(target, button)
+function ISButton:onMouseDown()
+    if not self:getIsVisible() then return end
+    self.pressed = true
+end
+function ISButton:onMouseUp()
+    if not self:getIsVisible() then return end
+    local process = self.pressed == true
+    self.pressed = false
+    if self.onclick == nil then return end
+    if self.enable and process then
+        getSoundManager():playUISound("UIActivateButton")
+        self.onclick(self.target, self, self.onClickArgs[1], self.onClickArgs[2])
+    end
+end
+function ISButton:onMouseUpOutside() self.pressed = false end
+function ISButton:updateTooltip() self.tooltipPasses = (self.tooltipPasses or 0) + 1 end
+
+ISTextEntryBox = ISPanel:derive("ISTextEntryBox")
+function ISTextEntryBox:new(title, x, y, w, h)
+    local o = ISPanel.new(self, x, y, w, h)
+    o.title = title
+    o.backgroundColor = { r = 0, g = 0, b = 0, a = 0.5 }
+    o.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
+    return o
+end
+function ISTextEntryBox:instantiate()
+    self.javaObject = {}
+    self._text = self.title
+    self._editable = true
+end
+function ISTextEntryBox:getInternalText() return self._text end
+function ISTextEntryBox:setText(s) self._text = s or ""; self.title = self._text end
+function ISTextEntryBox:focus() self._focused = true end
+function ISTextEntryBox:unfocus() self._focused = false end
+function ISTextEntryBox:isFocused() return self._focused == true end
+-- 忠於 ISTextEntryBox.lua:64-71：setEditable 會重設 borderColor（元件必須再藏回去）
+function ISTextEntryBox:setEditable(e)
+    self._editable = e
+    self.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = e and 1 or 0.5 }
+end
+function ISTextEntryBox:setOnlyNumbers(b) self._onlyNumbers = b end
+function ISTextEntryBox:setMaxTextLength(n) self._maxLen = n end
+function ISTextEntryBox:setTextRGBA(r, g, b, a) self._textColor = { r = r, g = g, b = b, a = a } end
+function ISTextEntryBox:setTooltip(t) self.tooltip = t end
+
+-- ============================================================
+print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
+-- ============================================================
+do
+    check(UI.API_REVISION == 9, "API_REVISION 進到 9")
+    check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
+        and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
+        and UI.CAPABILITIES.slider == false,
+        "rev 7／8／9 能力在 widget 檔載入前誠實標 false")
+
+    local saved = MinidoracatUI
+    MinidoracatUI = nil
+    local okC = pcall(dofile, MOD_LUA .. "Widgets/Controls.lua")
+    local okW = pcall(dofile, MOD_LUA .. "Widgets/Window.lua")
+    check(okC and okW and MinidoracatUI == nil,
+        "facade 未發布（半初始化）時 Controls／Window 靜默 return、不建立殘缺全域")
+
+    local fh = io.open(V1_PATH, "rb")
+    local src = fh:read("*a")
+    fh:close()
+    load_(src, "@V1.lua")()
+    local fresh = MinidoracatUI.v1
+    local keepButton = ISButton
+    ISButton = nil
+    dofile(MOD_LUA .. "Widgets/Controls.lua")
+    ISButton = keepButton
+    check(fresh.CAPABILITIES.controls == false and fresh.Button == nil
+        and fresh.CAPABILITIES.colorPicker == false and fresh.ColorPicker == nil
+        and fresh.CAPABILITIES.slider == false and fresh.Slider == nil,
+        "原生 ISButton 缺席時 controls／colorPicker／slider 維持 false、不掛元件")
+    dofile(MOD_LUA .. "Widgets/Window.lua")
+    check(fresh.CAPABILITIES.window == true and fresh.Window ~= nil, "Window 不依賴 Controls，可單獨提供")
+    check(fresh.CAPABILITIES.dialog == false and fresh.Dialog == nil,
+        "Controls 缺席時 dialog 維持 false（無隱藏載入順序依賴）")
+
+    MinidoracatUI = saved
+    dofile(MOD_LUA .. "Widgets/Controls.lua")
+    dofile(MOD_LUA .. "Widgets/Window.lua")
+    check(UI.CAPABILITIES.controls and UI.CAPABILITIES.window and UI.CAPABILITIES.dialog
+        and UI.CAPABILITIES.colorPicker and UI.CAPABILITIES.slider and UI.Button and UI.TextField
+        and UI.Checkbox and UI.Tabs and UI.ColorPicker and UI.Slider and UI.Window and UI.Dialog,
+        "正常載入後五旗標為 true 且八元件掛上 facade")
+end
+
+local TARGET = {}
+
+-- ============================================================
+print("情境十：Button（自動寬度／點擊／disabled 不觸發／樣式繪製）")
+-- ============================================================
+do
+    local clicks = {}
+    local btn = UI.Button.new{ x = 0, y = 0, title = "Save", target = TARGET,
+        onClick = function(target, button) clicks[#clicks + 1] = { target = target, button = button } end }
+    check(btn.width == 60 and btn.height == 22, "省略寬高：標題 40px＋左右 padding 20、字高 12＋10")
+    check(UI.Button.new{ title = "Save", icon = "close" }.width == 82, "有 icon 時寬度加 icon 16＋間距 6")
+    check(UI.Button.new{ title = "LongTitle", width = 30 }.width == 30, "明示寬度不被原生撐寬")
+
+    btn:onMouseDown(5, 5)
+    btn:onMouseUp(5, 5)
+    check(#clicks == 1 and clicks[1].target == TARGET and clicks[1].button == btn,
+        "點擊呼叫 onClick(target, button)")
+    btn:setEnabled(false)
+    btn:onMouseDown(5, 5)
+    btn:onMouseUp(5, 5)
+    check(#clicks == 1 and btn:isEnabled() == false, "disabled 時點擊不觸發 onClick")
+    btn:setEnabled(true)
+    btn:onMouseDown(5, 5)
+    btn:onMouseUp(5, 5)
+    check(#clicks == 2 and btn:isEnabled() == true, "重新啟用後恢復點擊")
+
+    btn:setTitle("Hi")
+    check(btn.width == 40, "setTitle 在自動寬度下重算寬度")
+    local fixed = UI.Button.new{ title = "A", width = 90 }
+    fixed:setTitle("Much longer")
+    check(fixed.width == 90, "setTitle 不改明示寬度")
+    fixed:setStyle("bogus")
+    check(fixed.style == "normal", "未知 style 退回 normal")
+
+    local primary = UI.Button.new{ title = "Go", style = "primary" }
+    primary:prerender()
+    check(nearly(primary.rects[1].r, 1) and nearly(primary.rects[1].g, 0.85)
+        and nearly(primary.texts[1].r, 0.1), "primary：accent 底、深色字")
+    local danger = UI.Button.new{ title = "Del", style = "danger" }
+    danger:prerender()
+    check(nearly(danger.rects[1].r, 0.3) and nearly(danger.borders[1].r, 0.9)
+        and nearly(danger.texts[1].r, 0.9), "danger：errorSurface 底、errorText 框與字")
+    local ghost = UI.Button.new{ title = "G", style = "ghost" }
+    ghost:prerender()
+    local idleGhost = #ghost.rects
+    ghost._mouseOver = true
+    ghost:prerender()
+    check(idleGhost == 0 and #ghost.rects == 1 and nearly(ghost.rects[1].a, 0.06),
+        "ghost：平時無底、hover 才有底")
+
+    btn._mouseOver, btn.pressed = true, true
+    btn:prerender()
+    check(#btn.rects == 2 and nearly(btn.rects[2].a, 0.12), "hover＋按住疊 selected 色")
+    btn:setEnabled(false)
+    btn.rects, btn.texts = {}, {}
+    btn._mouseOver, btn.pressed = true, true
+    btn:prerender()
+    check(#btn.rects == 1 and nearly(btn.rects[1].a, 0.5 * 0.45) and nearly(btn.texts[1].r, 0.55),
+        "disabled：淡化、無 hover／pressed 疊色、textFaint 字")
+
+    btn:setTooltip("tip")
+    btn:prerender()
+    check(btn.tooltip == "tip" and btn.tooltipPasses == 1, "setTooltip 後 prerender 跑原生 tooltip 流程")
+    btn:setTooltip(nil)
+    check(btn.tooltip == nil, "setTooltip(nil) 清除")
+end
+
+-- ============================================================
+print("情境十一：TextField（每幀變化只觸發一次／setText 靜默／placeholder／disabled）")
+-- ============================================================
+do
+    local changes = {}
+    local field = UI.TextField.new{ x = 0, y = 0, width = 200, text = "abc", placeholder = "Search",
+        onlyNumbers = true, maxLength = 8,
+        onChange = function(f, text) changes[#changes + 1] = { field = f, text = text } end }
+    local entry = field._entry
+    check(field:getText() == "abc" and field.height == 22, "初始文字與預設高度（字高＋10）")
+    check(entry._onlyNumbers == true and entry._maxLen == 8, "onlyNumbers／maxLength 交給原生 entry")
+    check(entry.backgroundColor.a == 0 and entry.borderColor.a == 0, "原生 entry 透明、無邊框")
+    field:prerender()
+    check(#changes == 0, "文字未變不觸發 onChange")
+    entry._text = "abcd" -- 模擬 IME 組字送出：不經原生 onTextChange
+    field:prerender()
+    field:prerender()
+    check(#changes == 1 and changes[1].text == "abcd" and changes[1].field == field,
+        "每幀比對：一次變化只觸發一次 onChange(field, text)")
+    field:setText("xyz")
+    field:prerender()
+    check(#changes == 1 and field:getText() == "xyz", "setText 不觸發 onChange")
+
+    field:setText("")
+    field.texts = {}
+    field:prerender()
+    check(#field.texts == 1 and field.texts[1].text == "Search" and nearly(field.texts[1].r, 0.55),
+        "空字串且未 focus 時畫 textFaint placeholder")
+    field:focus()
+    field.texts, field.borders = {}, {}
+    field:prerender()
+    check(#field.texts == 0 and field:isFocused() and nearly(field.borders[1].g, 0.85),
+        "focus 時不畫 placeholder、邊框改 accent")
+
+    field:setEnabled(false)
+    check(entry._editable == false and entry.borderColor.a == 0 and not field:isFocused(),
+        "setEnabled(false)：不可編輯、失焦、原生邊框維持隱藏")
+    field:focus()
+    check(not field:isFocused(), "disabled 時 focus() 無效")
+    field:setTooltip("hint")
+    check(entry.tooltip == "hint", "setTooltip 交給原生 entry 顯示")
+end
+
+-- ============================================================
+print("情境十二：Checkbox（整列點擊／silent／disabled）")
+-- ============================================================
+do
+    local events = {}
+    local box = UI.Checkbox.new{ x = 0, y = 0, label = "Auto", target = TARGET,
+        onChange = function(target, checked, b) events[#events + 1] = { target = target, checked = checked, box = b } end }
+    check(box.height == 20 and box.width == 84, "預設高 max(20, 字高＋4)、寬＝開關＋間距＋標籤")
+    box:onMouseDown(60, 5)
+    box:onMouseUp(60, 5)
+    check(#events == 1 and events[1].target == TARGET and events[1].checked == true
+        and events[1].box == box and box:getChecked() == true, "點標籤也切換並呼叫 onChange(target, checked, box)")
+    box:setChecked(false, true)
+    check(#events == 1 and box:getChecked() == false, "setChecked silent 不觸發 onChange")
+    box:setChecked(false)
+    check(#events == 1, "setChecked 相同值是 no-op")
+    box:setEnabled(false)
+    box:onMouseDown(5, 5)
+    box:onMouseUp(5, 5)
+    check(#events == 1 and box:getChecked() == false, "disabled 時點擊不切換")
+    box:setLabel("Manual")
+    local drew = pcall(box.prerender, box)
+    check(drew and box.texts[#box.texts].text == "Manual" and box.texts[#box.texts].x == 44,
+        "繪製不拋錯、標籤畫在開關右側")
+end
+
+-- ============================================================
+print("情境十三：Tabs（選取／點選中項不觸發／隱藏重排）")
+-- ============================================================
+do
+    local picks = {}
+    local tabs = UI.Tabs.new{ x = 0, y = 0, selected = "a", target = TARGET,
+        items = { { id = "a", label = "Alpha" }, { id = "b", label = "Be" }, { id = "c", label = "Cee" } },
+        onSelect = function(target, id, t) picks[#picks + 1] = { target = target, id = id, tabs = t } end }
+    check(tabs.width == 180 and tabs.height == 24, "自動寬度＝各頁籤（標籤＋24）加總＋間距與內距")
+    tabs:onMouseDown(83, 5)
+    check(#picks == 1 and picks[1].id == "b" and picks[1].target == TARGET and picks[1].tabs == tabs
+        and tabs:getSelected() == "b", "點頁籤呼叫 onSelect(target, id, tabs)")
+    tabs:onMouseDown(83, 5)
+    check(#picks == 1, "點已選中的頁籤不觸發")
+    tabs:setSelected("c", true)
+    check(#picks == 1 and tabs:getSelected() == "c", "setSelected silent 不觸發")
+    tabs:setSelected("nope")
+    check(tabs:getSelected() == "c", "未知 id 忽略")
+    tabs:setItemVisible("b", false)
+    check(tabs.width == 134, "隱藏頁籤後重排並更新自動寬度")
+    tabs:onMouseDown(83, 5)
+    check(#picks == 1, "重排後該位置是已選中的 c，不觸發")
+    tabs:setItemVisible("c", false)
+    check(tabs:getSelected() == "c" and tabs.width == 78, "隱藏選中項不自動切換")
+    tabs:setItemLabel("a", "A")
+    check(tabs.width == 38, "setItemLabel 重算寬度")
+    check(pcall(tabs.prerender, tabs), "繪製不拋錯")
+end
+
+-- ============================================================
+print("情境十四：Window（拖曳／clamp／縮放下限／關閉／ISLayoutManager 存讀）")
+-- ============================================================
+do
+    local resizes, closes = {}, 0
+    local win = UI.Window.new{ x = 100, y = 100, width = 300, height = 200, title = "Fleet",
+        resizable = true,
+        onClose = function(w) if w then closes = closes + 1 end end,
+        onResize = function(w, width, height) resizes[#resizes + 1] = { width = width, height = height } end }
+    check(win:titleBarHeight() == 24 and win:contentTop() == 24, "標題列高 max(24, 字高＋10)")
+
+    mouseX, mouseY = 150, 110
+    win:onMouseDown(50, 10)
+    check(win.captured == true, "按住標題列 setCapture")
+    mouseX, mouseY = 250, 160
+    win:onMouseMoveOutside(0, 0)
+    win:onMouseUpOutside(0, 0)
+    check(win:getX() == 200 and win:getY() == 150 and win.captured == false,
+        "拖出視窗外仍跟隨，放開釋放 capture")
+    win:setX(5000)
+    win:prerender()
+    check(win:getX() == 1620, "每幀 clamp 回螢幕（1920-300）")
+
+    mouseX, mouseY = 1620 + 298, 150 + 198
+    win:onMouseDown(298, 198)
+    mouseX, mouseY = mouseX - 500, mouseY - 500
+    win:onMouseMove(0, 0)
+    win:onMouseUp(0, 0)
+    local last = resizes[#resizes]
+    check(win.width == 240 and win.height == 160 and last.width == 240 and last.height == 160,
+        "右下把手縮放夾在 minWidth／minHeight 並呼叫 onResize(win, w, h)")
+
+    win:onMouseDown(235, 5)
+    win:onMouseUp(235, 5)
+    check(win:getIsVisible() == false and closes == 1, "關閉鈕：隱藏並呼叫 onClose(win)")
+    win:setVisible(true)
+    win:onMouseDown(235, 5)
+    win:onMouseUp(100, 100)
+    check(win:getIsVisible() == true and closes == 1, "在關閉鈕按下、別處放開不關閉")
+    check(pcall(win.render, win), "繪製（邊框、關閉鈕、把手）不拋錯")
+
+    local layout = {}
+    UI.Window.SaveLayout(win, "fleet", layout)
+    check(layout.x == win:getX() and layout.width == 240 and layout.height == 160,
+        "SaveLayout 存 x／y 與可縮放時的寬高")
+    local before = #resizes
+    UI.Window.RestoreLayout(win, "fleet", { x = "10", y = "20", width = "100", height = "500" })
+    check(win:getX() == 10 and win:getY() == 20 and win.width == 240 and win.height == 500
+        and #resizes == before + 1, "RestoreLayout（RegisterWindow 的 funcs 形狀）夾最小值並通知 onResize")
+
+    local fixedWin = UI.Window.new{ x = 0, y = 0, width = 300, height = 100, title = "x", closable = false }
+    local fixedLayout = {}
+    UI.Window.SaveLayout(fixedWin, "fixed", fixedLayout)
+    UI.Window.RestoreLayout(fixedWin, "fixed", { x = "5", y = "6", width = "900", height = "900" })
+    check(fixedLayout.width == nil and fixedWin.width == 300 and fixedWin:getX() == 5,
+        "不可縮放視窗只存讀位置")
+    fixedWin:onMouseDown(295, 5)
+    fixedWin:onMouseUp(295, 5)
+    check(fixedWin:getIsVisible() == true, "closable=false 時右上角不是關閉鈕")
+end
+
+-- ============================================================
+print("情境十五：Dialog（單次回呼／移除 guard／Enter・Esc／同時只有一個）")
+-- ============================================================
+do
+    local results = {}
+    local function record(ok, text) results[#results + 1] = { ok = ok, text = text } end
+
+    local d = UI.Dialog.show{ title = "T", text = "Hello\nWorld", confirmText = "OK",
+        cancelText = "Cancel", onResult = record }
+    local guard = d._guard
+    check(d.inUIManager and guard.inUIManager and d._nativeAlwaysOnTop == true
+        and guard._nativeAlwaysOnTop == true and d.wantKeyEvents == true,
+        "guard 與視窗都加入 UIManager 並置頂、視窗收 key 事件")
+    check(d.children[1].lines[1] == "Hello" and d.children[1].lines[2] == "World",
+        "內文依 \\n 分行")
+    check(guard:onMouseDown() == true and guard:onMouseWheel() == true, "guard 吃掉滑鼠事件")
+    check(d.height == 24 + 12 + 2 * 12 + 12 + 22 + 12, "高度依行數自動計算")
+    check(d:getX() == math.floor((1920 - 360) / 2), "視窗水平置中")
+
+    d._confirm:onMouseDown(1, 1)
+    d._confirm:onMouseUp(1, 1)
+    check(#results == 1 and results[1].ok == true and results[1].text == nil,
+        "確認按鈕 onResult(true, nil)")
+    check(d.inUIManager == false and guard.inUIManager == false, "結束時移除視窗與 guard")
+    d._cancel:onMouseDown(1, 1)
+    d._cancel:onMouseUp(1, 1)
+    UI.Dialog.close(d, false)
+    d:close()
+    check(#results == 1, "onResult 只呼叫一次（再按鈕／close／關閉鈕都不重複）")
+
+    local esc = UI.Dialog.show{ title = "T", text = "x", confirmText = "OK", cancelText = "C", onResult = record }
+    esc:onKeyRelease(1)
+    check(#results == 1, "沒有對應的按下就不處理放開（開窗那一下的按鍵不誤觸）")
+    esc:onKeyPress(1)
+    esc:onKeyRelease(1)
+    check(#results == 2 and results[2].ok == false, "Esc＝取消")
+    check(esc:isKeyConsumed(1) == true, "關閉後仍消耗同一個 Esc（不漏給後面的視窗）")
+
+    local enter = UI.Dialog.show{ title = "T", text = "x", confirmText = "OK", cancelText = "C", onResult = record }
+    enter:onKeyPress(28)
+    enter:onKeyRelease(28)
+    check(#results == 3 and results[3].ok == true, "Enter＝確認")
+
+    local ask = UI.Dialog.show{ title = "T", text = "x", confirmText = "OK", cancelText = "C",
+        input = { text = "5", onlyNumbers = true }, onResult = record }
+    local input = ask._input
+    check(input:isFocused() and input._entry._onlyNumbers == true and input:getText() == "5",
+        "input：TextField 自動 focus 並帶初始值／onlyNumbers")
+    input._entry._text = "42"
+    input._entry:onCommandEntered()
+    check(#results == 4 and results[4].ok == true and results[4].text == "42",
+        "輸入框內 Enter 經原生 onCommandEntered 確認並回傳文字")
+
+    local closer = UI.Dialog.show{ title = "T", text = "x", confirmText = "OK", cancelText = "C", onResult = record }
+    closer:close()
+    check(#results == 5 and results[5].ok == false and closer._guard.inUIManager == false,
+        "關閉鈕視同取消並移除 guard")
+
+    local first = UI.Dialog.show{ title = "T", text = "x", confirmText = "OK", cancelText = "C", onResult = record }
+    local second = UI.Dialog.show{ title = "T", text = string.rep("A", 50), confirmText = "Delete",
+        danger = true, onResult = record }
+    check(#results == 6 and results[6].ok == false and first.inUIManager == false and second.inUIManager,
+        "新開 Dialog 先以 cancel 關掉舊的")
+    check(second._cancel == nil and second._confirm.style == "danger", "省略 cancelText＝單鈕提示、danger 樣式")
+    check(#second.children[1].lines == 2, "長文字依寬度自動換行")
+    UI.Dialog.close(second, true)
+    check(#results == 7 and results[7].ok == true, "Dialog.close(dialog, ok) 走同一收尾路徑")
+end
+
+-- ============================================================
+print("情境十六：ColorPicker（色卡／滑桿／hex 單次回呼、互相同步不重複回呼、hex 非法不變、silent）")
+-- ============================================================
+do
+    local changes = {}
+    local picker = UI.ColorPicker.new{ x = 0, y = 0, width = 200, color = { r = 1, g = 0, b = 0 },
+        target = TARGET, onChange = function(target, color, p)
+            changes[#changes + 1] = { target = target, color = color, picker = p }
+        end }
+    local sl, hex = picker._sliders, picker._hex
+    local function texts()
+        return sl[1]:getValue() .. "," .. sl[2]:getValue() .. "," .. sl[3]:getValue() .. "," .. hex:getText()
+    end
+    local function tick() hex:prerender() end
+    check(#UI.ColorPicker.DEFAULT_SWATCHES == 24 and picker:getHeight() == 204,
+        "預設 24 色；寬 200 → 7 欄 4 列，高度＝色卡 102＋間距 8＋三列滑桿 72＋hex 22")
+    check(texts() == "255,0,0,#FF0000" and #changes == 0 and sl[1]._text == "255",
+        "初始色寫入滑桿與 hex，建構不回呼")
+
+    local s = picker._swatches[1]
+    picker:onMouseDown(s.x + 1, s.y + 1)
+    tick()
+    tick()
+    local c = changes[1] and changes[1].color
+    check(#changes == 1 and changes[1].target == TARGET and changes[1].picker == picker
+        and nearly(c.r, 230 / 255) and nearly(c.g, 51 / 255),
+        "點色卡回呼一次 onChange(target, color, picker)；寫回滑桿／hex 不引起重複回呼")
+    check(texts() == "230,51,51,#E63333" and sl[2]._text == "51", "點色卡同步寫回 R/G/B 滑桿與 hex")
+
+    -- 拖 R 滑桿：track 內縮 6、寬 186-12-36=138；按在最左＝0，拖到最右＝255，拖出界仍 255
+    local r = sl[1]
+    r:onMouseDown(6, 10)
+    mouseX = r.x + 6 + 138
+    r:onMouseMove(0, 0)
+    mouseX = r.x + 900
+    r:onMouseMoveOutside(0, 0)
+    r:onMouseUpOutside(0, 0)
+    tick()
+    check(#changes == 3 and nearly(changes[2].color.r, 0) and nearly(changes[3].color.r, 1)
+        and texts() == "255,51,51,#FF3333" and r.captured == false,
+        "拖滑桿每次實際變色回呼一次、出界同值不回呼；hex 同步且不重複回呼")
+
+    hex._entry._text = "#GG0000"
+    tick()
+    hex._entry._text = "#FFF"
+    tick()
+    hex._entry._text = ""
+    tick()
+    check(#changes == 3 and texts() == "255,51,51,", "非法 hex／空白不變更顏色與滑桿")
+
+    hex._entry._text = "#00ff80"
+    tick()
+    tick()
+    check(#changes == 4 and nearly(changes[4].color.b, 128 / 255) and texts() == "0,255,128,#00ff80"
+        and sl[3]._text == "128", "合法 hex（大小寫皆可）回呼一次並同步三條滑桿（silent）")
+
+    picker:setColor({ r = 0, g = 0, b = 1 }, true)
+    tick()
+    check(#changes == 4 and nearly(picker:getColor().b, 1) and texts() == "0,0,255,#0000FF",
+        "setColor silent 不回呼、滑桿與 hex 同步且不重複回呼")
+    picker:setColor({ r = 0, g = 0, b = 1 })
+    check(#changes == 4, "setColor 相同值 no-op")
+    picker:setColor({ r = 1, g = 1, b = 1 })
+    check(#changes == 5 and picker._selected == 24, "setColor 非 silent 回呼；等於色卡的顏色標為選中")
+
+    local copy = picker:getColor()
+    copy.r = 0
+    check(picker:getColor().r == 1 and copy ~= changes[5].color, "getColor／回呼的 color 皆為新 table")
+
+    picker:setEnabled(false)
+    picker:onMouseDown(s.x + 1, s.y + 1)
+    r:onMouseDown(6, 10)
+    check(#changes == 5 and r:isEnabled() == false and sl[3]:isEnabled() == false and hex._enabled == false
+        and r.captured == false, "disabled：色卡與滑桿不回應、hex 一併停用")
+    picker:setEnabled(true)
+
+    picker.rects, picker.borders = {}, {}
+    picker:prerender()
+    check(#picker.rects == 25 and #picker.borders == 27,
+        "prerender：24 色塊＋預覽、各自邊框＋選中 2 層 accent 外框")
+end
+
+-- ============================================================
+print("情境十七：Slider（量化夾限／點擊跳值／拖曳 capture 成對／同值不觸發／silent／滾輪／disabled／format 只量一次）")
+-- ============================================================
+do
+    local measured = {}
+    local keepTextManager = getTextManager
+    getTextManager = function()
+        local tm = keepTextManager()
+        local inner = tm.MeasureStringX
+        tm.MeasureStringX = function(self, font, text)
+            measured[#measured + 1] = text
+            return inner(self, font, text)
+        end
+        return tm
+    end
+    local events = {}
+    local s = UI.Slider.new{ x = 0, y = 0, width = 200, min = 50, max = 200, step = 25, value = 110,
+        target = TARGET, format = function(v) return v .. "%" end,
+        onChange = function(target, v, slider) events[#events + 1] = { target = target, v = v, slider = slider } end }
+    local captures = {}
+    function s:setCapture(v) self.captured = v; captures[#captures + 1] = v end
+    -- format(max)="200%" 量 40px＋間距 6 → track 寬 200-12-46=142，從 x=6 起
+    check(s:getValue() == 100 and #events == 0 and s.height == 20 and #measured == 1 and measured[1] == "200%",
+        "建構：110 依 step 以 min 為基準量化成 100、不回呼；預設高 20；format(max) 量一次")
+
+    s:setValue(999)
+    s:setValue(-5)
+    check(#events == 2 and events[1].v == 200 and events[2].v == 50 and events[1].target == TARGET
+        and events[1].slider == s, "setValue 夾在 min..max 並回呼 onChange(target, value, slider)")
+    s:setValue(62)
+    s:setValue(63)
+    check(#events == 3 and s:getValue() == 75, "量化後同值不回呼（62→50）；63 四捨五入到 75")
+    s:setValue(125, true)
+    s:setValue("x")
+    check(#events == 3 and s:getValue() == 125 and s._text == "125%", "setValue silent 不回呼；非數字忽略")
+
+    s:onMouseDown(6 + 142, 10)
+    s:onMouseUp(6 + 142, 10)
+    check(#events == 4 and events[4].v == 200 and #captures == 2 and captures[1] == true and captures[2] == false,
+        "點 track 跳值只回呼一次；按下 setCapture(true)、放開 setCapture(false)")
+
+    s:onMouseDown(6, 10)
+    mouseX = s.x + 6 + 71
+    s:onMouseMove(0, 0)
+    mouseX = s.x + 80
+    s:onMouseMove(0, 0)
+    mouseX = s.x + 900
+    s:onMouseMoveOutside(0, 0)
+    local capturedWhileOutside = s.captured
+    s:onMouseUpOutside(0, 0)
+    s:onMouseMove(0, 0)
+    check(#events == 7 and events[5].v == 50 and events[6].v == 125 and events[7].v == 200
+        and capturedWhileOutside == true and #captures == 4 and captures[4] == false,
+        "拖曳：每次值變回呼一次、同格不回呼；出界仍收 move、放開後 capture 成對解除且不再跟隨")
+
+    s:onMouseDown(170, 10)
+    check(#events == 7 and #captures == 4, "按在值文字區不跳值、不 capture")
+
+    s:setValue(100, true)
+    local wheeled = s:onMouseWheel(-1)
+    s:onMouseWheel(1)
+    s:onMouseWheel(1)
+    s:setValue(200, true)
+    s:onMouseWheel(-1)
+    check(wheeled == true and #events == 10 and events[8].v == 125 and events[9].v == 100 and events[10].v == 75,
+        "滾輪往上 +step、往下 -step；到頂同值不回呼")
+    local d = UI.Slider.new{ x = 0, y = 0, width = 100, min = 0, max = 1 }
+    d:onMouseWheel(-1)
+    check(nearly(d:getValue(), 0.05) and d._text == nil, "未給 step＝(max-min)/20；未給 format 不畫值")
+
+    s:setEnabled(false)
+    s:onMouseDown(6, 10)
+    local wheelDisabled = s:onMouseWheel(-1)
+    check(#events == 10 and wheelDisabled == false and #captures == 4 and s:isEnabled() == false,
+        "disabled：按下不跳值不 capture、滾輪不吃事件")
+    s:setEnabled(true)
+    s:onMouseDown(6, 10)
+    s:setEnabled(false)
+    check(s.captured == false and #captures == 6, "拖曳中停用立即解除 capture")
+
+    local theme = UI.Theme.create()
+    s.rects, s.texts = {}, {}
+    s:prerender()
+    local faded = s.rects[1].a
+    s:setEnabled(true)
+    s._mouseOver = true
+    s.rects, s.texts = {}, {}
+    s:prerender()
+    check(nearly(faded, theme.colors.well.a * 0.45) and nearly(s.rects[1].a, theme.colors.hover.a)
+        and s.texts[1].text == "50%" and s.texts[1].x == 160,
+        "繪製：disabled 淡化、hover 換 track 色、值文字畫在 track 右側")
+    check(#measured == 1, "拖曳／改值／繪製全程 format 文字寬度只量一次")
+    getTextManager = keepTextManager
+end
+
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 205
+local EXPECTED_ASSERTIONS = 313
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

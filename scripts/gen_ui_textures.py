@@ -78,6 +78,10 @@ ART_ICON_NAMES = tuple(
         "auction", "mail", "users", "chart",
         "coins", "plug", "shieldCheck", "tag",
         "transactions", "clipboardCheck", "server", "settings",
+        "carSedan", "carHatchback", "carSports", "carSuv",
+        "carPickup", "carVan", "carStepVan", "carTruck",
+        "carAmbulance", "carPolice", "carFiretruck", "carTrailer",
+        "markerStar", "markerHeart", "markerFlag", "markerCrown",
     )
 )
 OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES

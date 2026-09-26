@@ -12,6 +12,21 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **共用的現代視窗與控制元件**：依賴本函式庫的 MOD 可改用同一套圓角視窗、確認對話框、按鈕、輸入框、切換開關與分頁列，不再沿用遊戲原生的舊式外觀；視窗可拖曳標題列移動、可從右下角縮放並記住位置，確認對話框可用 Enter 確認、Esc 取消。介面資產缺失時自動退回直角外觀，功能不受影響
+- **十六個車輛與地圖標記圖示**：加入轎車、掀背車、跑車、休旅車、皮卡、廂型車、貨運廂車、大卡車、救護車、警車、消防車、拖車的側視剪影，以及星星、愛心、旗子、皇冠標記，供依賴本函式庫的 MOD 在地圖上標示車輛並任意染色
+- **共用的取色器**：依賴本函式庫的 MOD 可提供 24 色常用色卡，並能拖曳 R／G／B 三條滑桿或直接輸入 `#RRGGBB` 色碼，色卡、滑桿與色碼即時同步；色碼輸入錯誤時不會改變顏色
+- **共用的滑桿**：依賴本函式庫的 MOD 可用同一款現代滑桿調整數值（例如圖示大小），可拖曳、點擊跳到指定位置或用滑鼠滾輪微調，旁邊即時顯示目前數值
+
+> 技術要點：API rev 6→7（純 additive，既有呼叫面不變）。新增 `Widgets/Controls.lua`：`UI.Button`（ISButton 基底、normal／primary／danger／ghost）、`UI.TextField`（內含透明原生 ISTextEntryBox，每幀比對文字觸發 `onChange`，涵蓋 IME）、`UI.Checkbox`（`Skin.toggle`）、`UI.Tabs`；`Widgets/Window.lua`：`UI.Window`（標題列拖曳、縮放下限、`SaveLayout`／`RestoreLayout` 可直接交給 `ISLayoutManager.RegisterWindow(name, UI.Window, win)`）與 `UI.Dialog.show/close`（全螢幕 guard、`onResult(ok, text)` 只呼叫一次、同時只有一個）。`CAPABILITIES.controls`／`window`／`dialog` 在對應檔載入成功後才翻 true；Controls 缺席時只提供 Window、`dialog` 維持 false。契約見 `docs/ARCHITECTURE.md` §3.7。
+
+> 技術要點：API rev 7→8（純 additive）。Icons 新增 16 個 art key：`carSedan`／`carHatchback`／`carSports`／`carSuv`／`carPickup`／`carVan`／`carStepVan`／`carTruck`／`carAmbulance`／`carPolice`／`carFiretruck`／`carTrailer`／`markerStar`／`markerHeart`／`markerFlag`／`markerCrown`（AI 原圖 `scripts/icons/vehicle-sheet.png`，來源記錄 `vehicle-source.json`）。`Widgets/Controls.lua` 新增 `UI.ColorPicker.new{ x, y, width, color?, swatches?, theme?, font?, target?, onChange? }`，`onChange(target, color, picker)`、`getColor`／`setColor(c, silent)`／`setEnabled`、高度依內容自動計算，`CAPABILITIES.colorPicker` 載入成功才翻 true。契約見 `docs/ARCHITECTURE.md` §3.8。
+
+> 技術要點：API rev 8→9（純 additive）。`Widgets/Controls.lua` 新增 `UI.Slider.new{ x, y, width, height?, min, max, step?, value?, theme?, font?, target?, onChange?, format? }`：`Skin.slider` 繪製、按 track 跳值並 setCapture 拖曳、滾輪 ±step（省略 step＝(max-min)/20）、值夾限並以 min 為基準依 step 量化；`onChange(target, value, slider)` 只在值實際改變時呼叫；`getValue`／`setValue(v, silent)`／`setEnabled`／`isEnabled`；`format(value)` 的文字寬以 `format(max)` 建構時量一次。`CAPABILITIES.slider` 載入成功才翻 true。`UI.ColorPicker` 的 R/G/B 數字欄改為三條 Slider（公開方法與簽章不變，高度依新版面重算）。契約見 `docs/ARCHITECTURE.md` §3.8／§3.9。
+
 ## [42.20.4-0.5.0] - 2026-09-14
 
 ### 新增

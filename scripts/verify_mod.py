@@ -341,7 +341,7 @@ else:
     if _import_check.returncode:
         fail("圖表匯入相容性", [(_import_check.stdout + _import_check.stderr).decode("utf-8", errors="replace")])
     else:
-        ok("圖表匯入相容性（舊圖表預設排列＋導覽圖示重建）")
+        ok("圖表匯入相容性（舊圖表預設排列＋導覽／車輛圖示重建）")
 
 # ---- 13. Lua 煙霧測試 ----
 # scripts/smoke_harness.lua：假 PZ 全域驅動真 V1.lua 跑情境（facade 半初始化／

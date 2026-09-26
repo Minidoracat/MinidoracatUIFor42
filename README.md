@@ -11,6 +11,7 @@ Project Zomboid Build 42 MOD。
 - **v0.3 VirtualList**：垂直固定列高虛擬清單
 - **API rev 2 Icons**：8 個共用單色圖示（`sidebar`／`folder`／`document`／`chevronRight`／`chevronDown`／`language`／`reload`／`resetSize`），32×32 純白貼圖運行時染色、設計供 14–16px 顯示；`UI.Icons.get(name)`／`UI.Icons.draw(element, name, x, y, size, color, alpha)`，未知 key 或貼圖缺失一律回 `nil`／`false`，呼叫端退回原本的文字表示（詳見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §3.6）
 - **API rev 3 Painters/Assets**：新增 `shape="pill"`、無狀態 `UI.Skin.toggle(...)` 與 `UI.Skin.slider(...)`；slider 只負責現代化 track／fill／圓形 knob，不接管 consumer 的拖曳與數值邏輯。新增 `search`／`chevronLeft`／`layers`／`pin`／`globe`／`sliders`／`gauge`／`lock`／`unlock`／`close`／`locate`／`copy` 十二個 icon key。consumer 以 `UI.API_REVISION >= 3`＋函式探測；pill 精確膠囊高度 20px，低於 20px 的 shape 退直角，toggle 幾何小於 20px 回 `false`
+- **API rev 7 Modern Controls**（未發布）：現代外觀的 `UI.Button`／`UI.TextField`／`UI.Checkbox`／`UI.Tabs`（`CAPABILITIES.controls`）與 `UI.Window`／`UI.Dialog`（`window`／`dialog`），取代原生 ISButton／ISTextEntryBox／ISTickBox／ISCollapsableWindow／ISModalDialog 的外觀；原生只作輸入與事件基底。consumer 以 `UI.API_REVISION >= 7`＋對應旗標探測（契約見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §3.7）
 
 設計契約與 NeatUI 分析結論見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
