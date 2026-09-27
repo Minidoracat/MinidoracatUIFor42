@@ -7,7 +7,7 @@
 - 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
-十八情境（docs/ARCHITECTURE.md §7）：
+十九情境（docs/ARCHITECTURE.md §7）＋rev 11 切片測試（檔尾 loader，ctx 契約見 loader 上方註解）：
 1. facade 半初始化——檔案中段注入 error，斷言 MinidoracatUI.v1 從未發布
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
@@ -16,7 +16,8 @@
 5. painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與六十五個 icon key
 （6-8 為 widget：FloatButton／Toast／VirtualList；9-15 為 rev 7 控制元件：載入自檢／Button／
  TextField／Checkbox／Tabs／Window／Dialog；16 為 rev 8 ColorPicker（rev 9 起 R/G/B 為滑桿）；
- 17 為 rev 9 Slider；18 為 rev 10 Focus 鍵盤＋手把焦點）
+ 17 為 rev 9 Slider；18 為 rev 10 Focus 鍵盤＋手把焦點；19 為 rev 11 共用基礎：Text.fit／Skin.arrow／
+ chip Button／截字與自動 tooltip／TextField 尺寸與 clearButton／theme.alpha）
 ]]
 
 local V1_PATH = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/V1.lua"
@@ -968,16 +969,21 @@ function ISTextEntryBox:setOnlyNumbers(b) self._onlyNumbers = b end
 function ISTextEntryBox:setMaxTextLength(n) self._maxLen = n end
 function ISTextEntryBox:setTextRGBA(r, g, b, a) self._textColor = { r = r, g = g, b = b, a = a } end
 function ISTextEntryBox:setTooltip(t) self.tooltip = t end
+-- 忠於 ISTextEntryBox.lua:101-103：轉呼叫 javaObject:setClearButton
+function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 
 -- ============================================================
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 10, "API_REVISION 進到 10")
+    check(UI.API_REVISION == 11, "API_REVISION 進到 11")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
-        and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false,
-        "rev 7／8／9／10 能力在 widget 檔載入前誠實標 false")
+        and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
+        and UI.CAPABILITIES.datePicker == false and UI.CAPABILITIES.table == false
+        and UI.CAPABILITIES.filterBar == false and UI.CAPABILITIES.itemPicker == false
+        and UI.CAPABILITIES.autocomplete == false,
+        "rev 7／8／9／10／11 能力在 widget 檔載入前誠實標 false")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -1486,64 +1492,68 @@ do
 end
 
 -- ============================================================
+-- rev 10 起鍵盤／手把共用 stub（情境十八與 rev 11 切片測試共用；ctx 契約見 rev 11 loader）
+-- ============================================================
+-- 鍵盤：可控按住狀態＋LWJGL 鍵碼（值只需互不相同）
+local held = {}
+Keyboard.KEY_TAB, Keyboard.KEY_SPACE, Keyboard.KEY_C = 15, 57, 46
+Keyboard.KEY_UP, Keyboard.KEY_DOWN, Keyboard.KEY_LEFT, Keyboard.KEY_RIGHT = 200, 208, 203, 205
+Keyboard.KEY_HOME, Keyboard.KEY_END, Keyboard.KEY_PRIOR, Keyboard.KEY_NEXT = 199, 207, 201, 209
+Keyboard.KEY_LSHIFT, Keyboard.KEY_RSHIFT, Keyboard.KEY_LCONTROL, Keyboard.KEY_RCONTROL = 42, 54, 29, 157
+Keyboard.isKeyDown = function(k) return held[k] == true end
+Keyboard.next = function() return false end
+local keyQueue = {}
+local eatKey = {}
+GameKeyboard = { getEventQueue = function() return keyQueue end, isKeyDownRaw = function(k) return held[k] == true end,
+    eatKeyPress = function(k) eatKey[k] = true end }
+local clip = nil
+Clipboard = { setClipboard = function(s) clip = s end }
+function ISTextEntryBox:isEditable() return self._editable == true end
+-- 手把：忠於 JoyPadSetup.lua:537-583 的焦點鏈（setJoypadFocus 推 prevfocus；不呼叫 gain／lose）
+Joypad = { AButton = 0, BButton = 1, LBumper = 4, RBumper = 5 }
+local joy = {}
+getJoypadData = function(p) return joy[p + 1] end
+getJoypadFocus = function(p) return joy[p + 1] and joy[p + 1].focus or nil end
+setJoypadFocus = function(p, control)
+    local d = joy[p + 1]
+    if not d then return end
+    if control ~= nil and control ~= d.focus then
+        d.prevprevfocus = d.prevfocus
+        d.prevfocus = d.focus
+    end
+    d.focus = control
+end
+
+-- 引擎派送順序（UIElement.java:2174-2219）：onKeyPress→isKeyConsumed；onKeyRelease→isKeyConsumed
+local function press(win, key)
+    win:onKeyPress(key)
+    local consumed = win:isKeyConsumed(key)
+    win:onKeyRelease(key)
+    return consumed, win:isKeyConsumed(key)
+end
+-- 引擎時序（GameWindow.java:310,702-709；GameKeyboard.java:37-41,71-77）：輸入框的文字事件在幀尾處理，
+-- 同一次按住下一幀才以取樣狀態派 press／release；被 eatKeyPress 吃掉就兩個都跳過（release 時清掉
+-- 記號）。回 true＝有一半沒被視窗消耗，漏到遊戲按鍵（OnKeyStartPressed／OnKeyPressed）。
+local function nextFrame(win, key)
+    if eatKey[key] then eatKey[key] = nil; return false end
+    local pc, rc = press(win, key)
+    return not (pc and rc)
+end
+
+-- ============================================================
 print("情境十八：rev 10 Focus（帳本／Tab 閱讀順序／Enter・Space／清單反白與啟動／分頁與滑桿／輸入框交接／手把接手與還原／Dialog／Ctrl+C）")
 -- ============================================================
 do
-    -- 鍵盤：可控按住狀態＋LWJGL 鍵碼（值只需互不相同）
-    local held = {}
-    Keyboard.KEY_TAB, Keyboard.KEY_SPACE, Keyboard.KEY_C = 15, 57, 46
-    Keyboard.KEY_UP, Keyboard.KEY_DOWN, Keyboard.KEY_LEFT, Keyboard.KEY_RIGHT = 200, 208, 203, 205
-    Keyboard.KEY_HOME, Keyboard.KEY_END, Keyboard.KEY_PRIOR, Keyboard.KEY_NEXT = 199, 207, 201, 209
-    Keyboard.KEY_LSHIFT, Keyboard.KEY_RSHIFT, Keyboard.KEY_LCONTROL, Keyboard.KEY_RCONTROL = 42, 54, 29, 157
-    Keyboard.isKeyDown = function(k) return held[k] == true end
-    Keyboard.next = function() return false end
-    local queue = {}
-    local eatKey = {}
-    GameKeyboard = { getEventQueue = function() return queue end, isKeyDownRaw = function(k) return held[k] == true end,
-        eatKeyPress = function(k) eatKey[k] = true end }
-    local clip = nil
-    Clipboard = { setClipboard = function(s) clip = s end }
-    function ISTextEntryBox:isEditable() return self._editable == true end
-    -- 手把：忠於 JoyPadSetup.lua:537-583 的焦點鏈（setJoypadFocus 推 prevfocus；不呼叫 gain／lose）
-    Joypad = { AButton = 0, BButton = 1, LBumper = 4, RBumper = 5 }
-    local joy = {}
-    getJoypadData = function(p) return joy[p + 1] end
-    getJoypadFocus = function(p) return joy[p + 1] and joy[p + 1].focus or nil end
-    setJoypadFocus = function(p, control)
-        local d = joy[p + 1]
-        if not d then return end
-        if control ~= nil and control ~= d.focus then
-            d.prevprevfocus = d.prevfocus
-            d.prevfocus = d.focus
-        end
-        d.focus = control
-    end
-
     dofile(MOD_LUA .. "Focus.lua")
     check(UI.CAPABILITIES.focus == true and UI.Focus ~= nil, "Focus 載入成功且 capability 翻 true")
     dofile(MOD_LUA .. "Widgets/Window.lua") -- 重新載入：Window／Dialog 接上 Focus
     local F, K = UI.Focus, Keyboard
 
-    -- 引擎派送順序（UIElement.java:2174-2219）：onKeyPress→isKeyConsumed；onKeyRelease→isKeyConsumed
-    local function press(win, key)
-        win:onKeyPress(key)
-        local consumed = win:isKeyConsumed(key)
-        win:onKeyRelease(key)
-        return consumed, win:isKeyConsumed(key)
-    end
     -- 輸入框持有文字焦點時按鍵不進 UIManager，Tab 走輸入框的 onOtherKey（Core.java:2049-2053）
     local function tab(win)
         local e = F.focused()
         if e and e.isFocused and e:isFocused() and e.onOtherKey then e.onOtherKey(e, K.KEY_TAB); return end
         press(win, K.KEY_TAB)
-    end
-    -- 引擎時序（GameWindow.java:310,702-709；GameKeyboard.java:37-41,71-77）：輸入框的文字事件在幀尾處理，
-    -- 同一次按住下一幀才以取樣狀態派 press／release；被 eatKeyPress 吃掉就兩個都跳過（release 時清掉
-    -- 記號）。回 true＝有一半沒被視窗消耗，漏到遊戲按鍵（OnKeyStartPressed／OnKeyPressed）。
-    local function nextFrame(win, key)
-        if eatKey[key] then eatKey[key] = nil; return false end
-        local pc, rc = press(win, key)
-        return not (pc and rc)
     end
 
     local clicks, selects, highlights, picks = 0, {}, {}, {}
@@ -1784,12 +1794,217 @@ do
     check(results[6] == false and F.focused() == ok, "鍵盤關掉對話框後，第一次 Tab 回到開啟它的按鈕")
 end
 
+-- ============================================================
+print("情境十九：rev 11 共用基礎（Text.fit／Skin.arrow／chip Button／截字與自動 tooltip／TextField 尺寸與 clearButton／theme.alpha）")
+-- ============================================================
+do
+    local fit = UI.Text.fit -- stub 量測：每位元組 10px
+    check(fit("Hello", 50) == "Hello" and fit("Hello", 49) == "H..." and fit("HelloWorld", 80) == "Hello...",
+        "Text.fit：剛好放得下回原字串，差 1px 就截成最長前綴＋...")
+    check(fit("Hello", 30) == "..." and fit("Hello", 29) == "" and fit("Hello", 0) == ""
+        and fit("Hello", -5) == "" and fit(nil, 50) == "",
+        "Text.fit：只放得下 ... 時回 ...、連 ... 都放不下或 maxW<=0 回空字串、nil 當空字串")
+    -- 標準 Lua 是 UTF-8："中文字" 9 位元組；前綴只能停在字元開頭（位元組 0／3／6）
+    check(fit("\228\184\173\230\150\135\229\173\151", 60) == "\228\184\173..."
+        and fit("\228\184\173\230\150\135\229\173\151", 50) == "...",
+        "Text.fit：不切開 UTF-8 多位元組字元（continuation byte 往前退）")
+
+    check(UI.Skin.ARROW_W == 7 and UI.Skin.ARROW_H == 4, "Skin.ARROW_W／ARROW_H 為 7×4")
+    local el = newElement(0, 0)
+    UI.Skin.arrow(el, 10, 20, true, { r = 1, g = 0.5, b = 0, a = 0.8 }, 0.5)
+    local r = el.rects
+    check(#r == 4 and r[1].w == 1 and r[1].x == 13 and r[1].y == 20 and r[4].w == 7 and r[4].x == 10
+        and r[4].y == 23, "Skin.arrow up：四列 drawRect、由上往下 1／3／5／7 寬置中（▲）")
+    check(nearly(r[1].a, 0.4) and nearly(r[4].a, 0.4) and r[2].r == 1 and r[2].g == 0.5,
+        "Skin.arrow：alpha＝color.a×alphaScale，顏色原樣")
+    el = newElement(0, 0)
+    UI.Skin.arrow(el, 0, 0, false, { r = 1, g = 1, b = 1 })
+    check(#el.rects == 4 and el.rects[1].w == 7 and el.rects[4].w == 1 and el.rects[4].x == 3
+        and el.rects[1].a == 1, "Skin.arrow down：7／5／3／1（▼），color.a 與 alphaScale 缺省為 1")
+
+    -- chip：E0 環境（無 NinePatch）走直角，rects＝fill、borders＝border
+    local chip = UI.Button.new{ title = "Chip", style = "chip" }
+    chip:prerender()
+    check(#chip.rects == 0 and #chip.borders == 1 and nearly(chip.borders[1].r, 0.4)
+        and nearly(chip.texts[1].r, 0.62), "chip 閒置：無底、border 框、textMuted 字")
+    chip._mouseOver = true
+    chip.rects, chip.borders, chip.texts = {}, {}, {}
+    chip:prerender()
+    check(#chip.rects == 1 and nearly(chip.rects[1].a, 0.06) and nearly(chip.texts[1].r, 1),
+        "chip hover：只有一層 hover 底（不重複疊）、text 字")
+    chip._mouseOver = false
+    chip:setActive(true)
+    chip.rects, chip.borders, chip.texts = {}, {}, {}
+    chip:prerender()
+    check(chip:isActive() and #chip.rects == 1 and nearly(chip.rects[1].a, 0.12)
+        and nearly(chip.borders[1].g, 0.85) and nearly(chip.texts[1].g, 0.85),
+        "chip active：selected 底、accent 框與字")
+    chip._mouseOver, chip.pressed = true, true
+    chip.rects = {}
+    chip:prerender()
+    check(#chip.rects == 2 and nearly(chip.rects[2].a, 0.12), "chip 按下：疊一層 selected")
+    chip:setEnabled(false)
+    chip.borders, chip.texts = {}, {}
+    chip:prerender()
+    check(nearly(chip.borders[1].a, 0.45) and nearly(chip.texts[1].r, 0.55),
+        "chip 停用：chrome 淡化、textFaint 字")
+    local normal = UI.Button.new{ title = "N" }
+    normal:setActive(true)
+    normal:prerender()
+    check(normal:isActive() and nearly(normal.rects[1].a, 0.5) and nearly(normal.borders[1].r, 0.4)
+        and nearly(normal.texts[1].r, 1), "非 chip 樣式 setActive 只記狀態、外觀不變")
+
+    -- 截字：寬 60 → 可用 48 → "L..."（40px）
+    local measures = 0
+    local keepTM = getTextManager
+    getTextManager = function()
+        return { MeasureStringX = function(_, _, text) measures = measures + 1; return string.len(text) * 10 end,
+            getFontHeight = function() return 12 end }
+    end
+    local long = UI.Button.new{ title = "LongTitle", width = 60 }
+    long:prerender()
+    check(long.texts[1].text == "L..." and long.title == "LongTitle" and long.tooltip == "LongTitle",
+        "寬度不足：畫截字標題、title 保留全文、全標題自動成為 tooltip")
+    measures = 0
+    long.texts = {}
+    long:prerender()
+    check(measures == 0 and long.texts[1].text == "L...", "標題與寬度沒變：每幀不重新量測")
+    long:setWidth(120)
+    long.texts = {}
+    long:prerender()
+    check(long.texts[1].text == "LongTitle" and long.tooltip == nil, "寬度恢復：全標題、自動 tooltip 收掉")
+    long:setWidth(60)
+    long:setTitle("Another")
+    long:prerender()
+    check(long.tooltip == "Another", "截字中改標題：自動 tooltip 跟著換")
+    long:setTooltip("mine")
+    long:prerender()
+    long:setWidth(120)
+    long:prerender()
+    check(long.tooltip == "mine", "setTooltip 設的手動 tooltip 不被截字覆寫、寬度恢復也不收掉")
+    long:setWidth(60)
+    long:prerender()
+    local stillManual = long.tooltip == "mine"
+    long:setTooltip(nil) -- 標題與寬度都沒變：交回自動仍要在下一幀重判
+    long:prerender()
+    check(stillManual and long.tooltip == "Another", "setTooltip(nil) 交回自動：仍截字時下一幀補回全標題")
+    local manual = UI.Button.new{ title = "LongTitle", width = 60, tooltip = "manual" }
+    manual:prerender()
+    check(manual.tooltip == "manual" and manual.texts[1].text == "L...", "建構時的 tooltip 是手動的，截字不覆寫")
+    local auto = UI.Button.new{ title = "LongTitle" }
+    auto:prerender()
+    check(auto.texts[1].text == "LongTitle" and auto.tooltip == nil, "自動寬度永不截字")
+    getTextManager = keepTM
+
+    local field = UI.TextField.new{ x = 0, y = 0, width = 200, clearButton = true }
+    local entry = field._entry
+    check(entry._clearButton == true and UI.TextField.new{ width = 100 }._entry._clearButton == nil,
+        "opts.clearButton 轉呼叫原生 setClearButton(true)，未指定時不呼叫")
+    field:setWidth(300)
+    check(field.width == 300 and entry.x == 6 and entry.width == 288, "setWidth：內層 entry 寬度跟著外框（兩側內距 6）")
+    field:setHeight(40)
+    check(field.height == 40 and entry.y == 12 and entry.x == 6, "setHeight：內層 entry 垂直置中（(40-16)/2）")
+
+    local faded = UI.Theme.create()
+    faded.alpha = 0.5
+    local fb = UI.Button.new{ title = "A", theme = faded }
+    fb:prerender()
+    check(nearly(fb.rects[1].a, 0.25) and nearly(fb.borders[1].a, 0.5) and nearly(fb.texts[1].a, 1),
+        "theme.alpha：Button 的 fill／border 乘 0.5，文字不乘")
+    local ff = UI.TextField.new{ width = 100, placeholder = "P", theme = faded }
+    ff:prerender()
+    check(nearly(ff.rects[1].a, 0.25) and nearly(ff.borders[1].a, 0.5) and nearly(ff.texts[1].a, 1),
+        "theme.alpha：TextField 的 fill／border 乘 0.5，placeholder 不乘")
+    local ft = UI.Tabs.new{ selected = "a", items = { { id = "a", label = "A" } }, theme = faded }
+    ft:prerender()
+    check(nearly(ft.rects[1].a, 0.25) and nearly(ft.borders[1].a, 0.5) and nearly(ft.texts[1].a, 1),
+        "theme.alpha：Tabs 的 well／border 乘 0.5，頁籤文字不乘")
+    local fw = UI.Window.new{ x = 0, y = 0, width = 300, height = 200, title = "W", theme = faded }
+    fw:prerender()
+    fw:render()
+    check(nearly(fw.rects[1].a, 0.4) and nearly(fw.rects[2].a, 0.05) and nearly(fw.borders[1].a, 0.5)
+        and nearly(fw.texts[1].a, 1), "theme.alpha：Window 本體／標題列／邊框乘 0.5，標題文字不乘")
+end
+
+--[[
+rev 11 切片測試載入器（本檔之後不必為了切片再改）：
+  依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua；檔案不存在記一筆失敗（五個切片都已落地）。
+  檔案寫法：
+      local ctx = ...
+      local check, UI = ctx.check, ctx.UI
+      dofile(ctx.MOD_LUA .. "Widgets/DatePicker.lua")
+      print("情境 rev11-date：...")
+      ... check(...) ...
+      return 42   -- 本檔實際執行的 check 條數；不符記一筆失敗（取代 EXPECTED_ASSERTIONS 的守門）
+  執行錯誤（語法／runtime）記一筆失敗，不中止其他切片。切片斷言不算進 EXPECTED_ASSERTIONS。
+  ctx 欄位：
+    check(ok, label)          斷言（計數＋PASS/FAIL 輸出）
+    nearly(a, b)              浮點比較（誤差 1e-9）
+    UI                        MinidoracatUI.v1；Controls／Window／Dialog／Focus／VirtualList 已載入
+    MOD_LUA                   ".../media/lua/client/MinidoracatUI/"（結尾有 /）
+    TARGET                    共用的 onClick target 哨兵 table
+    now() / setNow(ms) / advance(ms)   getTimestampMs() 回傳的時間（起點遠大於 0）
+    setMouse(x, y)            螢幕滑鼠座標；ISPanel stub 的 getMouseX() = x - self.x（不含父層）
+    held                      按住中的鍵：held[Keyboard.KEY_X] = true（Keyboard.isKeyDown／GameKeyboard.isKeyDownRaw 讀它）
+    joy                       手把資料：joy[1] = { focus = nil } 表示玩家 0 用手把；joy[1] = nil＝鍵盤滑鼠
+    eatKey                    GameKeyboard.eatKeyPress 記下的鍵（nextFrame 會消化）
+    press(win, key)           依引擎順序派 press→isKeyConsumed→release→isKeyConsumed，回傳兩次 consumed
+    nextFrame(win, key)       下一幀模型（被 eat 就跳過）；回 true＝有一半漏給遊戲按鍵
+    newElement(absX, absY, scrollX?, scrollY?)   純繪製落點 stub（rects／borders／tex）
+    clipboard()               Clipboard.setClipboard 最後寫入的字串
+  共用全域 stub（切片直接用，不要改語意）：ISPanel（x/y/width/height、children＝childrenInOrder、
+    rects／borders／texts 繪製紀錄、_mouseOver 控 isMouseOver、stencil 計數、isReallyVisible 走父鏈）、
+    ISButton（pressed／enable／onclick、forceClick、updateTooltip 計 tooltipPasses）、ISTextEntryBox
+    （_text／_focused／_editable、setClearButton → _clearButton）、Keyboard.KEY_*、Joypad、GameKeyboard、
+    getText（回 "[key]"，忽略參數）、getTextManager（每位元組 10px、字高 12）、UIFont、getCore（1920×1080）、
+    getSpecificPlayer、getJoypadData／getJoypadFocus／setJoypadFocus。環境是 E0（無 NinePatchTexture）：
+    Skin.fill → drawRect、Skin.border → drawRectBorder。
+  切片缺的全域（getTextOrNull、ScriptManager、ISScrollingListBox…）自己在檔內補；暫時換掉的既有全域
+  （例如 getTextManager）用完還原。
+]]
+local rev11Ctx = {
+    check = check, nearly = nearly, UI = UI, MOD_LUA = MOD_LUA, TARGET = TARGET,
+    now = function() return nowMs end,
+    setNow = function(v) nowMs = v end,
+    advance = function(ms) nowMs = nowMs + ms end,
+    setMouse = function(x, y) mouseX, mouseY = x, y end,
+    held = held, joy = joy, eatKey = eatKey, press = press, nextFrame = nextFrame,
+    newElement = newElement,
+    clipboard = function() return clip end,
+}
+local sliceAssertions = 0
+for _, slice in ipairs({ "date", "table", "filter", "itempicker", "autocomplete" }) do
+    local path = "scripts/test_rev11_" .. slice .. ".lua"
+    local fh = io.open(path, "rb")
+    if not fh then
+        check(false, path .. " 不存在：rev 11 切片測試被刪或改名")
+    else
+        fh:close()
+        local before = assertionCount
+        local chunk, err = loadfile(path)
+        local ok, declared = false, err
+        if chunk then
+            ok, declared = pcall(chunk, rev11Ctx)
+        end
+        local ran = assertionCount - before
+        sliceAssertions = sliceAssertions + ran
+        if not ok then
+            failures = failures + 1
+            print("  FAIL  " .. path .. " 執行錯誤：" .. tostring(declared))
+        elseif declared ~= ran then
+            failures = failures + 1
+            print("  FAIL  " .. path .. " 斷言條數不符：宣告 " .. tostring(declared) .. "、實際 " .. ran)
+        end
+    end
+end
+
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 359
+-- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
+local EXPECTED_ASSERTIONS = 387
 print()
-if assertionCount ~= EXPECTED_ASSERTIONS then
-    print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount
+if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
+    print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)
         .. "（有測試被刪掉或跳過？）")
     os.exit(1)
 end

@@ -232,6 +232,20 @@ function Skin.dot(element, x, y, size, color, outline, alphaScale)
     end
 end
 
+-- 排序方向箭頭（rev 11）：ARROW_W×ARROW_H 的階梯三角形，逐列 drawRect——Icons 沒有 chevronUp，
+-- 這樣就不需要資產，也沒有缺圖退回的問題。up=true 為 ▲（升冪）。移植自 Economy drawArrow。
+Skin.ARROW_W = 7
+Skin.ARROW_H = 4
+
+function Skin.arrow(element, x, y, up, color, alphaScale)
+    local alpha = (color.a or 1) * (alphaScale or 1)
+    local fullW, rows = Skin.ARROW_W, Skin.ARROW_H
+    for i = 0, rows - 1 do
+        local w = up and (i * 2 + 1) or (fullW - i * 2)
+        element:drawRect(x + math.floor((fullW - w) / 2), y + i, w, 1, alpha, color.r, color.g, color.b)
+    end
+end
+
 local TOGGLE_OFF = { r = 0.25, g = 0.25, b = 0.25, a = 1 }
 local TOGGLE_ON = { r = 0.25, g = 0.65, b = 0.35, a = 1 }
 local TOGGLE_KNOB = { r = 1, g = 1, b = 1, a = 1 }
@@ -445,6 +459,10 @@ end
 -- MOD 自有 token（unread、rowHover…）由 create 的 colors 自帶，框架原樣收下。
 -- create() 逐 token 深拷貝——共享 default 永不被 mutate（NBSkin↔MiniMap 色票
 -- 複製分岔的根源就是「共用色票、各自持有可變引用」）。
+--
+-- theme.alpha（rev 11，選用數值，缺省視為 1）：consumer 的面板不透明度。只是約定欄位——
+-- ThemeProto:fill/border 不自動乘它（consumer 有刻意不吃不透明度的呼叫，例如模態遮罩、
+-- 不透明背板）。規則：框架元件畫 chrome（fill／border）時乘 `theme.alpha or 1`，文字與 icon 不乘。
 
 local Theme = {}
 
@@ -562,6 +580,66 @@ function Theme.create(opts)
 end
 
 -- ============================================================
+-- Text — 文字量測輔助（rev 11）
+-- ============================================================
+
+local Text = {}
+
+-- 字元模型：Kahlua 的 string.char 是 (char)num（StringLib.java:760-768），字串以 UTF-16
+-- code unit 為單位，char(256) 成功且 byte 回 256；標準 Lua（harness）是 UTF-8 位元組，char(256) 拋錯。
+local charOK, char256 = pcall(string.char, 256)
+local UTF16 = charOK and string.byte(char256) == 256
+local ELLIPSIS = "..."
+
+local function textWidth(font, str)
+    return getTextManager():MeasureStringX(font, str)
+end
+
+-- 放得下回原字串；否則回「最長前綴＋...」；maxW <= 0 或連 "..." 都放不下回 ""。
+-- 二分搜尋前綴長度（長字串只量 log2(n) 次），切點不切開 surrogate pair（UTF-16）／
+-- continuation byte（UTF-8）。font 預設 UIFont.Small。移植自 Economy U.fitText。
+function Text.fit(str, maxW, font)
+    str = str or ""
+    font = font or UIFont.Small
+    if maxW <= 0 then
+        return ""
+    end
+    if textWidth(font, str) <= maxW then
+        return str
+    end
+    if textWidth(font, ELLIPSIS) > maxW then
+        return ""
+    end
+    local low, high, best = 0, #str, ELLIPSIS
+    while low <= high do
+        local mid = math.floor((low + high) / 2)
+        local n = mid
+        if UTF16 then
+            local unit = n > 0 and string.byte(str, n) or 0
+            if unit >= 55296 and unit <= 56319 then -- 前綴結尾是 high surrogate：退一格
+                n = n - 1
+            end
+        else
+            while n > 0 do
+                local unit = string.byte(str, n + 1)
+                if not unit or unit < 128 or unit >= 192 then
+                    break
+                end
+                n = n - 1 -- 下一個位元組是 continuation：退到字元開頭
+            end
+        end
+        local cut = string.sub(str, 1, n) .. ELLIPSIS
+        if textWidth(font, cut) <= maxW then
+            best = cut
+            low = mid + 1
+        else
+            high = mid - 1
+        end
+    end
+    return best
+end
+
+-- ============================================================
 -- facade — 全部成功後才發布（本檔任何一處 error 都會讓 v1 從未存在）
 -- ============================================================
 
@@ -582,7 +660,10 @@ MinidoracatUI.v1 = {
     -- rev 10：Focus 鍵盤＋手把焦點引擎（Focus.lua，收編自 Economy ECKeyboard）；Window／Dialog 內建接線，
     --         控制元件 `_focusKind`、Checkbox:forceClick、Tabs:selectRelative／onFocusKey、
     --         Slider:onFocusKey、VirtualList 的 onHighlight／onKey
-    API_REVISION = 10,
+    -- rev 11：UI.Text.fit、Skin.arrow、Button 的 chip 樣式／setActive／自動截字與 tooltip、
+    --         TextField 可改尺寸與 clearButton、theme.alpha 乘在元件 chrome；新增 DatePicker／Table／
+    --         FilterBar／ItemPicker／Autocomplete 五個能力（收編自 Economy）
+    API_REVISION = 11,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -599,10 +680,16 @@ MinidoracatUI.v1 = {
         colorPicker = false, -- rev 8：ColorPicker（Widgets/Controls.lua）
         slider = false,   -- rev 9：Slider（Widgets/Controls.lua）
         focus = false,    -- rev 10：Focus（Focus.lua；Window／Dialog 缺它時照常，只是沒有鍵盤導覽與手把）
+        datePicker = false,   -- rev 11：UI.Date／DateField／DatePicker（Widgets/DatePicker.lua）
+        table = false,        -- rev 11：UI.Table／TableHeader（Widgets/Table.lua）
+        filterBar = false,    -- rev 11：UI.FilterBar（Widgets/FilterBar.lua）
+        itemPicker = false,   -- rev 11：UI.ItemPicker（Widgets/ItemPicker.lua）
+        autocomplete = false, -- rev 11：UI.Autocomplete（Widgets/Autocomplete.lua）
     },
     Theme = Theme,
     Skin = Skin,
     Icons = Icons,
+    Text = Text,
 }
 
 return MinidoracatUI.v1

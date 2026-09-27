@@ -46,6 +46,13 @@ local GRIP_SIZE = 12
 local TITLE_PAD = 8
 local TITLE_ICON = 16
 
+-- rev 11 theme.alpha：chrome（fill／border）乘它，文字與 icon 不乘（約定見 V1.lua Theme 段）。
+-- Dialog 的全螢幕遮罩刻意不乘（模態遮罩不隨面板變淡）。
+local function chromeAlpha(theme)
+    local a = theme.alpha
+    return type(a) == "number" and a or 1
+end
+
 -- ============================================================
 -- Window
 -- ============================================================
@@ -111,8 +118,9 @@ function Window:prerender()
     clampToScreen(self)
     local colors = self.theme.colors
     local w, titleH = self.width, self._titleH
-    Skin.fill(self, 0, 0, w, self.height, colors.surface)
-    Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, "roundTop")
+    local ca = chromeAlpha(self.theme)
+    Skin.fill(self, 0, 0, w, self.height, colors.surface, nil, ca)
+    Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, "roundTop", ca)
 
     local x = TITLE_PAD
     local textColor = colors.text
@@ -130,13 +138,14 @@ function Window:render()
         return
     end
     local colors = self.theme.colors
-    Skin.border(self, 0, 0, self.width, self.height, colors.border)
+    local ca = chromeAlpha(self.theme)
+    Skin.border(self, 0, 0, self.width, self.height, colors.border, nil, ca)
 
     if self.closable then
         local cx, cy, cw, ch = closeRect(self)
         local hovered = self:isMouseOver() and inClose(self, self:getMouseX(), self:getMouseY())
         if hovered then
-            Skin.fill(self, cx + 3, cy + 3, cw - 6, ch - 6, colors.hover)
+            Skin.fill(self, cx + 3, cy + 3, cw - 6, ch - 6, colors.hover, nil, ca)
         end
         local c = hovered and colors.text or colors.textMuted
         if not Icons.draw(self, "close", cx + math.floor((cw - CLOSE_ICON) / 2),

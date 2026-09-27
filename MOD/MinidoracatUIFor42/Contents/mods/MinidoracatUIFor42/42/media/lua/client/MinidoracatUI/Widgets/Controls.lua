@@ -12,6 +12,9 @@
 --     與滾輪（§3.9）；ColorPicker 組合 Slider＋TextField（§3.8）
 --   * rev 10：各元件帶 `_focusKind` 供 Focus 自動找目標（Button／Checkbox／Tabs／Slider＝button、
 --     TextField＝entry）；Checkbox:forceClick、Tabs／Slider:onFocusKey 讓鍵盤與手把操作
+--   * rev 11：chrome（fill／border）乘 `theme.alpha or 1`，文字與 icon 不乘；Button 加 chip 樣式、
+--     setActive／isActive、標題依寬度自動截字＋自動 tooltip；TextField 的 setWidth／setHeight 重排
+--     內層 entry、opts.clearButton
 --
 -- 共通契約（docs/ARCHITECTURE.md §3.7）：.new(opts) 回傳已 initialise() 的元素；
 -- opts.theme 省略＝UI.Theme.create()、opts.font 省略＝UIFont.Small；`internal` 欄位留給
@@ -30,7 +33,7 @@ if not ISTextEntryBox then
 end
 
 local UI = MinidoracatUI and MinidoracatUI.v1
-if not (UI and UI.API_MAJOR == 1 and UI.Skin and UI.Theme and UI.Icons)
+if not (UI and UI.API_MAJOR == 1 and UI.Skin and UI.Theme and UI.Icons and UI.Text)
     or not (ISPanel and ISButton and ISTextEntryBox) then
     return -- 核心或原生基底缺席：不掛能力（consumer 以 CAPABILITIES.controls 探測）
 end
@@ -61,13 +64,48 @@ local function drawColorText(el, text, x, y, color, alpha, font)
     el:drawText(text, x, y, color.r, color.g, color.b, (color.a or 1) * (alpha or 1), font)
 end
 
+-- rev 11 theme.alpha：chrome（fill／border）乘它，文字與 icon 不乘（約定見 V1.lua Theme 段）
+local function chromeAlpha(theme)
+    local a = theme.alpha
+    return type(a) == "number" and a or 1
+end
+
 -- ============================================================
 -- Button
 -- ============================================================
 
 local Button = ISButton:derive("MinidoracatUIButton")
 
-local STYLES = { normal = true, primary = true, danger = true, ghost = true }
+local STYLES = { normal = true, primary = true, danger = true, ghost = true, chip = true }
+
+-- 標題可用寬＝寬度減 12（同 Economy U.setButtonTitle），有 icon 再扣 icon＋間距
+local FIT_INSET = 12
+
+-- 標題或寬度變了才重算（每幀只比兩個值）。截到字時沒有手動 tooltip 就用全標題當 tooltip
+-- （_autoTip 標記是自己設的），寬度恢復後收掉；手動 tooltip 永不覆寫。
+local function refitTitle(btn)
+    local title, width = btn.title, btn.width
+    if title == btn._fitSrc and width == btn._fitWidth then
+        return
+    end
+    btn._fitSrc, btn._fitWidth = title, width
+    local avail = width - FIT_INSET
+    if btn.icon ~= nil and Icons.get(btn.icon) ~= nil then
+        avail = avail - ICON_SIZE - ICON_GAP
+    end
+    local fitted = UI.Text.fit(title, avail, btn.font)
+    btn._fitTitle = fitted
+    btn._fitW = fitted == title and btn._titleW or measure(btn.font, fitted)
+    if fitted ~= title then
+        if btn.tooltip == nil or btn._autoTip then
+            btn.tooltip = title
+            btn._autoTip = true
+        end
+    elseif btn._autoTip then
+        btn.tooltip = nil
+        btn._autoTip = nil
+    end
+end
 
 local function buttonWidth(btn)
     local width = btn._titleW + PAD_X * 2
@@ -81,6 +119,7 @@ function Button:prerender()
     if self.isCollapsed then
         return
     end
+    refitTitle(self)
     -- 原版 ISButton:prerender 在 :176 跑 tooltip；整段覆寫後自己呼叫。
     -- updateTooltip 只在 hover／搖桿焦點時才建 ISToolTip（ISButton.lua:316-346）。
     if self.tooltip or self.tooltipUI then
@@ -91,42 +130,60 @@ function Button:prerender()
     local w, h = self.width, self.height
     local enabled = self.enable
     local alpha = enabled and 1 or DISABLED_ALPHA
+    local ca = chromeAlpha(self.theme)
+    local chrome = alpha * ca
     local hovered = enabled and self:isMouseOver()
     local pressed = hovered and self.pressed
     local style = self.style
+    local shape = nil
     local textColor
 
     if style == "primary" then
-        Skin.fill(self, 0, 0, w, h, colors.accent, nil, alpha)
-        Skin.border(self, 0, 0, w, h, colors.accent, nil, alpha)
+        Skin.fill(self, 0, 0, w, h, colors.accent, nil, chrome)
+        Skin.border(self, 0, 0, w, h, colors.accent, nil, chrome)
         textColor = PRIMARY_TEXT
     elseif style == "danger" then
-        Skin.fill(self, 0, 0, w, h, colors.errorSurface, nil, alpha)
-        Skin.border(self, 0, 0, w, h, colors.errorText, nil, alpha)
+        Skin.fill(self, 0, 0, w, h, colors.errorSurface, nil, chrome)
+        Skin.border(self, 0, 0, w, h, colors.errorText, nil, chrome)
         textColor = colors.errorText
     elseif style == "ghost" then
         textColor = colors.text
+    elseif style == "chip" then
+        -- pill 太小時 Skin.fill／border 自己退直角（Skin.fits）；hover 底由本分支畫
+        shape = "pill"
+        if self._active then
+            Skin.fill(self, 0, 0, w, h, colors.selected, shape, chrome)
+            Skin.border(self, 0, 0, w, h, colors.accent, shape, chrome)
+            textColor = colors.accent
+        else
+            if hovered then
+                Skin.fill(self, 0, 0, w, h, colors.hover, shape, chrome)
+            end
+            Skin.border(self, 0, 0, w, h, colors.border, shape, chrome)
+            textColor = hovered and colors.text or colors.textMuted
+        end
     else
-        Skin.fill(self, 0, 0, w, h, colors.well, nil, alpha)
-        Skin.border(self, 0, 0, w, h, colors.border, nil, alpha)
+        Skin.fill(self, 0, 0, w, h, colors.well, nil, chrome)
+        Skin.border(self, 0, 0, w, h, colors.border, nil, chrome)
         textColor = colors.text
     end
     if pressed then
-        Skin.fill(self, 0, 0, w, h, colors.selected)
-    elseif hovered then
-        Skin.fill(self, 0, 0, w, h, colors.hover)
+        Skin.fill(self, 0, 0, w, h, colors.selected, shape, ca)
+    elseif hovered and style ~= "chip" then
+        Skin.fill(self, 0, 0, w, h, colors.hover, nil, ca)
     end
     if not enabled and style ~= "primary" then
         textColor = colors.textFaint
     end
     if self.joypadFocused then
-        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent)
+        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, nil, ca)
     end
 
+    local titleW = self._fitW
     local hasIcon = self.icon ~= nil and Icons.get(self.icon) ~= nil
-    local contentW = self._titleW
+    local contentW = titleW
     if hasIcon then
-        contentW = contentW + ICON_SIZE + (self._titleW > 0 and ICON_GAP or 0)
+        contentW = contentW + ICON_SIZE + (titleW > 0 and ICON_GAP or 0)
     end
     local x = math.floor((w - contentW) / 2)
     if hasIcon then
@@ -134,8 +191,8 @@ function Button:prerender()
             textColor, (textColor.a or 1) * alpha)
         x = x + ICON_SIZE + ICON_GAP
     end
-    if self._titleW > 0 then
-        drawColorText(self, self.title, x, math.floor((h - self._fontH) / 2), textColor, alpha, self.font)
+    if titleW > 0 then
+        drawColorText(self, self._fitTitle, x, math.floor((h - self._fontH) / 2), textColor, alpha, self.font)
     end
 end
 
@@ -176,7 +233,10 @@ function Button:isEnabled()
     return self.enable == true
 end
 
+-- 手動 tooltip 優先：之後截字不再覆寫；nil＝交回自動（下一幀依截字狀態重判）
 function Button:setTooltip(text)
+    self._autoTip = nil
+    self._fitSrc = nil
     if text == self.tooltip then
         return
     end
@@ -190,8 +250,19 @@ function Button:setStyle(style)
     self.style = style
 end
 
--- opts: x, y, width?, height?, title, icon?, style?, theme?, font?, target?, onClick?, tooltip?
+-- 只有 chip 樣式會畫出 active 狀態（selected 底、accent 框與字）
+function Button:setActive(active)
+    self._active = active == true
+end
+
+function Button:isActive()
+    return self._active == true
+end
+
+-- opts: x, y, width?, height?, title, icon?, style?（normal／primary／danger／ghost／chip）,
+-- active?, theme?, font?, target?, onClick?, tooltip?
 -- onClick(target, button)；disabled 時原生 onMouseUp 不觸發（ISButton.lua:45）。
+-- 標題放不下時自動截字（見 refitTitle），self.title 仍是全標題。
 function Button.new(opts)
     opts = opts or {}
     local font = opts.font or UIFont.Small
@@ -202,6 +273,7 @@ function Button.new(opts)
     o.theme = themeOf(opts)
     o.font = font
     o.icon = opts.icon
+    o._active = opts.active == true
     o.style = STYLES[opts.style] and opts.style or "normal"
     o.tooltip = opts.tooltip
     o._fontH = fontH
@@ -222,6 +294,17 @@ local TextField = ISPanel:derive("MinidoracatUITextField")
 
 local FIELD_PAD = 6
 local TEXTBOX_INSET = 2 -- UITextBox2.getInset() 無框時為 2（UITextBox2.java:547-550）
+
+-- 內層 entry 跟著外框：x＝FIELD_PAD、寬＝外框寬減兩側內距、垂直置中
+local function layoutEntry(field)
+    local entry = field._entry
+    if not entry then
+        return -- 建構中（entry 尚未建立）
+    end
+    entry:setX(FIELD_PAD)
+    entry:setWidth(field.width - FIELD_PAD * 2)
+    entry:setY(math.floor((field.height - entry.height) / 2))
+end
 
 -- 原生 entry 保持透明、無邊框：setEditable 會重設 borderColor（ISTextEntryBox.lua:64-71），
 -- 每次都要改回 alpha 0。prerender 裡 alpha 非 1 的分支畫 alpha 0 邊框＝不可見。
@@ -252,9 +335,10 @@ function TextField:prerender()
 
     local colors = self.theme.colors
     local alpha = self._enabled and 1 or DISABLED_ALPHA
+    local chrome = alpha * chromeAlpha(self.theme)
     local focused = entry:isFocused()
-    Skin.fill(self, 0, 0, self.width, self.height, colors.well, nil, alpha)
-    Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, nil, alpha)
+    Skin.fill(self, 0, 0, self.width, self.height, colors.well, nil, chrome)
+    Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, nil, chrome)
     if text == "" and not focused and self.placeholder then
         drawColorText(self, self.placeholder, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
             colors.textFaint, alpha, self.font)
@@ -281,6 +365,17 @@ function TextField:setText(text)
     end
     self._entry:setText(text)
     self._lastText = text
+end
+
+-- 外框改尺寸時內層 entry 一起重排（原版 setWidth／setHeight 只動外框）
+function TextField:setWidth(width)
+    ISPanel.setWidth(self, width)
+    layoutEntry(self)
+end
+
+function TextField:setHeight(height)
+    ISPanel.setHeight(self, height)
+    layoutEntry(self)
 end
 
 function TextField:focus()
@@ -316,8 +411,9 @@ function TextField:setTooltip(text)
     self._entry:setTooltip(text) -- 原生 prerender 負責 hover 顯示與收掉（ISTextEntryBox.lua:205-230）
 end
 
--- opts: x, y, width, height?, text?, placeholder?, theme?, font?, onlyNumbers?, maxLength?, onChange?
--- onChange(field, text)
+-- opts: x, y, width, height?, text?, placeholder?, theme?, font?, onlyNumbers?, maxLength?, clearButton?,
+-- onChange?。onChange(field, text)。clearButton＝原生輸入框右側的清除鈕（ISTextEntryBox.lua:101-103
+-- → UITextBox2.setClearButton:918）
 function TextField.new(opts)
     opts = opts or {}
     local font = opts.font or UIFont.Small
@@ -347,6 +443,9 @@ function TextField.new(opts)
     end
     if opts.maxLength then
         entry:setMaxTextLength(opts.maxLength)
+    end
+    if opts.clearButton then
+        entry:setClearButton(true)
     end
     o._entry = entry
     o._lastText = entry:getInternalText() or text
@@ -381,12 +480,13 @@ function Checkbox:prerender()
     end
     local colors = self.theme.colors
     local alpha = self._enabled and 1 or DISABLED_ALPHA
+    local ca = chromeAlpha(self.theme)
     if self._enabled and self:isMouseOver() then
-        Skin.fill(self, 0, 0, self.width, self.height, colors.hover)
+        Skin.fill(self, 0, 0, self.width, self.height, colors.hover, nil, ca)
     end
     -- toggle 幾何不足（height < 20）回 false：退回方框
-    if not Skin.toggle(self, 0, 0, TOGGLE_WIDTH, self.height, self.checked, self._toggleColors, alpha) then
-        drawFallbackBox(self, alpha, colors)
+    if not Skin.toggle(self, 0, 0, TOGGLE_WIDTH, self.height, self.checked, self._toggleColors, alpha * ca) then
+        drawFallbackBox(self, alpha * ca, colors)
     end
     drawColorText(self, self.label, TOGGLE_WIDTH + LABEL_GAP, math.floor((self.height - self._fontH) / 2),
         self._enabled and colors.text or colors.textFaint, 1, self.font)
@@ -526,8 +626,9 @@ function Tabs:prerender()
     end
     local colors = self.theme.colors
     local h = self.height
-    Skin.fill(self, 0, 0, self.width, h, colors.well)
-    Skin.border(self, 0, 0, self.width, h, colors.border)
+    local ca = chromeAlpha(self.theme)
+    Skin.fill(self, 0, 0, self.width, h, colors.well, nil, ca)
+    Skin.border(self, 0, 0, self.width, h, colors.border, nil, ca)
 
     local hovered = self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
     local textY = math.floor((h - self._fontH) / 2)
@@ -537,13 +638,13 @@ function Tabs:prerender()
         if item.visible then
             local textColor = colors.textMuted
             if item.id == self.selected then
-                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.selected)
+                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.selected, nil, ca)
                 local accent = colors.accent
                 self:drawRect(item.x + 6, h - TAB_INSET - 2, item.width - 12, 2,
-                    accent.a or 1, accent.r, accent.g, accent.b)
+                    (accent.a or 1) * ca, accent.r, accent.g, accent.b)
                 textColor = colors.text
             elseif item == hovered then
-                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.hover)
+                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.hover, nil, ca)
                 textColor = colors.text
             end
             drawColorText(self, item.label, item.x + math.floor((item.width - item.labelWidth) / 2),
@@ -683,7 +784,7 @@ function Slider:prerender()
     colors.track = (enabled and (self._drag or self:isMouseOver())) and tc.hover or tc.well
     local range = self.max - self.min
     local ratio = range > 0 and (self._value - self.min) / range or 0
-    Skin.slider(self, SLIDER_INSET, 0, self._trackW, self.height, ratio, colors, alpha)
+    Skin.slider(self, SLIDER_INSET, 0, self._trackW, self.height, ratio, colors, alpha * chromeAlpha(self.theme))
     if self._text then
         drawColorText(self, self._text, self._textX, self._textY, tc.text, alpha, self.font)
     end
@@ -980,22 +1081,24 @@ function ColorPicker:prerender()
     local colors = self.theme.colors
     local enabled = self._enabled
     local alpha = enabled and 1 or DISABLED_ALPHA
+    local chrome = alpha * chromeAlpha(self.theme)
     local hovered = enabled and self:isMouseOver() and swatchAt(self, self:getMouseX(), self:getMouseY()) or nil
     local swatches = self._swatches
     for i = 1, #swatches do
         local s = swatches[i]
+        -- 色塊與預覽是內容（使用者挑的顏色），不乘 theme.alpha；框線與選取環是 chrome
         Skin.fill(self, s.x, s.y, SWATCH, SWATCH, s, nil, alpha)
-        Skin.border(self, s.x, s.y, SWATCH, SWATCH, colors.border, nil, alpha)
+        Skin.border(self, s.x, s.y, SWATCH, SWATCH, colors.border, nil, chrome)
         if i == self._selected then
-            Skin.border(self, s.x - RING, s.y - RING, SWATCH + RING * 2, SWATCH + RING * 2, colors.accent, nil, alpha)
-            Skin.border(self, s.x - 1, s.y - 1, SWATCH + 2, SWATCH + 2, colors.accent, nil, alpha)
+            Skin.border(self, s.x - RING, s.y - RING, SWATCH + RING * 2, SWATCH + RING * 2, colors.accent, nil, chrome)
+            Skin.border(self, s.x - 1, s.y - 1, SWATCH + 2, SWATCH + 2, colors.accent, nil, chrome)
         elseif i == hovered then
-            Skin.border(self, s.x - RING, s.y - RING, SWATCH + RING * 2, SWATCH + RING * 2, colors.text, nil, alpha)
+            Skin.border(self, s.x - RING, s.y - RING, SWATCH + RING * 2, SWATCH + RING * 2, colors.text, nil, chrome)
         end
     end
     local px, py, pw, ph = self._previewX, self._hexY, self._previewW, self._hex.height
     Skin.fill(self, px, py, pw, ph, self._preview, nil, alpha)
-    Skin.border(self, px, py, pw, ph, colors.border, nil, alpha)
+    Skin.border(self, px, py, pw, ph, colors.border, nil, chrome)
     local labels = self._labels
     for i = 1, #labels do
         local l = labels[i]
