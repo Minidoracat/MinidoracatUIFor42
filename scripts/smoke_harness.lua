@@ -7,7 +7,7 @@
 - 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
-十七情境（docs/ARCHITECTURE.md §7）：
+十八情境（docs/ARCHITECTURE.md §7）：
 1. facade 半初始化——檔案中段注入 error，斷言 MinidoracatUI.v1 從未發布
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
@@ -16,7 +16,7 @@
 5. painters/assets——toggle／slider 幾何、色彩、alpha、缺資產退回與六十五個 icon key
 （6-8 為 widget：FloatButton／Toast／VirtualList；9-15 為 rev 7 控制元件：載入自檢／Button／
  TextField／Checkbox／Tabs／Window／Dialog；16 為 rev 8 ColorPicker（rev 9 起 R/G/B 為滑桿）；
- 17 為 rev 9 Slider）
+ 17 為 rev 9 Slider；18 為 rev 10 Focus 鍵盤＋手把焦點）
 ]]
 
 local V1_PATH = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/V1.lua"
@@ -518,6 +518,10 @@ function ISPanel.new(class, x, y, w, h)
     o.x, o.y, o.width, o.height = x, y, w, h
     o.visible = true
     o.children = {}
+    -- 忠於 ISUIElement.lua:1473-1474：原版 children 以 ID 為鍵、順序陣列是 childrenInOrder；
+    -- stub 只有陣列，兩個名稱指向同一份（Focus 走訪 childrenInOrder）
+    o.childrenInOrder = o.children
+    o.javaObject = {}
     o.stencil = { set = 0, clear = 0, repaint = 0 }
     o.rects, o.borders, o.texts = {}, {}, {}
     -- 忠於 ISUIElement.lua:1998 的預設：cell 若不清掉這個旗標就會吞滑鼠事件
@@ -554,7 +558,16 @@ function ISPanel:setCapture(v) self.captured = v end
 function ISPanel:isMouseOver() return self._mouseOver == true end
 function ISPanel:getMouseX() return mouseX - self.x end
 function ISPanel:getMouseY() return mouseY - self.y end
-function ISPanel:addChild(c) self.children[#self.children + 1] = c end
+function ISPanel:addChild(c) self.children[#self.children + 1] = c; c.parent = self end
+-- 忠於 ISUIElement.lua:690 起：自己與所有祖先都可見才算
+function ISPanel:isReallyVisible()
+    local e = self
+    while e do
+        if not e.visible then return false end
+        e = e.parent
+    end
+    return true
+end
 function ISPanel:removeChild(c)
     for i = #self.children, 1, -1 do
         if self.children[i] == c then table.remove(self.children, i) end
@@ -921,6 +934,11 @@ function ISButton:onMouseUp()
     end
 end
 function ISButton:onMouseUpOutside() self.pressed = false end
+-- 忠於 ISButton.lua:70-79：forceClick 檢查 visible＋enable，只呼叫一次 onclick
+function ISButton:forceClick()
+    if not self:getIsVisible() or not self.enable or self.onclick == nil then return end
+    self.onclick(self.target, self, self.onClickArgs[1], self.onClickArgs[2])
+end
 function ISButton:updateTooltip() self.tooltipPasses = (self.tooltipPasses or 0) + 1 end
 
 ISTextEntryBox = ISPanel:derive("ISTextEntryBox")
@@ -955,11 +973,11 @@ function ISTextEntryBox:setTooltip(t) self.tooltip = t end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 9, "API_REVISION 進到 9")
+    check(UI.API_REVISION == 10, "API_REVISION 進到 10")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
-        and UI.CAPABILITIES.slider == false,
-        "rev 7／8／9 能力在 widget 檔載入前誠實標 false")
+        and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false,
+        "rev 7／8／9／10 能力在 widget 檔載入前誠實標 false")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -1467,9 +1485,308 @@ do
     getTextManager = keepTextManager
 end
 
+-- ============================================================
+print("情境十八：rev 10 Focus（帳本／Tab 閱讀順序／Enter・Space／清單反白與啟動／分頁與滑桿／輸入框交接／手把接手與還原／Dialog／Ctrl+C）")
+-- ============================================================
+do
+    -- 鍵盤：可控按住狀態＋LWJGL 鍵碼（值只需互不相同）
+    local held = {}
+    Keyboard.KEY_TAB, Keyboard.KEY_SPACE, Keyboard.KEY_C = 15, 57, 46
+    Keyboard.KEY_UP, Keyboard.KEY_DOWN, Keyboard.KEY_LEFT, Keyboard.KEY_RIGHT = 200, 208, 203, 205
+    Keyboard.KEY_HOME, Keyboard.KEY_END, Keyboard.KEY_PRIOR, Keyboard.KEY_NEXT = 199, 207, 201, 209
+    Keyboard.KEY_LSHIFT, Keyboard.KEY_RSHIFT, Keyboard.KEY_LCONTROL, Keyboard.KEY_RCONTROL = 42, 54, 29, 157
+    Keyboard.isKeyDown = function(k) return held[k] == true end
+    Keyboard.next = function() return false end
+    local queue = {}
+    local eatKey = {}
+    GameKeyboard = { getEventQueue = function() return queue end, isKeyDownRaw = function(k) return held[k] == true end,
+        eatKeyPress = function(k) eatKey[k] = true end }
+    local clip = nil
+    Clipboard = { setClipboard = function(s) clip = s end }
+    function ISTextEntryBox:isEditable() return self._editable == true end
+    -- 手把：忠於 JoyPadSetup.lua:537-583 的焦點鏈（setJoypadFocus 推 prevfocus；不呼叫 gain／lose）
+    Joypad = { AButton = 0, BButton = 1, LBumper = 4, RBumper = 5 }
+    local joy = {}
+    getJoypadData = function(p) return joy[p + 1] end
+    getJoypadFocus = function(p) return joy[p + 1] and joy[p + 1].focus or nil end
+    setJoypadFocus = function(p, control)
+        local d = joy[p + 1]
+        if not d then return end
+        if control ~= nil and control ~= d.focus then
+            d.prevprevfocus = d.prevfocus
+            d.prevfocus = d.focus
+        end
+        d.focus = control
+    end
+
+    dofile(MOD_LUA .. "Focus.lua")
+    check(UI.CAPABILITIES.focus == true and UI.Focus ~= nil, "Focus 載入成功且 capability 翻 true")
+    dofile(MOD_LUA .. "Widgets/Window.lua") -- 重新載入：Window／Dialog 接上 Focus
+    local F, K = UI.Focus, Keyboard
+
+    -- 引擎派送順序（UIElement.java:2174-2219）：onKeyPress→isKeyConsumed；onKeyRelease→isKeyConsumed
+    local function press(win, key)
+        win:onKeyPress(key)
+        local consumed = win:isKeyConsumed(key)
+        win:onKeyRelease(key)
+        return consumed, win:isKeyConsumed(key)
+    end
+    -- 輸入框持有文字焦點時按鍵不進 UIManager，Tab 走輸入框的 onOtherKey（Core.java:2049-2053）
+    local function tab(win)
+        local e = F.focused()
+        if e and e.isFocused and e:isFocused() and e.onOtherKey then e.onOtherKey(e, K.KEY_TAB); return end
+        press(win, K.KEY_TAB)
+    end
+    -- 引擎時序（GameWindow.java:310,702-709；GameKeyboard.java:37-41,71-77）：輸入框的文字事件在幀尾處理，
+    -- 同一次按住下一幀才以取樣狀態派 press／release；被 eatKeyPress 吃掉就兩個都跳過（release 時清掉
+    -- 記號）。回 true＝有一半沒被視窗消耗，漏到遊戲按鍵（OnKeyStartPressed／OnKeyPressed）。
+    local function nextFrame(win, key)
+        if eatKey[key] then eatKey[key] = nil; return false end
+        local pc, rc = press(win, key)
+        return not (pc and rc)
+    end
+
+    local clicks, selects, highlights, picks = 0, {}, {}, {}
+    local win = UI.Window.new{ x = 0, y = 0, width = 400, height = 300, title = "T" }
+    local tabs = UI.Tabs.new{ x = 10, y = 30, selected = "a", target = TARGET,
+        onSelect = function(_, id) picks[#picks + 1] = id end,
+        items = { { id = "a", label = "A" }, { id = "b", label = "B" } } }
+    local search = UI.TextField.new{ x = 200, y = 30, width = 150 }
+    local list = UI.VirtualList.new{ x = 10, y = 70, width = 150, height = 200, rowHeight = 20,
+        createCell = function() return ISPanel.new(ISPanel, 0, 0, 1, 1) end, bindCell = function() end,
+        onSelect = function(_, item) selects[#selects + 1] = item end,
+        onHighlight = function(_, item) highlights[#highlights + 1] = item end,
+        onKey = function(_, key) return key == K.KEY_LEFT end }
+    list:initialise()
+    list:setItems({ "r1", "r2", "r3" })
+    local ok = UI.Button.new{ x = 170, y = 80, title = "OK", target = TARGET, onClick = function() clicks = clicks + 1 end }
+    local other = UI.Button.new{ x = 260, y = 80, title = "Other" }
+    local box = UI.Checkbox.new{ x = 170, y = 120, label = "Auto" }
+    local hidden = UI.Button.new{ x = 170, y = 160, title = "Hidden" }
+    hidden:setVisible(false)
+    local slider = UI.Slider.new{ x = 170, y = 200, width = 100, min = 0, max = 10, step = 1, value = 5 }
+    for _, c in ipairs({ other, ok, list, search, tabs, box, hidden, slider }) do win:addChild(c) end
+    win:addToUIManager()
+
+    local order = {}
+    for i = 1, 7 do tab(win); order[i] = F.focused() end
+    check(order[1] == tabs and order[2] == search._entry and order[3] == list and order[4] == ok
+        and order[5] == other and order[6] == box and order[7] == slider,
+        "Tab 依閱讀順序走框架控制項（由上而下、同列由左而右），隱藏的不算")
+    check(not search._entry:isFocused(), "離開輸入框時交還原生文字焦點")
+    local a, b = F.collectTargets(win), F.collectTargets(win)
+    check(a == b and a[1] == b[1], "自動目標重用同一組 table（Focus.render 每幀呼叫不配置）")
+    local pc, rc = press(win, K.KEY_TAB)
+    check(pc and rc and not win:isKeyConsumed(K.KEY_TAB), "Tab 的 press 與 release 都消耗，按住結束後不再認領")
+    check(F.focused() == tabs, "最後一個再按 Tab 繞回第一個")
+    held[K.KEY_LSHIFT] = true
+    press(win, K.KEY_TAB)
+    held[K.KEY_LSHIFT] = nil
+    check(F.focused() == slider, "Shift+Tab 往回走（修飾鍵以原始按住狀態讀）")
+
+    F.focusControl(search._entry, true)
+    check(search._entry:isFocused(), "鍵盤落在輸入框時交出原生文字焦點（可直接打字）")
+    held[K.KEY_TAB] = true
+    search._entry.onOtherKey(search._entry, K.KEY_TAB)
+    nextFrame(win, K.KEY_TAB)
+    held[K.KEY_TAB] = nil
+    check(F.focused() == list and not search._entry:isFocused(),
+        "在輸入框裡按 Tab 只走一格：輸入框放手後，下一幀同一次按住不會再以 press 多走一格")
+    F.focusControl(search._entry, true)
+    search._entry.onOtherKey(search._entry, K.KEY_TAB) -- 引擎取樣前就放開的極短點按
+    check(F.focused() == list and eatKey[K.KEY_TAB] == nil,
+        "極短點按不請引擎吞鍵（沒有 release 清掉記號，會吞掉玩家下一次 Tab）")
+    F.focusControl(search._entry, true)
+    held[K.KEY_RETURN] = true
+    search._entry:onCommandEntered()
+    nextFrame(win, K.KEY_RETURN)
+    held[K.KEY_RETURN] = nil
+    check(F.focused() == search._entry and not search._entry:isFocused() and eatKey[K.KEY_NUMPADENTER] == nil,
+        "輸入框內 Enter 放手後，同一次按住不會把它重新聚焦；沒按的另一個 Enter 不被吞")
+
+    F.focusControl(ok, true)
+    local enterConsumed = press(win, K.KEY_RETURN)
+    check(clicks == 1 and enterConsumed, "焦點框在按鈕上時 Enter 按下一次並消耗（不漏給聊天）")
+    F.focusControl(box, true)
+    press(win, K.KEY_SPACE)
+    check(box:getChecked() == true, "Space 切換開關（Checkbox:forceClick，與點擊同一路徑）")
+    -- 目標清單是動態的：焦點下的按鈕被移出清單（仍看得見）就不再是目標
+    F.focusControl(ok, true)
+    local before = clicks
+    local only = { { kind = "button", control = other } }
+    win.keyboardTargets = function() return only end
+    press(win, K.KEY_RETURN)
+    win.keyboardTargets = nil
+    check(clicks == before and F.focused() == other,
+        "焦點下的按鈕被移出目標清單（仍看得見）：Enter 不按它，焦點框移到清單裡的目標")
+
+    F.focusControl(list, true)
+    list:setSelectedIndex(1)
+    press(win, K.KEY_DOWN)
+    check(list:getSelectedIndex() == 2 and highlights[1] == "r2" and #selects == 0,
+        "清單方向鍵只移動反白並呼叫 onHighlight，不觸發 onSelect")
+    press(win, K.KEY_RETURN)
+    check(#selects == 1 and selects[1] == "r2", "清單上的 Enter 呼叫 onSelect（與點擊同一個，只一次）")
+    local leftConsumed = press(win, K.KEY_LEFT)
+    check(leftConsumed and F.focused() == list, "清單的 onKey 先拿到按鍵（例如樹狀收合）")
+    -- 引擎在按住的每一幀都派 repeat（GameKeyboard.java:61-64）：80ms 的點按在 240 FPS 下是 20 次
+    list:setSelectedIndex(1)
+    win:onKeyPress(K.KEY_DOWN)
+    for _ = 1, 20 do nowMs = nowMs + 4; win:onKeyRepeat(K.KEY_DOWN) end
+    check(list:getSelectedIndex() == 2, "點一下方向鍵只走一列（自動重複延遲內每幀的 repeat 不動）")
+    for _ = 1, 100 do nowMs = nowMs + 4; win:onKeyRepeat(K.KEY_DOWN) end
+    win:onKeyRelease(K.KEY_DOWN)
+    win:isKeyConsumed(K.KEY_DOWN)
+    check(list:getSelectedIndex() == 3, "按住超過自動重複延遲後繼續往下走")
+
+    F.focusControl(tabs, true)
+    press(win, K.KEY_RIGHT)
+    check(picks[#picks] == "b", "分頁列上的右鍵切到下一頁")
+    F.focusControl(slider, true)
+    press(win, K.KEY_RIGHT)
+    check(slider:getValue() == 6, "滑桿上的右鍵加一步")
+
+    local esc1 = press(win, K.KEY_ESCAPE)
+    check(esc1 and F.focused() == nil, "焦點框亮著時 Esc 收掉焦點框並消耗")
+    local enter2 = press(win, K.KEY_RETURN)
+    local esc2 = press(win, K.KEY_ESCAPE)
+    check(not enter2 and not esc2, "沒有焦點框時 Enter／Esc 不消耗（聊天與暫停選單照常）")
+    tab(win)
+    win:onFocus()
+    check(not F.isKeyboardFocused(F.focused()), "滑鼠按進視窗（onFocus）時不畫焦點框")
+
+    -- 兩個 root：作用中的是最後開啟／點擊的那個，背景視窗不搶按鍵
+    local reader = ISPanel.new(ISPanel, 10, 30, 100, 40)
+    reader.getInternalText = function() return "hello" end
+    local win2 = UI.Window.new{ x = 0, y = 0, width = 200, height = 100, title = "R" }
+    win2:addChild(reader)
+    win2.keyboardTargets = function() return { { kind = "scroll", control = reader } } end
+    win2:addToUIManager()
+    check(not press(win, K.KEY_TAB), "另一個視窗作用中時，背景視窗不消耗 Tab")
+    press(win2, K.KEY_TAB)
+    local lastToast = nil
+    local keepShow = UI.Toast.show
+    UI.Toast.show = function(o) lastToast = o.message end
+    held[K.KEY_LCONTROL] = true
+    press(win2, K.KEY_C)
+    held[K.KEY_LCONTROL] = nil
+    UI.Toast.show = keepShow
+    check(clip == "hello" and lastToast == "[IGUI_MinidoracatUI_Copied]", "Ctrl+C 複製唯讀文字並以框架通知回報")
+    win2:setVisible(false)
+
+    -- 手把：開窗接手、方向移動、A 啟動、LB 切頁、B 關窗還原
+    local prev = ISPanel.new(ISPanel, 0, 0, 10, 10)
+    joy[1] = { player = 0, focus = prev }
+    win:setVisible(false)
+    win:setVisible(true)
+    check(getJoypadFocus(0) == win and F.focused() == tabs and F.isKeyboardFocused(tabs),
+        "用手把的玩家開窗：接手手把焦點、焦點框落在第一個目標")
+    win:onJoypadDirDown(joy[1])
+    check(F.focused() == search._entry and not search._entry:isFocused(),
+        "手把移到輸入框時不交出鍵盤文字焦點（改由 A 開螢幕鍵盤）")
+    win:onJoypadDirDown(joy[1])
+    list:setSelectedIndex(1)
+    win:onJoypadDirDown(joy[1])
+    check(F.focused() == list and list:getSelectedIndex() == 2, "清單上手把往下移動反白")
+    local asked, selected = false, #selects
+    list.onKey = function(_, key)
+        if key == K.KEY_RETURN then asked = true; return true end
+        return key == K.KEY_LEFT
+    end
+    win:onJoypadDown(Joypad.AButton, joy[1])
+    check(asked and #selects == selected, "手把 A 先問控制項的 onFocusKey（同鍵盤 Enter）：自訂 Enter 的清單不改走 onSelect")
+    list:setSelectedIndex(3)
+    win:onJoypadDirDown(joy[1])
+    check(F.focused() == ok, "清單到底再往下：移到下一個目標")
+    win:onJoypadDown(Joypad.AButton, joy[1])
+    check(clicks == 2, "手把 A 按下焦點下的按鈕（只一次）")
+    win:onJoypadDown(Joypad.LBumper, joy[1])
+    check(picks[#picks] == "a", "手把 LB 切到上一頁")
+    win:onJoypadDown(Joypad.BButton, joy[1])
+    check(not win:getIsVisible() and getJoypadFocus(0) == prev and joy[1].prevfocus == nil,
+        "手把 B 關窗，焦點還給開窗前的元件、prevfocus 鏈還原")
+    prev:setVisible(false)
+    win:setVisible(true)
+    win:onJoypadDown(Joypad.BButton, joy[1])
+    check(getJoypadFocus(0) == nil, "開窗前的元件已隱藏：關窗後焦點還給角色，不卡在看不見的 UI")
+    -- 螢幕鍵盤借著焦點時視窗被別的事件關掉（ISTextEntryBox.lua:304-309、ISOnScreenKeyboard.lua:452-468）
+    local oskShown = false
+    local osk = {}
+    function osk.hide(self)
+        oskShown = false
+        if self.textEntryBox then self.textEntryBox:focus() end
+        joy[1].focus = self.prevFocus or self.textEntryBox
+    end
+    OnScreenKeyboard = { instance = osk, IsVisible = function() return oskShown end }
+    local anchor = ISPanel.new(ISPanel, 0, 0, 10, 10)
+    joy[1].focus = anchor
+    win:setVisible(true)
+    oskShown, osk.prevFocus, osk.textEntryBox = true, joy[1].focus, search._entry
+    joy[1].focus = osk
+    search._entry:unfocus()
+    win:setVisible(false)
+    OnScreenKeyboard = nil
+    check(not oskShown and getJoypadFocus(0) == anchor and not search._entry:isFocused(),
+        "螢幕鍵盤開著時視窗被關：鍵盤一起關、手把焦點還給開窗前的元件、不聚焦看不見的輸入框")
+    local holder = ISPanel.new(ISPanel, 0, 0, 50, 50)
+    local inner = ISPanel.new(ISPanel, 0, 0, 10, 10)
+    holder:addChild(inner)
+    joy[1].focus = inner
+    win:setVisible(true)
+    holder:setVisible(false)
+    win:onJoypadDown(Joypad.BButton, joy[1])
+    check(getJoypadFocus(0) == nil, "開窗前的焦點所在視窗已隱藏（元件自己仍標可見）：關窗後焦點還給角色")
+
+    local results = {}
+    local function record(okv) results[#results + 1] = okv end
+    win:setVisible(true)
+    F.focusControl(ok, true) -- 焦點框在「開啟對話框」的按鈕上
+    -- 原版 addToUIManager 只排進 toAdd、下一次 UIManager.update 才進清單（UIManager.java:111-116,501-505）：
+    -- 開窗那一幀原生 isReallyVisible 對整個新視窗都答 false（UIElement.java:1798-1805）
+    local keepReal = ISPanel.isReallyVisible
+    ISPanel.isReallyVisible = function() return false end
+    local dlg = UI.Dialog.show{ title = "Q", text = "Sure?", confirmText = "Yes", cancelText = "No", onResult = record }
+    ISPanel.isReallyVisible = keepReal
+    check(getJoypadFocus(0) == dlg and F.focused() == dlg._confirm,
+        "對話框接手手把焦點，預設在「確認」（開窗那一幀還沒進 UIManager 清單也一樣）")
+    dlg:onJoypadDown(Joypad.AButton, joy[1])
+    check(#results == 1 and results[1] == true and getJoypadFocus(0) == win, "A 確認只回呼一次，焦點還給原視窗")
+    win:onJoypadDirDown(joy[1])
+    check(F.focused() == ok, "手把關掉對話框後，下一次輸入把焦點框放回開啟它的按鈕（不從第一個目標重走）")
+    dlg = UI.Dialog.show{ title = "Q", text = "Sure?", confirmText = "Yes", cancelText = "No", onResult = record }
+    dlg:onJoypadDown(Joypad.BButton, joy[1])
+    check(results[2] == false and getJoypadFocus(0) == win, "B 取消並把焦點還給原視窗")
+
+    joy[1] = nil -- 鍵盤滑鼠玩家
+    dlg = UI.Dialog.show{ title = "Q", text = "Sure?", confirmText = "Yes", cancelText = "No", onResult = record }
+    press(dlg, K.KEY_TAB)
+    check(F.focused() == dlg._cancel, "對話框裡 Tab 依閱讀順序先到「取消」")
+    dlg:onKeyPress(K.KEY_RETURN)
+    dlg:onKeyRelease(K.KEY_RETURN)
+    check(results[3] == false, "焦點框在「取消」時 Enter 按取消，不是確認")
+    dlg = UI.Dialog.show{ title = "Q", text = "Sure?", confirmText = "Yes", cancelText = "No", onResult = record }
+    dlg:onKeyPress(K.KEY_RETURN)
+    dlg:onKeyRelease(K.KEY_RETURN)
+    check(results[4] == true, "沒有焦點框時 Enter 仍是確認")
+    dlg = UI.Dialog.show{ title = "Q", text = "Name?", confirmText = "Yes", cancelText = "No",
+        onResult = record, input = { text = "x" } }
+    F.render(dlg) -- 每幀 render 替畫面上的輸入框掛勾（observe）
+    held[K.KEY_RETURN] = true
+    dlg._input._entry:onCommandEntered()
+    local leaked = nextFrame(win, K.KEY_RETURN)
+    held[K.KEY_RETURN] = nil
+    check(results[5] == true and not leaked, "對話框輸入框按 Enter 確認後，同一次 Enter 不漏給後面的視窗與遊戲按鍵")
+    F.focusControl(ok, true)
+    dlg = UI.Dialog.show{ title = "Q", text = "Sure?", confirmText = "Yes", cancelText = "No", onResult = record }
+    dlg:onKeyPress(K.KEY_ESCAPE)
+    dlg:onKeyRelease(K.KEY_ESCAPE)
+    press(win, K.KEY_TAB)
+    check(results[6] == false and F.focused() == ok, "鍵盤關掉對話框後，第一次 Tab 回到開啟它的按鈕")
+end
+
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
-local EXPECTED_ASSERTIONS = 313
+local EXPECTED_ASSERTIONS = 359
 print()
 if assertionCount ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. assertionCount

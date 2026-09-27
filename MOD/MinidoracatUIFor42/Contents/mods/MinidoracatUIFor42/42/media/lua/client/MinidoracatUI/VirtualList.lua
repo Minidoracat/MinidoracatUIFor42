@@ -358,11 +358,23 @@ function VirtualList:render()
     end
 end
 
+-- rev 10：Focus 目標（`_focusKind = "list"`）。鍵盤方向鍵／手把上下移動反白時呼叫 onHighlight；
+-- Enter／A 呼叫 onSelect（與滑鼠按下同一個）；onKey 先拿到焦點框上的按鍵（例如樹狀清單左右展開）。
+function VirtualList:onFocusKey(key)
+    if not self.onKey then
+        return false
+    end
+    local index = self.selectedIndex
+    return self.onKey(self, key, index and self.items[index] or nil, index) == true
+end
+
 -- opts:
 --   x, y, width, height（必填）、rowHeight（必填）、padding（列間距，預設 0）、
 --   createCell(list)->cell（必填；回傳 ISUIElement 衍生，尺寸由框架管）、
 --   bindCell(list, cell, item, index)（必填）、unbindCell(list, cell)（可選）、
---   onSelect(list, item, index)（可選）、
+--   onSelect(list, item, index)（可選：滑鼠按下、鍵盤 Enter、手把 A）、
+--   onHighlight(list, item, index)（可選，rev 10：鍵盤／手把移動反白）、
+--   onKey(list, key, item, index) → true（可選，rev 10：焦點框上的按鍵，先於預設處理）、
 --   colors = { thumb, thumbHover, track }（可選，color tables）
 function VirtualList.new(opts)
     local o = ISPanel.new(VirtualList, opts.x, opts.y, opts.width, opts.height)
@@ -377,6 +389,9 @@ function VirtualList.new(opts)
     o.bindCell = opts.bindCell
     o.unbindCell = opts.unbindCell
     o.onSelect = opts.onSelect
+    o.onHighlight = opts.onHighlight
+    o.onKey = opts.onKey
+    o._focusKind = "list"
     o.colors = opts.colors or {}
     o.pool = {}
     return o

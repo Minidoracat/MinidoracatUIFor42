@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 9,          -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）
+    API_REVISION = 10,         -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -62,6 +62,7 @@ MinidoracatUI.v1 = {
         dialog       = false,  -- rev 7：Dialog（Widgets/Window.lua，另需 controls 載入成功）
         colorPicker  = false,  -- rev 8：ColorPicker（Widgets/Controls.lua，與 controls 同檔）
         slider       = false,  -- rev 9：Slider（Widgets/Controls.lua，與 controls 同檔）
+        focus        = false,  -- rev 10：Focus（Focus.lua；Window／Dialog 缺它時照常，只是沒有鍵盤導覽與手把）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider），adapter 直接取用（§3.3）
@@ -69,7 +70,7 @@ MinidoracatUI.v1 = {
     -- 以下由 widget 檔在載入成功後掛上（對應 CAPABILITIES 旗標同時翻 true）：
     -- FloatButton／Toast／VirtualList（v0.2／v0.3）
     -- Button／TextField／Checkbox／Tabs（rev 7，controls）、Window（rev 7，window）、Dialog（rev 7，dialog）、
-    -- ColorPicker（rev 8，colorPicker）、Slider（rev 9，slider）
+    -- ColorPicker（rev 8，colorPicker）、Slider（rev 9，slider）、Focus（rev 10，focus）
 }
 ```
 
@@ -112,7 +113,8 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop；同上 |
 | `VirtualList.lua` | v0.3 | 垂直固定列高虛擬清單（§3.5） |
 | `Widgets/Controls.lua` | rev 7（rev 8／9 擴充） | Button／TextField／Checkbox／Tabs（§3.7）＋ColorPicker（§3.8）＋Slider（§3.9）；載入失敗只影響 `CAPABILITIES.controls`／`colorPicker`／`slider` |
-| `Widgets/Window.lua` | rev 7 | Window／Dialog（§3.7）；開頭自行 `pcall(require, "MinidoracatUI/Widgets/Controls")`，Controls 缺席時只提供 Window、`dialog` 維持 false |
+| `Widgets/Window.lua` | rev 7（rev 10 擴充） | Window／Dialog（§3.7）；開頭自行 `pcall(require, "MinidoracatUI/Widgets/Controls")` 與 `"MinidoracatUI/Focus"`，Controls 缺席時只提供 Window、`dialog` 維持 false；Focus 缺席時沒有鍵盤導覽與手把 |
+| `Focus.lua` | rev 10 | 鍵盤＋手把焦點引擎（§3.10）；需要原生 `Keyboard`，缺席時 `CAPABILITIES.focus` 維持 false |
 
 載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
 `MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
@@ -300,6 +302,32 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **互動**：按在 track（含兩端半顆 knob）＝跳到該值並開始拖曳，`setCapture(true)` 讓拖出元件外仍收 move／up（原生派送見 `UIElement.java:1077,1240-1242,1300`），放開 `setCapture(false)`；按在值文字區不反應。滾輪往上（`del < 0`，同 `ISScrollingListBox.lua:353`）＋step、往下 −step。`onChange` 只在值實際改變時呼叫（拖曳中每次變化一次）。
 - **disabled**：`setEnabled(false)` 後按下與滾輪都不回應（滾輪回 false 讓父層捲動）；拖曳中停用立即解除 capture。
 
+### 3.10 Focus 鍵盤＋手把焦點（API rev 10）
+
+`MinidoracatUI/Focus.lua`，`UI.Focus`（`CAPABILITIES.focus`）。收編自 Economy 的 `ECKeyboard`（原 Economy 17 個頁面使用，行為與出處註解逐項保留），再把手把接到同一份焦點狀態。一個 session 一套引擎；焦點框同時只屬於一個 root。
+
+| 面 | API | 說明 |
+|---|---|---|
+| 目標描述 | `root:keyboardTargets()` → `{ {kind, control|controls, label, focusable?, copyAll?, frame?, scrollOwner?}, ... }` 或 `nil` | kind＝group／button／entry／combo／list／scroll；`nil`＝此刻不給鍵盤（模態框蓋住）。框架 Window 預設 `Focus.collectTargets(self)`：視窗內可見、帶 `_focusKind` 的元件依閱讀順序（由上而下、上緣差不超過較矮者一半視為同列、同列由左而右）；同一 `_focusGroup` 且連續者併成 group。每個 root 重用同一組陣列與描述 table（`Focus.render` 每幀呼叫，不配置） |
+| 鍵盤 hooks | `onKeyPress／onKeyRepeat／onKeyRelease／isKeyConsumed(root, key)`、`onFocus(root)`、`render(root, theme)` | 派送與消耗帳本見 `Focus.lua` 檔頭出處；Tab／Shift+Tab 走描述、方向鍵在組內或清單內、Enter／Space 啟動、Home／End／PgUp／PgDn 捲動、Ctrl+C 複製唯讀文字（框架通知 `IGUI_MinidoracatUI_Copied`／`CopyFailed`）、Esc 先問 `root:onEscape()` 再收焦點框。沒有焦點框時只認 Tab：Enter、Esc、方向鍵照常給遊戲（聊天、暫停選單、角色）。方向鍵按住照作業系統節奏自動重複：引擎在按住的每一幀都派 repeat、沒有延遲（`GameKeyboard.java:61-64`），所以先等 400ms、之後每 60ms 動一步，點一下只走一格 |
+| 手把 hooks | `onJoypadDown(root, button, data)`、`onJoypadDir(root, "up"|"down"|"left"|"right", data)` | A＝Enter（先問控制項 `onFocusKey(KEY_RETURN)`，順序同鍵盤；輸入框改開原版螢幕鍵盤）、B＝`onEscape`→收下拉→`root:close()`、LB／RB＝`root:onFocusShoulder(delta)`；方向先交控制項 `onFocusKey`／清單上下／組內左右，沒處理（含清單到邊）就移到上／下一個目標 |
+| 手把焦點 | `takeJoypad(root, playerNum)`、`releaseJoypad(root)`、`holdsJoypad(root)` | 開窗時玩家在用手把（`getJoypadData` 非 nil）才接手，記住原焦點；關窗只在仍持有時還原，原焦點已不在畫面上（原生 `isReallyVisible`，含祖先與 UIManager）就還給角色；螢幕鍵盤借著焦點時 root 被關，鍵盤改還給同一個對象、放掉它的輸入框並一起關掉（`ISTextEntryBox.lua:304-309`、`ISOnScreenKeyboard.lua:452-468`），prevfocus 鏈同 `setPrevFocusForPlayer` 還原（家族踩坑錄「手把焦點不是單一指標」）。沒有 `keyboardTargets` 的元件（popup）只借走手把焦點，不動焦點框 |
+| 公開工具 | `eat／consumed／release`、`pressed(key)／repeatDue(key)`、`modifiers()`、`step`、`focusControl(control, showRing)`、`refocus`、`focused`、`isKeyboardFocused`、`invalidate(root)`、`blurInputs`、`clear`、`close`、`drawRing(el, x, y, w, h, theme)`、`drawCaption(...)`、`collectTargets(root)` | 名稱與語意同原 `ECKeyboard`；`pressed`／`repeatDue` 給自己接 `onKeyRepeat` 的元件（root 開的 popup）用同一套自動重複節奏；`render`／`drawRing` 的 theme 缺省取 `root.theme`，再缺用框架預設 |
+
+**控制元件接點**：Button／Checkbox／Tabs／Slider 的 `_focusKind="button"`、TextField 的 `_focusKind="entry"`（聚焦內層原生 entry，框畫在外框）、VirtualList 的 `_focusKind="list"`；`Checkbox:forceClick()`、`Tabs:selectRelative(delta)`／`onFocusKey`（左右換頁，不循環）、`Slider:onFocusKey`（左右 ±step、Home／End）、`VirtualList` 新 opts `onHighlight(list, item, index)`（方向鍵移動反白；`onSelect` 仍只給點擊、Enter、A）與 `onKey(list, key, item, index)`（先拿到焦點框上的按鍵，例如樹狀清單展開）。consumer 自繪元件標 `_focusKind`（＋`forceClick`、選用 `_focusGroup`／`_focusLabel`）即可加入自動目標。
+
+**輸入框交接的漏鍵**：輸入框的 Tab／Enter 由引擎在幀尾交給 `onOtherKey`／`onCommandEntered`（`GameWindow.java:702-709`、`Core.java:2044-2053`），`GameKeyboard` 下一幀才以取樣狀態派同一次按住（`GameWindow.java:310`）。輸入框在回呼裡放開鍵盤後，那次按住就變成新的 press 到 root：Tab 多走一格、Enter 把剛放手的輸入框又聚焦回去，視窗已關時（Dialog 輸入框按 Enter 確認）漏給後面的視窗與遊戲。勾子在放手後對仍按著的鍵呼叫 `GameKeyboard.eatKeyPress`（同引擎對 Escape 的 `Core.java:2049-2050` 與原版 `MapSpawnSelect.lua:950`），press 與 release 一起吞；引擎沒取樣到的極短點按不吞，否則記號沒有 release 可清，會改吞玩家的下一次按鍵。
+
+**目標驗證**：每次按鍵與每幀 render 都核對焦點下的控制項仍在 `keyboardTargets()` 裡而且可用；不在（疊層、權限、頁面切換把它排除，即使它還看得見）就用 `invalidate` 搬到同位置的替補，那一次的 Enter／Space／手把 A 只讓玩家看到新位置，不按替補的控制項。
+
+**焦點框回到觸發者**：另一個 root 接手（`onFocus`／`takeJoypad`）前記住目前 root 的焦點框；回到這個 root 後的第一次 Tab 或手把輸入先回到那個控制項，不從第一個目標重走（詳情、確認框、外觀視窗關掉後接著操作）。root 隱藏、失去鍵盤或 `clear` 時忘記；控制項已不在畫面上就照常從頭走。
+
+**可見判定**：目標要自己可見、仍掛在父元件上、父元件也一樣（同 `UIElement.java:1798-1805`），但不要求頂層已在 UIManager 清單——`addToUIManager` 只排進 `toAdd`，下一次 `UIManager.update` 才加入（`UIManager.java:111-116,501-505`），開窗同一段程式裡原生 `isReallyVisible()` 對整個新視窗都答 false，手把接手與 Dialog 預設「確認」會落空。原生答 true 直接用（每幀路徑），答 false 才沿 Lua 父鏈重判。
+
+**Window／Dialog 接線**：Window 是 root（class 方法轉發全部 hooks、`render` 最後畫焦點框、`setWantKeyEvents(true)`），`setVisible`／`addToUIManager` 顯示時 `onFocus`＋`takeJoypad(win, 0)`、隱藏時 `releaseJoypad`＋`clear`；LB／RB 切換視窗內第一個分頁列。Dialog 的 Enter／Esc 配對邏輯不變，焦點框在其他按鈕上時 Enter 按那一顆；手把玩家開啟時焦點預設在「確認」。Focus 缺席（舊框架或載入失敗）時 Window／Dialog 照常，只是沒有鍵盤導覽與手把。
+
+**非目標**：不攔截沒有焦點框時的遊戲按鍵；不做全域熱鍵；按鍵消耗只擋 UI／Lua key 事件，不擋以按住狀態判斷的角色移動（`GameKeyboard.java:96-134`），所以導覽鍵選方向鍵與 Tab，不佔 WASD。
+
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
 | # | NeatUI 事實 | 本框架對應決策 |
@@ -325,6 +353,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 | API rev 7 Modern Controls（**開發中**） | Button／TextField／Checkbox／Tabs／Window／Dialog（§3.7） | harness 情境九～十五驗證載入自檢、disabled／silent／單次回呼等邊界；VehicleManager 車隊視窗接用並遊戲內實測後定版 |
 | API rev 8 車輛圖示＋ColorPicker（**開發中**） | 16 個車輛／標記 art key（§3.6）、ColorPicker（§3.8） | 圖示由 AI 原圖匯入、`verify_mod.py` 逐張把關並由 `test_icon_import.py` 重現出貨檔；harness 情境十六驗證色卡／滑桿／hex 單次回呼、互相同步不重複回呼、非法 hex 不變與 silent；VehicleManager 地圖車輛標記接用並遊戲內實測後定版 |
 | API rev 9 Slider（**開發中**） | `UI.Slider`（§3.9）；ColorPicker 的 R/G/B 改用滑桿（公開面不變） | harness 情境十七驗證量化夾限、點擊跳值單次回呼、拖曳 setCapture 成對、同值不觸發、silent、滾輪步進、disabled 不回應與 format 寬度只量一次；VehicleManager 地圖外觀視窗圖示大小接用並遊戲內實測後定版 |
+| API rev 10 Focus（**開發中**） | `UI.Focus`（§3.10）：鍵盤＋手把焦點；Window／Dialog 內建接線、控制元件焦點接點 | harness 情境十八驗證 Tab 閱讀順序與隱藏排除、輸入框交接、帳本消耗、Enter／Space／清單反白與啟動、分頁與滑桿、沒有焦點框時不攔鍵、手把接手／移動／A／LB／B 還原與隱藏原焦點、Dialog 手把與鍵盤、Ctrl+C、自動目標不配置；Economy 改用本引擎、VehicleManager 車隊視窗以真鍵盤與手把 hook 實機驗證後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -353,6 +382,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
   - rev 7 控制元件：facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false；Button 自動寬度、disabled 不觸發與四種樣式；TextField 每幀變化只觸發一次、setText 靜默、placeholder；Checkbox silent；Tabs 點選中項不觸發與隱藏重排；Window 拖曳、clamp、縮放下限、關閉鈕與 ISLayoutManager 存讀；Dialog 單次回呼、移除 guard、Enter／Esc 配對與同時只有一個。原生 ISButton／ISTextEntryBox 以忠於原版語意的最小 stub 驅動。
   - rev 8／9 ColorPicker：原生基底缺席時 `colorPicker` 維持 false；點色卡、拖滑桿、合法 hex 各只回呼一次且互相同步不重複回呼、非法 hex／空白不變、`setColor` silent 同步滑桿／相同值 no-op、disabled 色卡與滑桿不回應、getColor 回拷貝。
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
+  - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

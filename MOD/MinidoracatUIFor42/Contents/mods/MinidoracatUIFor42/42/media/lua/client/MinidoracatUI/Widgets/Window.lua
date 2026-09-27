@@ -6,12 +6,18 @@
 -- 以 funcs.SaveLayout/RestoreLayout(target, name, layout) 呼叫（ISLayoutManager.lua:6-13,99-113），
 -- 所以 Window 的同名方法即可直接當 funcs 傳入。
 --
+-- rev 10：Window 是 Focus 的 root（MinidoracatUI/Focus.lua）——鍵盤 Tab／方向鍵／Enter 與手把
+-- 方向鍵／A／B／LB／RB 操作視窗內的框架控制項；預設目標依閱讀順序自動找（keyboardTargets 可覆寫）。
+-- 顯示時若玩家正用手把就接手手把焦點，隱藏時還原原本的焦點。
+--
 -- Dialog 取代 ISModalDialog：全螢幕吃滑鼠的 guard＋置中 Window；結果回呼只呼叫一次。
 -- Enter／Esc 走原生 key 事件（setWantKeyEvents＋isKeyConsumed/onKeyRelease，同原版
--- ISBuildWindow.lua:16-21,355；UIElement.java:2174-2217），不 monkeypatch。
+-- ISBuildWindow.lua:16-21,355；UIElement.java:2174-2217），不 monkeypatch。手把 A＝焦點下的按鈕
+-- （預設「確認」）、B＝取消。
 --
 -- 載入順序：Dialog 依賴 Controls 的 Button／TextField——本檔開頭自行 pcall require，
--- 不靠檔名排序。Controls 缺席時 Window 照常提供，只有 CAPABILITIES.dialog 維持 false。
+-- 不靠檔名排序。Controls 缺席時 Window 照常提供，只有 CAPABILITIES.dialog 維持 false；
+-- Focus 缺席時 Window／Dialog 照常，只是沒有鍵盤導覽與手把。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
     pcall(require, "MinidoracatUI/V1")
@@ -25,6 +31,10 @@ end
 if not (UI.Button and UI.TextField) then
     pcall(require, "MinidoracatUI/Widgets/Controls")
 end
+if not UI.Focus then
+    pcall(require, "MinidoracatUI/Focus")
+end
+local Focus = UI.Focus
 
 local Skin = UI.Skin
 local Icons = UI.Icons
@@ -146,6 +156,9 @@ function Window:render()
             end
         end
     end
+    if Focus then
+        Focus.render(self, self.theme) -- 子元件之後畫：焦點框蓋在它標示的控制項上
+    end
 end
 
 -- ===== 拖曳／縮放（setCapture 五件套：拖出視窗外仍收 Move/Up）=====
@@ -221,6 +234,76 @@ function Window:close()
     end
 end
 
+-- ===== 焦點（rev 10）：Window 是 Focus 的 root =====
+
+-- 預設目標：視窗內可見的框架控制項，依閱讀順序（consumer 可在實例上覆寫 keyboardTargets）
+function Window:keyboardTargets()
+    return Focus and Focus.collectTargets(self) or nil
+end
+
+function Window:onKeyPress(key) if Focus then Focus.onKeyPress(self, key) end end
+function Window:onKeyRepeat(key) if Focus then Focus.onKeyRepeat(self, key) end end
+function Window:onKeyRelease(key) if Focus then Focus.onKeyRelease(self, key) end end
+function Window:isKeyConsumed(key) return Focus ~= nil and Focus.isKeyConsumed(self, key) end
+function Window:onFocus() if Focus then Focus.onFocus(self) end end
+
+function Window:onJoypadDown(button, joypadData) if Focus then Focus.onJoypadDown(self, button, joypadData) end end
+function Window:onJoypadDirUp(joypadData) if Focus then Focus.onJoypadDir(self, "up", joypadData) end end
+function Window:onJoypadDirDown(joypadData) if Focus then Focus.onJoypadDir(self, "down", joypadData) end end
+function Window:onJoypadDirLeft(joypadData) if Focus then Focus.onJoypadDir(self, "left", joypadData) end end
+function Window:onJoypadDirRight(joypadData) if Focus then Focus.onJoypadDir(self, "right", joypadData) end end
+
+-- 手把斷線（JoyPadSetup.lua onJoypadBeforeDeactivate 轉給目前焦點）：還原焦點、收掉焦點框
+function Window:onJoypadBeforeDeactivate(joypadData)
+    if Focus then
+        Focus.releaseJoypad(self)
+        Focus.clear(self)
+    end
+end
+
+-- 手把 LB／RB：切換視窗內第一個分頁列
+function Window:onFocusShoulder(delta)
+    local list = self:keyboardTargets()
+    if type(list) ~= "table" then return end
+    for i = 1, #list do
+        local c = list[i].control
+        if type(c) == "table" and c.selectRelative then
+            c:selectRelative(delta)
+            return
+        end
+    end
+end
+
+-- 顯示／加入 UIManager 時成為作用中的 root（下一次 Tab 屬於它），玩家用手把就接手手把焦點；
+-- 隱藏時還原原本的手把焦點並收掉焦點框與輸入框的文字焦點
+local function onShown(win)
+    if Focus then
+        Focus.onFocus(win)
+        Focus.takeJoypad(win, 0)
+    end
+end
+
+function Window:setVisible(visible)
+    local was = self.javaObject ~= nil and self:getIsVisible()
+    ISPanel.setVisible(self, visible)
+    if was == (visible == true) then
+        return
+    end
+    if visible then
+        onShown(self)
+    elseif Focus then
+        Focus.releaseJoypad(self)
+        Focus.clear(self)
+    end
+end
+
+function Window:addToUIManager()
+    ISPanel.addToUIManager(self)
+    if self:getIsVisible() then
+        onShown(self)
+    end
+end
+
 -- ===== ISLayoutManager 相容（RegisterWindow(name, UI.Window, win)）=====
 
 function Window:SaveLayout(name, layout)
@@ -271,6 +354,9 @@ local function newWindow(class, opts)
     o.onResize = opts.onResize
     o._fontH = fontH
     o._titleH = math.max(24, fontH + 10)
+    if Focus then
+        o:setWantKeyEvents(true) -- 只有 top-level 會收到 key 事件（UIManager.java:1435-1466）
+    end
     o:initialise()
     return o
 end
@@ -425,12 +511,15 @@ end
 
 local DialogWindow = Window:derive("MinidoracatUIDialog")
 
--- 按下與放開配對才算：避免「consumer 在 Enter 按下時開窗、放開瞬間就被確認」
+-- 按下與放開配對才算：避免「consumer 在 Enter 按下時開窗、放開瞬間就被確認」。
+-- 其他鍵交給 Focus（Tab 在按鈕與輸入框之間走）。
 function DialogWindow:onKeyPress(key)
     if key == KEY_ESCAPE then
         self._escDown = true
     elseif key == KEY_ENTER or key == KEY_NUMPAD_ENTER then
         self._enterDown = true
+    elseif Focus then
+        Focus.onKeyPress(self, key)
     end
 end
 
@@ -438,14 +527,25 @@ function DialogWindow:onKeyRelease(key)
     if key == KEY_ESCAPE and self._escDown then
         finish(self, false)
     elseif (key == KEY_ENTER or key == KEY_NUMPAD_ENTER) and self._enterDown then
-        finish(self, true)
+        -- 焦點框在某顆按鈕上（例如 Tab 到「取消」）時 Enter 按那一顆；沒有焦點框＝確認
+        local c = Focus and Focus.root == self and Focus.focused() or nil
+        if c ~= nil and c ~= self._confirm and Focus.isKeyboardFocused(c) and c.forceClick then
+            c:forceClick()
+        else
+            finish(self, true)
+        end
+    elseif Focus then
+        Focus.onKeyRelease(self, key)
     end
 end
 
 -- 關閉後仍須消耗同一個 key（UIElement.java:2211-2213 先 onKeyRelease 再 isKeyConsumed），
 -- 否則同一個 Esc 會再關掉後面的視窗——不看 visible
 function DialogWindow:isKeyConsumed(key)
-    return key == KEY_ESCAPE or key == KEY_ENTER or key == KEY_NUMPAD_ENTER
+    if key == KEY_ESCAPE or key == KEY_ENTER or key == KEY_NUMPAD_ENTER then
+        return true
+    end
+    return Focus ~= nil and Focus.isKeyConsumed(self, key)
 end
 
 function Dialog.close(dialog, ok)
@@ -549,6 +649,10 @@ function Dialog.show(opts)
     current = dialog
     if dialog._input then
         dialog._input:focus()
+    end
+    -- 手把玩家（addToUIManager 已接手焦點）：焦點預設在「確認」，A＝確認、B＝取消
+    if Focus and Focus.holdsJoypad(dialog) then
+        Focus.focusControl(confirm, true)
     end
     return dialog
 end

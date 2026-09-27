@@ -10,6 +10,8 @@
 --     （pz-family-docs pitfalls.md UI 節）
 --   * Checkbox 用 Skin.toggle 畫開關；Tabs 為分段式頁籤列；Slider 用 Skin.slider 畫、自接拖曳
 --     與滾輪（§3.9）；ColorPicker 組合 Slider＋TextField（§3.8）
+--   * rev 10：各元件帶 `_focusKind` 供 Focus 自動找目標（Button／Checkbox／Tabs／Slider＝button、
+--     TextField＝entry）；Checkbox:forceClick、Tabs／Slider:onFocusKey 讓鍵盤與手把操作
 --
 -- 共通契約（docs/ARCHITECTURE.md §3.7）：.new(opts) 回傳已 initialise() 的元素；
 -- opts.theme 省略＝UI.Theme.create()、opts.font 省略＝UIFont.Small；`internal` 欄位留給
@@ -204,6 +206,7 @@ function Button.new(opts)
     o.tooltip = opts.tooltip
     o._fontH = fontH
     o._titleW = measure(font, title)
+    o._focusKind = "button"
     o._autoWidth = opts.width == nil
     -- ISButton:new 會把過窄的寬度撐到標題寬＋10（ISButton.lua:493-495）；明示寬度以 consumer 為準
     o.width = opts.width or buttonWidth(o)
@@ -329,6 +332,7 @@ function TextField.new(opts)
     o.onChange = opts.onChange
     o._enabled = true
     o:initialise()
+    o._focusKind = "entry" -- Focus 以內層原生 entry 聚焦，焦點框畫在本元件外框
 
     local text = opts.text or ""
     local entryH = fontH + TEXTBOX_INSET * 2
@@ -409,6 +413,13 @@ function Checkbox:getChecked()
     return self.checked
 end
 
+-- 鍵盤 Enter／Space、手把 A（Focus 的 activate）：與點擊同一條路徑，disabled 不動
+function Checkbox:forceClick()
+    if self._enabled then
+        self:setChecked(not self.checked)
+    end
+end
+
 function Checkbox:setChecked(checked, silent)
     checked = checked == true
     if checked == self.checked then
@@ -450,6 +461,7 @@ function Checkbox.new(opts)
     o.target = opts.target
     o.onChange = opts.onChange
     o._enabled = true
+    o._focusKind = "button"
     o._fontH = fontH
     local colors = o.theme.colors
     -- 建構時一次組好（prerender 不配置）；knob 省略＝Skin 預設白
@@ -562,6 +574,30 @@ function Tabs:getSelected()
     return self.selected
 end
 
+-- 往前／後切到下一個可見頁籤（不循環；手把 LB／RB 與焦點框上的左右鍵）。回 true＝有切換
+function Tabs:selectRelative(delta)
+    local items = self._items
+    local at = nil
+    for i = 1, #items do
+        if items[i].id == self.selected then at = i end
+    end
+    local i = (at or 0) + delta
+    while i >= 1 and i <= #items do
+        if items[i].visible then
+            self:setSelected(items[i].id)
+            return true
+        end
+        i = i + delta
+    end
+    return false
+end
+
+function Tabs:onFocusKey(key)
+    if key == Keyboard.KEY_LEFT then return self:selectRelative(-1) or true end
+    if key == Keyboard.KEY_RIGHT then return self:selectRelative(1) or true end
+    return false
+end
+
 -- 隱藏選中項不自動切換（由 consumer 決定）
 function Tabs:setItemVisible(id, visible)
     local item = findItem(self, id)
@@ -606,6 +642,7 @@ function Tabs.new(opts)
             visible = true, x = 0, width = 0 }
     end
     o.selected = opts.selected
+    o._focusKind = "button"
     layoutTabs(o)
     o:initialise()
     return o
@@ -731,6 +768,25 @@ function Slider:isEnabled()
     return self._enabled
 end
 
+-- 焦點框上的左右鍵（手把方向同）±step、Home／End 到兩端；disabled 不吃，讓焦點移開
+function Slider:onFocusKey(key)
+    if not self._enabled then
+        return false
+    end
+    if key == Keyboard.KEY_LEFT then
+        self:setValue(self._value - self.step)
+    elseif key == Keyboard.KEY_RIGHT then
+        self:setValue(self._value + self.step)
+    elseif key == Keyboard.KEY_HOME then
+        self:setValue(self.min)
+    elseif key == Keyboard.KEY_END then
+        self:setValue(self.max)
+    else
+        return false
+    end
+    return true
+end
+
 -- opts: x, y, width, height?, min, max, step?, value?, theme?, font?, target?, onChange?, format?
 -- onChange(target, value, slider)：值實際改變才呼叫。format(value) → string：有給就在右側畫值，
 -- 文字寬以 format(max) 建構時量一次並從 track 扣掉。
@@ -760,6 +816,7 @@ function Slider.new(opts)
     o.target = opts.target
     o.onChange = opts.onChange
     o.format = opts.format
+    o._focusKind = "button"
     o._enabled = true
     local textW = 0
     if o.format then

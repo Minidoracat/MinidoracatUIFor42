@@ -579,13 +579,16 @@ MinidoracatUI.v1 = {
     --        Window／Dialog（Widgets/Window.lua）
     -- rev 8：16 個車輛／地圖標記 art icon key＋ColorPicker（Widgets/Controls.lua）
     -- rev 9：Slider（Widgets/Controls.lua）；ColorPicker 的 R/G/B 改為滑桿（公開面不變）
-    API_REVISION = 9,
+    -- rev 10：Focus 鍵盤＋手把焦點引擎（Focus.lua，收編自 Economy ECKeyboard）；Window／Dialog 內建接線，
+    --         控制元件 `_focusKind`、Checkbox:forceClick、Tabs:selectRelative／onFocusKey、
+    --         Slider:onFocusKey、VirtualList 的 onHighlight／onKey
+    API_REVISION = 10,
     CAPABILITIES = {
         theme = true,
         skin = true,
         icons = true, -- 資產缺失時 Icons.get/draw 自行回 nil/false，不影響本旗標
         -- 以下由各 widget 檔載入成功後翻 true（Widgets/FloatButton.lua、Widgets/Toast.lua、
-        -- VirtualList.lua、Widgets/Controls.lua、Widgets/Window.lua 檔尾）——widget 檔壞掉
+        -- VirtualList.lua、Widgets/Controls.lua、Widgets/Window.lua、Focus.lua 檔尾）——widget 檔壞掉
         -- 只影響對應能力，Theme/Skin 不受牽連；consumer 一律以 capability 探測
         floatButton = false,
         toast = false,
@@ -595,6 +598,7 @@ MinidoracatUI.v1 = {
         dialog = false,   -- rev 7：Dialog（另需 controls 載入成功）
         colorPicker = false, -- rev 8：ColorPicker（Widgets/Controls.lua）
         slider = false,   -- rev 9：Slider（Widgets/Controls.lua）
+        focus = false,    -- rev 10：Focus（Focus.lua；Window／Dialog 缺它時照常，只是沒有鍵盤導覽與手把）
     },
     Theme = Theme,
     Skin = Skin,
