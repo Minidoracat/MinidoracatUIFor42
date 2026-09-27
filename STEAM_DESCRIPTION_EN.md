@@ -20,7 +20,9 @@ This mod [b]does not add any gameplay content by itself[/b] — it is a base lib
 [*] [b]Rounded skin[/b]: engine-native 9-slice rounded rendering with a safe rectangular fallback when textures are missing — windows never fail to open
 [*] [b]Shared widgets[/b]: floating button (drag + position memory), toast notifications (shared stack across mods)
 [*] [b]Shared painters[/b]: stateless pill, toggle, and slider visuals that dependent mods can compose without replacing their interaction logic; missing textures safely fall back to basic shapes
-[*] [b]Shared icons[/b]: 20 monochrome line icons (sidebar, folder, document, expand/collapse, search, layers, pin, globe, lock, close, locate, copy, etc.) plus 13 solid silhouettes (house, skull, paw print, steering wheel and chicken/cow/pig/sheep/deer/rabbit/raccoon/rodent/turkey), tinted to match the active palette; callers fall back to their text markers when an icon asset is missing
+[*] [b]Shared icons[/b]: 20 monochrome line icons (sidebar, folder, document, expand/collapse, search, layers, pin, globe, lock, close, locate, copy, etc.) plus solid silhouettes (house, skull, paw print, steering wheel, 9 animals, 12 vehicles and star/heart/flag/crown map markers), tinted to match the active palette; callers fall back to their text markers when an icon asset is missing
+[*] [b]Modern windows and controls[/b]: rounded windows (drag, resize, remembered position), confirm dialogs, buttons, text fields, toggles, tabs, sliders, a color picker, plus date picker, sortable table, filter bar, item picker and autocomplete suggestions
+[*] [b]Keyboard and controller support[/b]: Tab / arrow keys move between controls and Enter activates; controller players can drive windows with the D-pad, A/B and LB/RB, with the on-screen keyboard for text fields
 [*] [b]Virtual list[/b]: large tables (trading/auction-style UIs) only build visible rows
 [*] [b]Versioned API[/b]: dependent mods declare the API revision they need, so library updates never silently break them
 [/list]
