@@ -3,57 +3,34 @@
 
 [hr][/hr]
 
-[h2]✨ これは何？[/h2]
-Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカラーパレット（ダーク／ライト）、角丸ウィンドウスキン、共用モノクロアイコン、フローティングボタン、トースト通知などの共用コンポーネントを提供します。
+Minidoracat シリーズ共用の[b]前提 UI ライブラリ[/b]です。これ自体は[b]ゲーム内容を追加しません[/b]。見える効果はすべて依存する MOD によるものです。
 
-この MOD は[b]それ自体ではゲーム内容を一切追加しません[/b]。他の MOD が利用する基盤ライブラリであり、実際の効果は依存する MOD 次第です。
-
-[h2]👥 誰が必要？[/h2]
+[h2]📦 必要な人[/h2]
+次の MOD が本 MOD を必須アイテム（Required Items）に指定しています。どれかを使うならサブスクライブしてください：
 [list]
-[*] 他の MOD が必須アイテム（Required Items）に指定している場合のみ購読してください
-[*] 依存する MOD がなければ無効のままで構いません
-[/list]
-
-[h2]🧰 提供機能（MOD 開発者向け）[/h2]
-[list]
-[*] [b]テーマシステム[/b]：トークン化パレット、ダーク／ライト両対応、MOD ごとに上書き可能
-[*] [b]角丸スキン[/b]：エンジンネイティブ 9-slice 描画、テクスチャ欠損時は直角描画へ安全にフォールバック
-[*] [b]共用ウィジェット[/b]：フローティングボタン（ドラッグ＋位置記憶）、トースト通知（MOD 間で共有スタック）
-[*] [b]共用描画パーツ[/b]：依存 MOD の操作ロジックを置き換えずに組み合わせられる、ステートレスなピル・トグル・スライダー外観。テクスチャ欠損時も基本形状へ安全にフォールバックします
-[*] [b]共用アイコン[/b]：20 種のモノクロ線画アイコン（サイドバー、フォルダ、ドキュメント、開閉、検索、レイヤー、ピン、地球、ロック、閉じる、位置特定、コピーなど）＋塗りつぶしシルエット（家、ドクロ、足跡、ハンドル、動物 9 種、車両 12 種、星／ハート／旗／王冠のマップマーカー）。配色に合わせて着色され、アイコン素材が無い場合は呼び出し側が文字表示へフォールバックします
-[*] [b]モダンなウィンドウとコントロール[/b]：角丸ウィンドウ（ドラッグ・リサイズ・位置記憶）、確認ダイアログ、ボタン、入力欄、トグル、タブ、スライダー、カラーピッカー、さらに日付選択、ソート可能な表、フィルターバー、アイテム選択、入力候補
-[*] [b]キーボード・コントローラー操作[/b]：Tab／矢印キーでコントロール間を移動し Enter で決定。コントローラーでは十字キー・A／B・LB／RB で操作でき、入力欄ではスクリーンキーボードを開きます
-[*] [b]仮想リスト[/b]：大量の表（取引・オークション系 UI）は可視行のみ生成
-[*] [b]バージョン管理 API[/b]：依存 MOD が必要な API リビジョンを宣言でき、更新で壊れません
-[/list]
-
-[h2]⚠️ ロード順[/h2]
-この MOD は[b]依存するすべての MOD より前[/b]に読み込む必要があります（MOD リストで上に配置）。
-
-[h2]🖥️ マルチプレイ／専用サーバー[/h2]
-サーバー ini の両方に追加してください：
-[list]
-[*] [b]Mods=[/b] MinidoracatUIFor42
-[*] [b]WorkshopItems=[/b] 3789836701
-[/list]
-
-[h2]🔗 MOD シリーズ[/h2]
-[list]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]（MOD Maps、Zones、MOD Compatibility などミニマップのアドオンは MiniMap を通じて間接的に必要）
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
 [/list]
+これらを使わない場合は有効にする必要はありません。Build 42.20.1 以降、シングル・マルチ両対応です。
 
-[h2]📋 MOD 情報[/h2]
-[list]
-[*] [b]Workshop ID:[/b] 3789836701
-[*] [b]Mod ID:[/b] MinidoracatUIFor42
-[*] [b]対応バージョン:[/b] Build 42.20.1+
-[*] [b]シングル / マルチ:[/b] 両対応
-[/list]
+[h2]🖥️ ロード順とマルチプレイ設定[/h2]
+MOD リストでは[b]依存するすべての MOD より前[/b]に配置してください。マルチではサーバーとクライアント両方に導入し、サーバー ini に [b]Mods=[/b]MinidoracatUIFor42 と [b]WorkshopItems=[/b]3789836701 を追加します。
 
-[h2]💬 フィードバック[/h2]
+[h2]⚠️ 不具合の報告先[/h2]
+このページはライブラリ本体のみを扱います。マップが表示されない、機能がおかしい、エラーが出るといった場合は[b]その MOD のページ[/b]で報告してください（例：ミニマップで MOD マップが表示されない → MiniMap または MOD Maps のページ）。他の作者の MOD のエラーはその作者へお願いします。どの MOD か分からないときは、console.txt を添えて Discord でご相談ください。
+
+🛠️ [b]MOD 開発者向け：[/b]テーマパレット、角丸スキン、共用アイコン、ウィンドウとコントロール、仮想リスト、バージョン管理 API の説明とソースは [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url] にあります。
+
+[h2]🔗 Minidoracat の MOD 一覧[/h2]
+すべての MOD を[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat 全シリーズ コレクション[/url]にまとめています。必要なものを選んでサブスクライブしてください。
+
+[h2]💬 フィードバック＆コミュニティ[/h2]
 [list]
-[*] [url=https://discord.gg/Gur2V67]Discord コミュニティ[/url]
+[*] [url=https://github.com/Minidoracat/MinidoracatUIFor42/issues]GitHub Issues[/url]
+[*] [url=https://discord.gg/Gur2V67]Discord[/url]
 [/list]
 
 [h2]☕ 作者を応援[/h2]
@@ -62,3 +39,6 @@ Minidoracat シリーズ MOD 共用の UI ライブラリです。テーマカ�
 [url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url] [url=https://github.com/Minidoracat/MinidoracatUIFor42][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_github.png[/img][/url]
 
 [b]#Minidoracat[/b]
+
+Workshop ID: 3789836701
+Mod ID: MinidoracatUIFor42

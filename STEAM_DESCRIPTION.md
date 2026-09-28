@@ -3,57 +3,34 @@
 
 [hr][/hr]
 
-[h2]✨ 這是什麼[/h2]
-Minidoracat 系列 MOD 共用的 UI 函式庫：主題色票（深色／淺色）、圓角視窗皮膚、共用單色圖示、浮動按鈕與 Toast 通知等共用元件。
+Minidoracat 系列 MOD 共用的[b]前置介面函式庫[/b]。本身[b]不新增遊戲內容[/b]，畫面效果都來自依賴它的 MOD。
 
-本 MOD [b]不會自己新增任何遊戲內容[/b]——它是給其他 MOD 用的底層函式庫，實際效果取決於依賴它的 MOD。
-
-[h2]👥 誰需要訂閱[/h2]
+[h2]📦 誰需要安裝[/h2]
+下列 MOD 把本 MOD 列為必要項目（Required Items），有用到其中任何一個就要訂閱：
 [list]
-[*] 只有當你訂閱的其他 MOD 把本 MOD 列為必要項目（Required Items）時才需要
-[*] 沒有任何 MOD 依賴它時，可以不啟用
-[/list]
-
-[h2]🧰 提供的功能（給 MOD 開發者）[/h2]
-[list]
-[*] [b]主題系統[/b]：token 化色票，深色／淺色雙色系，各 MOD 可覆蓋自訂
-[*] [b]圓角皮膚[/b]：引擎原生 9-slice 圓角繪製，貼圖缺失自動退回直角，不會讓視窗開不了
-[*] [b]共用元件[/b]：浮動按鈕（拖曳＋位置記憶）、Toast 通知（多 MOD 共用堆疊不重疊）
-[*] [b]共用外觀元件[/b]：提供不接管互動狀態的膠囊、切換開關與滑條外觀，讓依賴的 MOD 組合出一致介面；貼圖缺失時仍可安全退回基本形狀
-[*] [b]共用圖示[/b]：20 個單色線條圖示（側邊欄、資料夾、文件、展開收合、搜尋、圖層、釘選、地球、鎖定、關閉、定位、複製等）＋實心剪影圖示（房屋、骷髏、爪印、方向盤、9 種動物、12 款車輛與星星／愛心／旗子／皇冠地圖標記），隨介面配色染色；圖示缺失時自動退回文字顯示
-[*] [b]現代視窗與控制元件[/b]：圓角視窗（拖曳、縮放、記住位置）、確認對話框、按鈕、輸入框、切換開關、分頁列、滑桿、取色器，以及日期選擇、可排序表格、篩選列、物品挑選與輸入候選
-[*] [b]鍵盤與手把操作[/b]：Tab／方向鍵在控制元件之間移動、Enter 按下；手把玩家開窗即可用方向鍵、A／B 與 LB／RB 操作，輸入框開螢幕鍵盤
-[*] [b]虛擬清單[/b]：大量表列（交易、拍賣類介面）只建可見列，效能不隨資料量下降
-[*] [b]版本化 API[/b]：依賴的 MOD 可宣告需要的 API 版本，避免升級互踩
-[/list]
-
-[h2]⚠️ 載入順序[/h2]
-本 MOD 必須排在[b]所有依賴它的 MOD 之前[/b]載入（在 mod 清單中放前面即可）。
-
-[h2]🖥️ 多人伺服器設定[/h2]
-伺服器 ini 兩處都要加：
-[list]
-[*] [b]Mods=[/b] MinidoracatUIFor42
-[*] [b]WorkshopItems=[/b] 3789836701
-[/list]
-
-[h2]🔗 MOD 系列[/h2]
-[list]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]（MOD Maps、Zones、MOD Compatibility 等小地圖附加包透過它間接需要）
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
 [/list]
+沒有用到這些 MOD 時不需要啟用。支援 Build 42.20.1 以上，單機與多人皆可。
 
-[h2]📋 MOD 資訊[/h2]
-[list]
-[*] [b]Workshop ID:[/b] 3789836701
-[*] [b]Mod ID:[/b] MinidoracatUIFor42
-[*] [b]支援版本:[/b] Build 42.20.1+
-[*] [b]單人 / 多人:[/b] 皆支援
-[/list]
+[h2]🖥️ 載入順序與多人設定[/h2]
+MOD 清單中排在[b]所有依賴它的 MOD 之前[/b]。多人伺服器與客戶端都要安裝，伺服器 ini 加上 [b]Mods=[/b]MinidoracatUIFor42 與 [b]WorkshopItems=[/b]3789836701。
 
-[h2]💬 意見回饋與交流[/h2]
+[h2]⚠️ 出問題該去哪回報[/h2]
+這頁只處理函式庫本身。地圖不顯示、某個功能不正常或跳錯誤，請到[b]那個 MOD 的頁面[/b]回報（例如小地圖的 MOD 地圖不顯示，請到 MiniMap 或 MOD Maps 頁）；其他作者的 MOD 出錯請找該作者。不確定是哪個 MOD 時，附上 console.txt 到 Discord 詢問。
+
+🛠️ [b]給 MOD 開發者：[/b]主題色票、圓角皮膚、共用圖示、視窗與控制元件、虛擬清單與版本化 API 的說明與原始碼在 [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url]。
+
+[h2]🔗 Minidoracat 全系列[/h2]
+其他作品都在[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat 全系列收藏[/url]，依需求自選訂閱。
+
+[h2]💬 回報與交流[/h2]
 [list]
-[*] [url=https://discord.gg/Gur2V67]Discord 社群[/url]
+[*] [url=https://github.com/Minidoracat/MinidoracatUIFor42/issues]GitHub Issues[/url]
+[*] [url=https://discord.gg/Gur2V67]Discord[/url]
 [/list]
 
 [h2]☕ 支持作者[/h2]
@@ -62,3 +39,6 @@ MOD 永遠免費，原始碼公開在 GitHub。喜歡的話可以請我喝杯咖
 [url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url] [url=https://github.com/Minidoracat/MinidoracatUIFor42][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_github.png[/img][/url]
 
 [b]#Minidoracat[/b]
+
+Workshop ID: 3789836701
+Mod ID: MinidoracatUIFor42
