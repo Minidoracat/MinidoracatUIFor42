@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 修正
+
+- **輸入框的提示文字太長時不再超出框外**：依賴本函式庫的 MOD 裡，空白輸入框會顯示灰色提示文字。提示比輸入框長時（英文介面常見，例如經濟系統對帳單的搜尋框），文字會畫到框外、壓住旁邊的標籤。現在改以省略號截短，滑鼠移到輸入框上可看到完整提示。0.6.0 加入輸入框以來都有這個問題
+
+> 技術要點：`UI.TextField` 的 placeholder 依可用寬以 `UI.Text.fit` 截字，只在 placeholder 或寬度改變時重算。截到字且沒有手動 tooltip 時，以全文當 tooltip，規則同 Button 的自動 tooltip：`setTooltip(s)` 手動優先，`setTooltip(nil)` 交回自動。公開 API 不變，`API_REVISION` 仍為 11。
+
 ## [42.20.4-0.6.0] - 2026-09-27
 
 ### 新增

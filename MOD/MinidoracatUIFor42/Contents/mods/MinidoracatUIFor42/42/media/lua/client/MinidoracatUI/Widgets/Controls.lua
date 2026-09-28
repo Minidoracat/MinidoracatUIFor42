@@ -319,6 +319,30 @@ local function applyEntryTextColor(field)
     field._entry:setTextRGBA(c.r, c.g, c.b, c.a or 1)
 end
 
+-- placeholder 依可用寬截字（放不下畫「前綴＋...」，不再畫出框外壓到旁邊的元件）；placeholder 或寬度變了才重算
+-- （每幀只比兩個值）。截到字時沒有手動 tooltip 就用全文當 tooltip，放得下時收掉；手動 tooltip 永不覆寫
+-- （同 Button refitTitle）。原生清除鈕只在有文字時出現（UITextBox2.java:188），不必扣它的寬
+local function refitPlaceholder(field)
+    local placeholder, width = field.placeholder, field.width
+    if placeholder == field._phSrc and width == field._phWidth then
+        return
+    end
+    field._phSrc, field._phWidth = placeholder, width
+    local fitted = placeholder and UI.Text.fit(placeholder, width - (FIELD_PAD + TEXTBOX_INSET) * 2, field.font)
+    field._phFit = fitted
+    if fitted and fitted ~= placeholder then
+        if field._tooltip == nil or field._autoTip then
+            field._autoTip = true
+            field._tooltip = placeholder
+            field._entry:setTooltip(placeholder)
+        end
+    elseif field._autoTip then
+        field._autoTip = nil
+        field._tooltip = nil
+        field._entry:setTooltip(nil)
+    end
+end
+
 function TextField:prerender()
     if self.isCollapsed then
         return
@@ -339,8 +363,9 @@ function TextField:prerender()
     local focused = entry:isFocused()
     Skin.fill(self, 0, 0, self.width, self.height, colors.well, nil, chrome)
     Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, nil, chrome)
-    if text == "" and not focused and self.placeholder then
-        drawColorText(self, self.placeholder, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
+    refitPlaceholder(self)
+    if text == "" and not focused and self._phFit then
+        drawColorText(self, self._phFit, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
             colors.textFaint, alpha, self.font)
     end
 end
@@ -403,7 +428,10 @@ function TextField:setEnabled(enabled)
     applyEntryTextColor(self)
 end
 
+-- 手動 tooltip 優先：之後 placeholder 截字不再覆寫；nil＝交回自動（下一幀依截字狀態重判）
 function TextField:setTooltip(text)
+    self._autoTip = nil
+    self._phSrc = nil
     if text == self._tooltip then
         return
     end

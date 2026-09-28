@@ -1894,6 +1894,34 @@ do
     local auto = UI.Button.new{ title = "LongTitle" }
     auto:prerender()
     check(auto.texts[1].text == "LongTitle" and auto.tooltip == nil, "自動寬度永不截字")
+
+    -- TextField placeholder：寬 120 → 可用 120-16=104 → "Placeho..."（100px）；原本整段畫到框外
+    local pf = UI.TextField.new{ width = 120, placeholder = "Placeholder" }
+    pf:prerender()
+    check(pf.texts[1].text == "Placeho..." and string.len(pf.texts[1].text) * 10 <= 104
+        and pf.placeholder == "Placeholder" and pf._entry.tooltip == "Placeholder",
+        "placeholder 放不下：畫截字（不超出輸入區）、placeholder 保留全文、全文自動成為 tooltip")
+    measures = 0
+    pf.texts = {}
+    pf:prerender()
+    check(measures == 0 and pf.texts[1].text == "Placeho...", "placeholder 與寬度沒變：每幀不重新量測")
+    pf:setWidth(200)
+    pf.texts = {}
+    pf:prerender()
+    check(pf.texts[1].text == "Placeholder" and pf._entry.tooltip == nil, "寬度夠：畫全文、自動 tooltip 收掉")
+    pf:setWidth(120)
+    pf:setTooltip("mine")
+    pf.texts = {}
+    pf:prerender()
+    local keptManual = pf._entry.tooltip == "mine" and pf.texts[1].text == "Placeho..."
+    pf:setWidth(200)
+    pf:prerender()
+    check(keptManual and pf._entry.tooltip == "mine", "setTooltip 設的手動 tooltip 不被截字覆寫、寬度恢復也不收掉")
+    pf:setWidth(120)
+    pf:prerender()
+    pf:setTooltip(nil)
+    pf:prerender()
+    check(pf._entry.tooltip == "Placeholder", "setTooltip(nil) 交回自動：仍截字時下一幀補回全文")
     getTextManager = keepTM
 
     local field = UI.TextField.new{ x = 0, y = 0, width = 200, clearButton = true }
@@ -2001,7 +2029,7 @@ end
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
 -- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
-local EXPECTED_ASSERTIONS = 387
+local EXPECTED_ASSERTIONS = 392
 print()
 if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)
