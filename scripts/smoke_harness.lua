@@ -7,7 +7,7 @@
 - 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
-十九情境（docs/ARCHITECTURE.md §7）＋rev 11 切片測試（檔尾 loader，ctx 契約見 loader 上方註解）：
+十九情境（docs/ARCHITECTURE.md §7）＋切片測試（檔尾 loader：rev 11 五個元件與換行 test_wrap，ctx 契約見 loader 上方註解）：
 1. facade 半初始化——檔案中段注入 error，斷言 MinidoracatUI.v1 從未發布
 2. NinePatch 三態——E0 無全域／E1 正常（含引擎首呼叫回 nil 語意）／E2 壞掉，
    fill/border/dot 一律不拋錯、退回正確、座標 floor、自身 scroll 補償、壞名不重試
@@ -592,6 +592,9 @@ end
 
 -- 載入三個 widget 檔（V1 已在情境一載入；E0 環境＝無 NinePatchTexture，皮膚走直角）
 local MOD_LUA = "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/lua/client/MinidoracatUI/"
+-- 框架內部模組 TextWrap 以 require 取回傳值：只讓它找得到（preload），其他 require 照舊失敗，
+-- 「依賴缺席」情境（Controls／V1／Table 未載入）才模擬得出來
+package.preload["MinidoracatUI/TextWrap"] = function() return dofile(MOD_LUA .. "TextWrap.lua") end
 dofile(MOD_LUA .. "Widgets/FloatButton.lua")
 dofile(MOD_LUA .. "Widgets/Toast.lua")
 dofile(MOD_LUA .. "VirtualList.lua")
@@ -1955,8 +1958,9 @@ do
 end
 
 --[[
-rev 11 切片測試載入器（本檔之後不必為了切片再改）：
-  依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua；檔案不存在記一筆失敗（五個切片都已落地）。
+切片測試載入器（本檔之後不必為了切片再改）：
+  依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua 與 scripts/test_wrap.lua；
+  檔案不存在記一筆失敗（六個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -1990,7 +1994,7 @@ rev 11 切片測試載入器（本檔之後不必為了切片再改）：
   切片缺的全域（getTextOrNull、ScriptManager、ISScrollingListBox…）自己在檔內補；暫時換掉的既有全域
   （例如 getTextManager）用完還原。
 ]]
-local rev11Ctx = {
+local sliceCtx = {
     check = check, nearly = nearly, UI = UI, MOD_LUA = MOD_LUA, TARGET = TARGET,
     now = function() return nowMs end,
     setNow = function(v) nowMs = v end,
@@ -2001,18 +2005,18 @@ local rev11Ctx = {
     clipboard = function() return clip end,
 }
 local sliceAssertions = 0
-for _, slice in ipairs({ "date", "table", "filter", "itempicker", "autocomplete" }) do
-    local path = "scripts/test_rev11_" .. slice .. ".lua"
+for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "wrap" }) do
+    local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then
-        check(false, path .. " 不存在：rev 11 切片測試被刪或改名")
+        check(false, path .. " 不存在：切片測試被刪或改名")
     else
         fh:close()
         local before = assertionCount
         local chunk, err = loadfile(path)
         local ok, declared = false, err
         if chunk then
-            ok, declared = pcall(chunk, rev11Ctx)
+            ok, declared = pcall(chunk, sliceCtx)
         end
         local ran = assertionCount - before
         sliceAssertions = sliceAssertions + ran

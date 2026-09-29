@@ -21,6 +21,9 @@ if not (UI and UI.API_MAJOR == 1 and UI.Skin) or not ISPanel then
 end
 
 local Skin = UI.Skin
+-- 共用斷行（內部模組）；缺席時 maxLines 退回單行截字
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap")
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap or nil
 
 local Toast = ISPanel:derive("MinidoracatUIToast")
 
@@ -84,44 +87,22 @@ local function fitText(text, maximumWidth)
     return best or suffix
 end
 
--- 最多 maxLines 行的換行（rev 5）：每行二分找最長可放前綴（CJK 無空白，按字元切；
--- 拉丁文若前綴內有空白則退到最後一個空白後切），最後一行超出時交給 fitText 帶省略號。
--- 量測次數 O(lines × log n)。maxLines ≤ 1 就是原本的單行截字。
+-- 最多 maxLines 行的換行（rev 5）：前 maxLines-1 行走共用斷行 TextWrap.cut（中日文逐字斷、
+-- 拉丁文不切單字、句讀禁則），最後一行超出時交給 fitText 帶省略號。
+-- maxLines ≤ 1（或共用斷行缺席）就是原本的單行截字。
 local function wrapText(text, maximumWidth, maxLines)
-    if type(maxLines) ~= "number" or maxLines <= 1 then
+    if type(maxLines) ~= "number" or maxLines <= 1 or not TextWrap then
         return { fitText(text, maximumWidth) }
     end
-    local manager = getTextManager()
     if string.len(text) > MAX_FIT_UNITS * maxLines then
         text = string.sub(text, 1, MAX_FIT_UNITS * maxLines)
     end
     local lines = {}
     local rest = text
     while #lines < maxLines - 1 do
-        if manager:MeasureStringX(UIFont.NewSmall, rest) <= maximumWidth then
-            lines[#lines + 1] = rest
-            return lines
-        end
-        local low, high, best = 1, string.len(rest), 1
-        while low <= high do
-            local mid = math.floor((low + high) / 2)
-            local cut = mid
-            if isHighSurrogate(string.byte(rest, cut)) then cut = cut - 1 end
-            if cut >= 1 and manager:MeasureStringX(UIFont.NewSmall, string.sub(rest, 1, cut)) <= maximumWidth then
-                best = cut
-                low = mid + 1
-            else
-                high = mid - 1
-            end
-        end
-        local head = string.sub(rest, 1, best)
-        local space = nil
-        for i = string.len(head), 1, -1 do
-            if string.byte(head, i) == 32 then space = i break end
-        end
-        if space and space > 1 and string.len(rest) > best then head = string.sub(head, 1, space - 1) end
-        lines[#lines + 1] = head
-        rest = string.gsub(string.sub(rest, string.len(head) + 1), "^%s+", "")
+        local line
+        line, rest = TextWrap.cut(rest, maximumWidth, UIFont.NewSmall)
+        lines[#lines + 1] = line
         if rest == "" then return lines end
     end
     lines[#lines + 1] = fitText(rest, maximumWidth)

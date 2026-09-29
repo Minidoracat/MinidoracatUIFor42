@@ -15,8 +15,8 @@
 -- ISBuildWindow.lua:16-21,355；UIElement.java:2174-2217），不 monkeypatch。手把 A＝焦點下的按鈕
 -- （預設「確認」）、B＝取消。
 --
--- 載入順序：Dialog 依賴 Controls 的 Button／TextField——本檔開頭自行 pcall require，
--- 不靠檔名排序。Controls 缺席時 Window 照常提供，只有 CAPABILITIES.dialog 維持 false；
+-- 載入順序：Dialog 依賴 Controls 的 Button／TextField 與共用斷行 TextWrap——本檔開頭自行 pcall
+-- require，不靠檔名排序。兩者任一缺席時 Window 照常提供，只有 CAPABILITIES.dialog 維持 false；
 -- Focus 缺席時 Window／Dialog 照常，只是沒有鍵盤導覽與手把。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
@@ -35,6 +35,8 @@ if not UI.Focus then
     pcall(require, "MinidoracatUI/Focus")
 end
 local Focus = UI.Focus
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap")
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap or nil
 
 local Skin = UI.Skin
 local Icons = UI.Icons
@@ -385,8 +387,8 @@ UI.CAPABILITIES.window = true
 -- ============================================================
 
 local Button, TextField = UI.Button, UI.TextField
-if not (Button and TextField) then
-    return Window -- Controls 缺席：只提供 Window，dialog 能力維持 false
+if not (Button and TextField and TextWrap) then
+    return Window -- Controls 或 TextWrap 缺席：只提供 Window，dialog 能力維持 false
 end
 
 local DIALOG_WIDTH = 360
@@ -437,44 +439,7 @@ function Body:prerender()
     end
 end
 
-local function isHighSurrogate(unit)
-    return unit ~= nil and unit >= 55296 and unit <= 56319
-end
-
--- 單段換行：每行二分找最長可放前綴（CJK 無空白按字元切；拉丁文退到最後一個空白），
--- 量測次數 O(lines × log n)。截點落在 surrogate pair 中間時回退一位。
-local function wrapParagraph(lines, text, maxWidth, font)
-    local manager = getTextManager()
-    local rest = text
-    while rest ~= "" do
-        if manager:MeasureStringX(font, rest) <= maxWidth then
-            lines[#lines + 1] = rest
-            return
-        end
-        local low, high, best = 1, string.len(rest), 1
-        while low <= high do
-            local mid = math.floor((low + high) / 2)
-            local cut = mid
-            if isHighSurrogate(string.byte(rest, cut)) then cut = cut - 1 end
-            if cut >= 1 and manager:MeasureStringX(font, string.sub(rest, 1, cut)) <= maxWidth then
-                best = cut
-                low = mid + 1
-            else
-                high = mid - 1
-            end
-        end
-        local head = string.sub(rest, 1, best)
-        for i = string.len(head), 2, -1 do
-            if string.byte(head, i) == 32 then
-                head = string.sub(head, 1, i - 1)
-                break
-            end
-        end
-        lines[#lines + 1] = head
-        rest = string.gsub(string.sub(rest, string.len(head) + 1), "^%s+", "")
-    end
-end
-
+-- 依 "\n" 分段，每段走共用斷行 TextWrap.cut（中日文逐字斷、拉丁文不切單字、句讀禁則）；空段落是空行
 local function wrapText(text, maxWidth, font)
     local lines = {}
     text = string.sub(text or "", 1, MAX_WRAP_UNITS)
@@ -485,7 +450,12 @@ local function wrapText(text, maxWidth, font)
         if paragraph == "" then
             lines[#lines + 1] = ""
         else
-            wrapParagraph(lines, paragraph, maxWidth, font)
+            local rest = paragraph
+            while rest ~= "" do
+                local line
+                line, rest = TextWrap.cut(rest, maxWidth, font)
+                lines[#lines + 1] = line
+            end
         end
         if not nl then
             break

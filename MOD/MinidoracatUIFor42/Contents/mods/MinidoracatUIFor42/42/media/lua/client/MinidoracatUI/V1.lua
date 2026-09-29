@@ -1,8 +1,7 @@
 -- MinidoracatUI V1 — 家族共用 UI 函式庫核心（Theme 雙色系 + Skin 圓角繪製 + Icons 單色圖示
 -- + 版本化 facade）。
 --
--- 【單檔設計】Theme／Skin／Icons／facade 刻意放同一檔：PZ 的 require 不保證回傳值（原版 Lua
--- 全樹零取值用例），跨檔共享只能靠全域；分檔就得靠「全域存在檢查」串接，正是 NeatUI
+-- 【單檔設計】Theme／Skin／Icons／facade 刻意放同一檔：分檔就得靠「全域存在檢查」串接，正是 NeatUI
 -- 隱藏載入順序依賴的坑（其 scrollview 用 NIScrollBar 卻只 require ISUIElement）。單檔
 -- 讓「任何一段 error ＝ 整檔中止 ＝ facade 從未發布」自然成立（Kahlua 執行失敗的檔案
 -- 仍會被標記 loaded、同 session 不重試，LuaManager.java:1383-1402——半初始化 table
