@@ -36,7 +36,7 @@
     "IGUI_MinidoracatUI_ItemPicker_Count": "共 %1 項",
     "IGUI_MinidoracatUI_ItemPicker_Empty": "沒有符合的物品",
     "IGUI_MinidoracatUI_ItemPicker_More": "顯示前 %1 項，共 %2 項符合；請再輸入關鍵字縮小範圍",
-    "IGUI_MinidoracatUI_Autocomplete_More": "還有 %1 個…請輸入更多字元",
+    "IGUI_MinidoracatUI_Autocomplete_More": "還有 %1 個，請輸入更多字元",
     "IGUI_MinidoracatUI_Autocomplete_Partial": "候選尚未查完，請縮小搜尋條件",
     "IGUI_MinidoracatUI_Autocomplete_Empty": "沒有符合的結果"
 }
