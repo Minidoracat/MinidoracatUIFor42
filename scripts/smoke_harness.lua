@@ -4,7 +4,7 @@
     lua scripts/smoke_harness.lua        （repo 根目錄執行；標準 Lua 5.x 即可）
 
 限制（必須誠實面對）：這是標準 Lua，不是遊戲的 Kahlua。
-- 標準 Lua 有 next/assert/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
+- 標準 Lua 有 next/xpcall，Kahlua 沒有——誤用由 scripts/verify_mod.py 靜態掃描負責
 - Kahlua 專屬行為（Java field 不暴露、table 記憶體形狀）只能靠反編譯查證與實機測試
 
 十九情境（docs/ARCHITECTURE.md §7）＋切片測試（檔尾 loader：rev 11 五個元件與換行 test_wrap，ctx 契約見 loader 上方註解）：
