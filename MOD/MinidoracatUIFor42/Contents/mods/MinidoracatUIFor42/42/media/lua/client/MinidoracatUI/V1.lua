@@ -644,7 +644,7 @@ end
 
 MinidoracatUI = MinidoracatUI or {}
 MinidoracatUI.v1 = {
-    VERSION = "0.5.0",
+    VERSION = "0.6.2",
     API_MAJOR = 1,
     -- rev 1：首發（Theme／Skin／FloatButton／Toast／VirtualList）
     -- rev 2：Icons（8 個共用單色圖示）——純 additive，rev 1 的呼叫面一字未動
