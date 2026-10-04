@@ -170,6 +170,17 @@ function Toast.show(opts)
     return activate(entry)
 end
 
+-- 原版速度鈕（單人）在戴錶、時鐘顯示時移到時鐘正下方（UIManager.java:446-456），落在右上
+-- 通知欄裡；欄位與它水平重疊時改從它下緣往下疊。只認真的在 UI 清單裡的速度鈕：MP 與
+-- Last Stand 不加進清單（UIManager.java:217-219），物件卻仍在、isVisible 也是 true。
+local function stackTop(left, right)
+    local sc = UIManager and UIManager.getSpeedControls and UIManager.getSpeedControls()
+    if not (sc and sc:isVisible() and UIManager.getUI():contains(sc)) then return STACK_TOP end
+    local x = sc:getX()
+    if x >= right or x + sc:getWidth() <= left then return STACK_TOP end
+    return math.max(STACK_TOP, sc:getY() + sc:getHeight() + STACK_GAP)
+end
+
 function Toast:prerender()
     local elapsed = getTimestampMs() - self.startedAtMs
     local totalDuration = ENTER_MS + self.holdMs + EXIT_MS
@@ -180,7 +191,7 @@ function Toast:prerender()
 
     local index = activeIndex(self)
     local targetX = getCore():getScreenWidth() - self.width - SCREEN_MARGIN
-    local targetY = STACK_TOP
+    local targetY = stackTop(targetX, targetX + self.width)
     for i = 1, index - 1 do
         targetY = targetY + Toast.active[i].height + STACK_GAP
     end
@@ -223,6 +234,14 @@ function Toast:prerender()
     end
 end
 
+-- 通知只顯示、不收滑鼠：置頂的通知吃掉點擊時，蓋到的原版速度鈕（放開才觸發，
+-- HUDButton.java:112-127）等介面會點不到（到站自動暫停後按不了繼續）。左鍵與移動靠
+-- wantMouseEvents=false（instantiate 同步成 Java consumeMouseEvents，ISUIElement.lua:1004；
+-- UIElement.java:1122-1123,1248,1340-1341）；右鍵在 Lua 回 nil 時一律被吞
+-- （UIElement.java:1513-1515,1583-1585），要明確回 false。
+function Toast:onRightMouseDown() return false end
+function Toast:onRightMouseUp() return false end
+
 function Toast._create(entry)
     local x = getCore():getScreenWidth() + WIDTH
     local fontHeight = getTextManager():getFontHeight(UIFont.NewSmall)
@@ -231,6 +250,7 @@ function Toast._create(entry)
     local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, height)
     o.background = false
     o.alwaysOnTop = true
+    o.wantMouseEvents = false
     o.startedAtMs = getTimestampMs()
     o.fontHeight = fontHeight
     o.titleText = entry.title

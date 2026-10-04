@@ -556,6 +556,9 @@ function ISPanel:removeFromUIManager() self.inUIManager = false end
 function ISPanel:setWantKeyEvents(v) self.wantKeyEvents = v end
 function ISPanel:bringToTop() end
 function ISPanel:setCapture(v) self.captured = v end
+-- 忠於 ISUIElement.lua:1555-1561：原版右鍵處理什麼都不回（nil），引擎把 nil 當成吃掉
+function ISPanel:onRightMouseDown() end
+function ISPanel:onRightMouseUp() end
 function ISPanel:isMouseOver() return self._mouseOver == true end
 function ISPanel:getMouseX() return mouseX - self.x end
 function ISPanel:getMouseY() return mouseY - self.y end
@@ -768,6 +771,43 @@ do
     check(short.y == 60 and last.y == 124, "移除後單行通知保留原有堆疊位置")
     check(promoted.y == last.y + last.height + 8 and #promoted.lines == 3,
         "待顯示的多行通知遞補在單行通知之後")
+
+    -- 不收滑鼠：置頂通知若吞點擊，蓋到的原版速度鈕（放開才觸發）會點不到。wantMouseEvents
+    -- 在 instantiate 時同步成 Java consumeMouseEvents（ISUIElement.lua:1004）；右鍵在 Lua 回 nil
+    -- 時引擎一律吞掉（UIElement.java:1513-1515,1583-1585），必須明確回 false。
+    Toast._resetForTests()
+    local quiet = Toast.show("quiet")
+    check(quiet.wantMouseEvents == false, "通知不吃左鍵與滑鼠移動（wantMouseEvents=false）")
+    check(quiet:onRightMouseDown(1, 1) == false and quiet:onRightMouseUp(1, 1) == false,
+        "通知不吃右鍵（明確回 false）")
+
+    -- 速度鈕：單人戴錶時在時鐘下方（y=82、高 28），落在通知欄 x 1604..1904 內
+    local speed = { x = 1721, y = 82, w = 189, h = 28, visible = true, listed = true }
+    function speed:isVisible() return self.visible end
+    function speed:getX() return self.x end
+    function speed:getY() return self.y end
+    function speed:getWidth() return self.w end
+    function speed:getHeight() return self.h end
+    local uiList = { contains = function(_, o) return o == speed and speed.listed end }
+    UIManager = { getSpeedControls = function() return speed end, getUI = function() return uiList end }
+    local function stackY()
+        Toast._resetForTests()
+        local a, b = Toast.show("a"), Toast.show("b")
+        nowMs = nowMs + 300
+        a:prerender(); b:prerender()
+        return a.y, b.y, a.height
+    end
+    local y1, y2, h1 = stackY()
+    check(y1 == 82 + 28 + 8 and y2 == y1 + h1 + 8, "速度鈕在通知欄內：從它下緣下方起疊，第二則照常累加")
+    speed.listed = false
+    check(stackY() == 60, "速度鈕不在 UI 清單（MP／Last Stand）：照舊從 60 起疊")
+    speed.listed, speed.x = true, 800
+    check(stackY() == 60, "速度鈕不在通知欄的水平範圍（分割畫面置中）：不讓位")
+    speed.x, speed.y = 1721, 10
+    check(stackY() == 60, "沒戴錶時速度鈕在 60 以上：不往下推")
+    speed.y, speed.visible = 82, false
+    check(stackY() == 60, "速度鈕隱藏：不讓位")
+    UIManager = nil
     Toast._resetForTests()
 end
 
@@ -2033,7 +2073,7 @@ end
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
 -- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
-local EXPECTED_ASSERTIONS = 392
+local EXPECTED_ASSERTIONS = 399
 print()
 if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)
