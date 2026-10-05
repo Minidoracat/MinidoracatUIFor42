@@ -1882,13 +1882,21 @@ do
     chip:setActive(true)
     chip.rects, chip.borders, chip.texts = {}, {}, {}
     chip:prerender()
-    check(chip:isActive() and #chip.rects == 1 and nearly(chip.rects[1].a, 0.12)
+    local line = chip.rects[2]
+    check(chip:isActive() and #chip.rects == 2 and nearly(chip.rects[1].a, 0.12)
         and nearly(chip.borders[1].g, 0.85) and nearly(chip.texts[1].g, 0.85),
         "chip active：selected 底、accent 框與字")
+    check(line ~= nil and line.h == 2 and line.y == chip.height - 4 and nearly(line.g, 0.85) and nearly(line.a, 1)
+        and line.x == math.floor(chip.height / 2) and line.x + line.w == chip.width - line.x,
+        "chip active：accent 底線（選中不只靠顏色），內縮半個高度避開 pill 圓角")
+    local square = UI.Button.new{ title = "", style = "chip", width = 24, height = 24, active = true }
+    square:prerender()
+    check(#square.rects == 2 and square.rects[2].x == 6 and square.rects[2].w == 12,
+        "正方形 chip（日曆鈕）：底線縮 w/4，仍在框內")
     chip._mouseOver, chip.pressed = true, true
     chip.rects = {}
     chip:prerender()
-    check(#chip.rects == 2 and nearly(chip.rects[2].a, 0.12), "chip 按下：疊一層 selected")
+    check(#chip.rects == 3 and nearly(chip.rects[3].a, 0.12), "chip 按下：疊一層 selected")
     chip:setEnabled(false)
     chip.borders, chip.texts = {}, {}
     chip:prerender()
@@ -2077,7 +2085,7 @@ end
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
 -- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
-local EXPECTED_ASSERTIONS = 399
+local EXPECTED_ASSERTIONS = 401
 print()
 if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)

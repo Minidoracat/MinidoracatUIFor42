@@ -159,6 +159,11 @@ function Button:prerender()
         if self._active then
             Skin.fill(self, 0, 0, w, h, colors.selected, shape, chrome)
             Skin.border(self, 0, 0, w, h, colors.accent, shape, chrome)
+            -- 選中不只靠顏色（框與字跟閒置只差色相與亮度）：同 Tabs 的 2px accent 底線；
+            -- 內縮避開 pill 圓角，正方形 chip（DatePicker 日曆鈕，圖樣在 [5, h-5)）縮 w/4
+            local inset = math.min(math.floor(h / 2), math.floor(w / 4))
+            local accent = colors.accent
+            self:drawRect(inset, h - 4, w - inset * 2, 2, (accent.a or 1) * chrome, accent.r, accent.g, accent.b)
             textColor = colors.accent
         else
             if hovered then
@@ -255,7 +260,7 @@ function Button:setStyle(style)
     self.style = style
 end
 
--- 只有 chip 樣式會畫出 active 狀態（selected 底、accent 框與字）
+-- 只有 chip 樣式會畫出 active 狀態（selected 底、accent 框與字、accent 底線）
 function Button:setActive(active)
     self._active = active == true
 end
