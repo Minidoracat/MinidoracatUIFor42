@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 12,         -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader
+    API_REVISION = 13,         -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -73,6 +73,7 @@ MinidoracatUI.v1 = {
         filterBarModes = false, -- rev 12：FilterBar 的 dateToggle／kindsDropdown／sortInHeader（Widgets/FilterBar.lua）
         tableHeaderFocus = false, -- rev 12：TableHeader 鍵盤焦點（Widgets/Table.lua，與 table 同檔）
         toastAvoid   = false,  -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua，與 toast 同檔）
+        dock         = false,  -- rev 13：UI.Dock 家族工具列（Widgets/Dock.lua；Focus 選用、Toast 避開區選用）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -83,7 +84,8 @@ MinidoracatUI.v1 = {
     -- Button／TextField／Checkbox／Tabs（rev 7，controls）、Window（rev 7，window）、Dialog（rev 7，dialog）、
     -- ColorPicker（rev 8，colorPicker）、Slider（rev 9，slider）、Focus（rev 10，focus）、
     -- Date／DateField／DatePicker（rev 11，datePicker）、Table／TableHeader（rev 11，table）、
-    -- FilterBar（rev 11，filterBar）、ItemPicker（rev 11，itemPicker）、Autocomplete（rev 11，autocomplete）
+    -- FilterBar（rev 11，filterBar）、ItemPicker（rev 11，itemPicker）、Autocomplete（rev 11，autocomplete）、
+    -- Dock（rev 13，dock）
 }
 ```
 
@@ -120,6 +122,11 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   local canCaptionSide = ok and UI.API_REVISION >= 12 and UI.CAPABILITIES.focusCaption
 --   local canHeaderFocus = ok and UI.API_REVISION >= 12 and UI.CAPABILITIES.tableHeaderFocus
 --   local canToastAvoid = ok and UI.API_REVISION >= 12 and UI.CAPABILITIES.toastAvoid
+-- rev 13 家族工具列：登記成功（回 true）就不建立自己的 FloatButton；旗標不在或回 false 時走原本的 FloatButton：
+--   local docked = ok and UI.API_REVISION >= 13 and UI.CAPABILITIES.dock and UI.Dock ~= nil
+--       and UI.Dock.register({ id = "minimap", order = 10, label = function() return getText("…") end,
+--           icon = "media/ui/…png", bind = "…", onClick = function(entry) … end })
+--   if not docked then --[[ 原本的 FloatButton 路徑 ]] end
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -142,6 +149,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/FilterBar.lua` | rev 11 | `UI.FilterBar`（§3.13）；自行 pcall require Controls、DatePicker（任一缺席即 return）與 Focus（選用），`CAPABILITIES.filterBar` |
 | `Widgets/ItemPicker.lua` | rev 11 | `UI.ItemPicker`（§3.14）；自行 pcall require Controls、Table（任一缺席即 return）與 Focus（選用），`CAPABILITIES.itemPicker` |
 | `Widgets/Autocomplete.lua` | rev 11 | `UI.Autocomplete`（§3.15）；自行 pcall require Controls（缺席即 return）與 Focus（選用），`CAPABILITIES.autocomplete` |
+| `Widgets/Dock.lua` | rev 13 | `UI.Dock` 家族工具列（§3.16）；需要原生 `ISPanel`／`ISButton`，自行 pcall require Focus（選用：缺席時快捷鍵只切換收合），`CAPABILITIES.dock` |
 
 載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
 `MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
@@ -548,6 +556,47 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 
 **不做的事**：不做傳輸、requestId、結果快取或本機過濾；不驗證自由輸入的文字（只有 pick 才回呼 `onPick`）；不做多選。
 
+### 3.16 Dock 家族工具列（API rev 13）
+
+`Widgets/Dock.lua`，`UI.Dock`（`CAPABILITIES.dock`）。家族 MOD 不再各放一顆 FloatButton：登記到同一條可收合的直立工具列（使用者 2026-10-05 核准方案 A「收合條」；把手是家族貓娘頭，收合＝睡臉含 zZ、展開＝醒臉）。本節是框架與五個 consumer 的共用契約；名稱與語意不得改。
+
+| API | 說明 |
+|---|---|
+| `UI.Dock.register(spec) -> boolean` | 登記或覆寫（同 id）一個入口；spec 不合法回 false、不拋錯 |
+| `UI.Dock.unregister(id)` | 移除入口 |
+| `UI.Dock.refresh()` | 下一次輪詢重新評估可見集合（不呼叫也會每 250ms 輪詢；徽章與狀態每幀讀） |
+| `UI.Dock.isDocked(id) -> boolean` | 已登記、`isAvailable` 為真、Dock 已建立且玩家 0 存在 |
+
+**spec**：`id`（string，必填）、`order`（number，必填；小在上，同值依 id 字串）、`label`（function → 名稱，必填）、`onClick(entry)`（必填；entry＝登記的 spec）；圖示三選一（至少一個，優先序 icon → iconKey → drawIcon）：`icon`（彩色貼圖路徑，原色、載入一次，缺圖不畫但按鈕照常可按）、`iconKey`（框架 Icons key，以 theme `text` 染色）、`drawIcon(btn, x, y, size)`，皆 28px 置中；選填 `bind`（keyBinding 名）、`getStatus`（→ string，可多行）、`onRightClick(entry)`、`isActive`、`getState`（nil／`"on"`／`"warn"`）、`getBadge`（>0 數字、-1 紅點）、`isAvailable`。選填欄位型別不對＝不合法。回呼每幀可能被呼叫，框架一律 pcall，出錯當 nil／false（`isAvailable` 出錯＝不顯示，`label` 出錯＝提示改用 id）。
+
+**order 分配表**：
+
+| consumer | id | order |
+|---|---|---|
+| MiniMap | `minimap` | 10 |
+| NoticeBoard | `noticeboard` | 20 |
+| Economy | `economy` | 30 |
+| VehicleManager | `vehiclemanager` | 40 |
+| DevProfiler | `devprofiler` | 90 |
+
+**版面**：一個 ISPanel（玩家 0），入口是子 `ISButton`（`forceClick` 是 Focus 的啟動基底）。可見入口 0 個：隱藏；1 個：不畫把手，面板就是那顆 40×40 按鈕；2 個以上：內距 4、上方 40×40 把手、下方直排入口（間距 4）。收合時只剩把手（48×48 外殼）。第一次預設展開。
+
+**繪製**（只走 theme token 與 Skin，缺貼圖退直角；每幀不配置 table／closure）：面板 `surface` 底＋`border` 框；hover 疊 `hover`；`isActive` → `selected` 底＋左側 3px `accent` 細條；`"on"` → `accent` 1px 框；`"warn"` → `errorText` 框＋左下「!」小方塊；徽章 >0 右上 `errorText` 膠囊（>99 顯示 `99+`，數字變了才重新量測），-1 右上紅點。收合外殼：任一入口待處理只亮一個紅點（數字不加總），任一入口 warn 就整條 `errorText` 框＋左下「!」。把手 40 格內置中畫 32px 吉祥物（`mui_mascot_sleep.png`／`mui_mascot_awake.png`）；任一張缺就退回 Icons `chevronDown`（展開時以 `drawTextureAllPoint` 上下翻轉，`ISUIElement.lua:1013`，絕對螢幕座標），再缺退 `Skin.arrow`。
+
+**提示**（一個 ISToolTip，500ms 節流重建，按住時不顯示）：入口第一行＝名稱，有 `bind` 且已綁鍵時用模板 `IGUI_MinidoracatUI_Dock_EntryHotkey`（`%1（快捷鍵 %2）`；鍵名先讀選項畫面 `MainOptions.keyText`（含修飾鍵前綴），否則 `getKeyName(getCore():getKey(bind))`，未綁不附），第二行起 `getStatus`；把手＝`IGUI_MinidoracatUI_Dock_Collapse`／`_Expand`（`%1` 為可見入口數），收合時每個待處理或 warn 的入口再加一行（有狀態用 `IGUI_MinidoracatUI_Dock_StatusLine` `%1：%2`，沒有就只寫名稱）。鍵盤／手把工作階段中，焦點下的入口也顯示提示（焦點說明 `captionSide="none"`：Dock 太窄，說明會被夾在 root 內）。
+
+**互動**：在把手或任何入口按住、絕對位移超過 4px＝拖整條 Dock（setCapture 五件套，同 FloatButton）；未超過＝點擊（入口 `onClick`，把手切換收合）。右鍵 down/up 配對＋800ms 過期、左鍵按住中不接。每幀夾回螢幕。`alwaysOnTop=false`，在 `addToUIManager()` 後呼叫原生 setter（§3.4 置頂契約）。無玩家 0（主選單）時自我隱藏，`OnTick`／`OnGameStart` 輪詢在玩家回來後重新顯示。
+
+**存讀**：`ISLayoutManager.RegisterWindow("MinidoracatUIDock", <Dock 類別>, dock)`，存讀回呼取自第二參數（`ISLayoutManager.lua:6-13,99-113`）；欄位 x、y、collapsed（鍵盤／手把工作階段的暫時展開存成原本的收合狀態）。拖曳放開與點把手切換時立即呼叫 `ISLayoutManager.OnPostSave` 寫 `layout.ini`（`:191-229`，與遊戲存檔走同一條）。預設位置＝螢幕右緣、原版 moodle 欄內側：x＝螢幕寬 −（10＋moodle 尺寸）−12 − Dock 寬，y＝120；moodle 尺寸照 `MoodlesUI.getTextureSizeForOption`（`MoodlesUI.java:72-86`：選項 1–6 → 32/48/64/80/96/128，7＝依字級選項查同一張表，其他 32；moodle 欄 x＝螢幕寬 −（10＋寬），`UIManager.java:417`）。`OnResolutionChange` 先套預設再 `TryRestore` 該解析度的記錄。
+
+**鍵盤**：`OnGameBoot` 註冊區段 `[MinidoracatUI]` 與 `MinidoracatUI_Dock`，預設 `Keyboard.KEY_PERIOD`（`.`）。選鍵四關（2026-10-05）：原版 `keyBinding.lua` 未綁（也不是 `ISSearchManager` 的 END）；原版 Lua 與反編譯 Java 都沒有直接讀這個鍵；家族 MOD 未使用（MiniMap `/` `'` `;`、Economy `[`、DevProfiler `\`）；本機 Workshop 只有一個不作用的開發工具命中。Home／End／PgUp／PgDn 是面板內導覽鍵，永不拿來開啟。按下（`OnKeyPressed`，即未被消耗的 release）：收合中先展開並記住，Dock 成為 `UI.Focus` root（`Focus.onFocus`＋焦點落在第一個入口）；方向鍵在入口間循環（入口按鈕的 `onFocusKey`，鍵盤與手把方向共用）、Enter 觸發、Esc 交還焦點並在原本收合時收回；再按一次同鍵＝交還焦點。別的 root 接手焦點（例如入口開出的視窗）也結束工作階段。Dock 一直 `setWantKeyEvents(true)`，但只在工作階段中把 press 交給 Focus（否則 Tab 會在 Dock 上開焦點框）；release 與 `isKeyConsumed` 永遠回答共用帳本，結束工作階段的那個 Esc 的 release 才不會漏成暫停選單。結束時若 `Focus.activeRoot` 仍是 Dock 就清掉，下一個視窗才拿得到 Tab。`UI.Focus` 缺席時快捷鍵只切換收合（並存檔）。
+
+**手把**（2026-10-05 定案）：`Events.OnFillWorldObjectContextMenu`（`ISWorldObjectContextMenu.lua:213`；手把玩家按 X＝`InteractOptions` 經 `ISButtonPrompt.interact` 開這個選單，`ISButtonPrompt.lua:166-191`，先以 `test=true` 探測，`:1115`）。只在 playerNum 0、`JoypadState.players[1]` 存在（只有手把玩家看得到，`ISVehicleMenu.lua:23-24` 同一判斷）、Dock 有可見入口且 `UI.Focus` 存在時處理；`test` 時回 `ISWorldObjectContextMenu.setTest()`（`ISBBQMenu.lua:9`），否則加一個選項 `IGUI_MinidoracatUI_Dock_Open`。選項：收合中先展開並記住，`UI.Focus.takeJoypad(dock, playerNum)`（記住並在結束時還原原焦點）；`ISContextMenu:onJoypadDown` 先 `closeAll()` 再呼叫選項（`ISContextMenu.lua:256-260`），交出的焦點不會被選單蓋掉。B（`root:onEscape`，永遠回 true，Focus 不會把 Dock 關掉）交還焦點並收回；A 觸發入口時先結束工作階段再呼叫 `onClick`（啟動器：開出的介面拿手把，不讓玩家卡在 Dock）；`onJoypadBeforeDeactivate` 也結束。
+
+**通知避開區**：`CAPABILITIES.toastAvoid` 時以 owner `"MinidoracatUIDock"` 登記 `UI.Toast.setAvoid`，fn 回 Dock 的螢幕矩形、隱藏時回 nil，不配置。
+
+**consumer 規則**：登記可在檔案載入時做（Dock 在 `OnGameStart` 才建立）；回呼裡用到的模組函式在呼叫時查表。`register` 回 false 或沒有 `CAPABILITIES.dock` 就維持原本的 FloatButton 路徑，行為不變；不搬舊 FloatButton 位置記錄。原本控制浮鈕顯示與否的設定改成控制 `isAvailable`，變更時呼叫 `UI.Dock.refresh()`。`label` 只放名稱，說明、快捷鍵、狀態交給 `bind` 與 `getStatus`；外框與徽章由框架畫。
+
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
 | # | NeatUI 事實 | 本框架對應決策 |
@@ -583,11 +632,12 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 
 - **幾何 UI 貼圖（9-slice 圓角、圓點、`mui_icon_*` 圖示）**：`scripts/gen_ui_textures.py` 程序化生成（移植 NoticeBoard 現有做法）——9-slice 切線像素要求位元級精確，幾何圖示要求重跑逐位元組相同，不走 AI 生圖；生成器不用 `ImageDraw`（跨 Pillow 版本柵格化會變），純浮點謂詞＋8×8 超取樣自算覆蓋率。`verify_mod.py` 第 12 項比對尺寸／IHDR／純白／切線（皮膚）與透明邊／對稱／探針像素／著墨比例（圖示）當閘門。
 - **美術資產（poster.png、preview.png、Workshop 圖）**：AI 生成（codex／grok imagegen）到 `scripts/poster/` 再由 `finish_poster.py` 部署——首發前才做，沿用家族貓娘 mascot 流程。
-- 貼圖一律純白可染色；新增貼圖＝同步新增生成器幾何與 `verify_mod.py` 檢查項（`OUTPUT_NAMES` 是唯一權威，目錄多一張少一張都會 assert）。
+- 貼圖一律純白可染色（唯一例外：rev 13 的彩色吉祥物，見下）；新增貼圖＝同步新增生成器幾何與 `verify_mod.py` 檢查項（`OUTPUT_NAMES` 是唯一權威，目錄多一張少一張都會 assert）。
 - **art 圖示（rev 4 起，`mui_art_*.png`）**：幾何線條畫不出可辨識的動物剪影，這批改走 AI 生成——`scripts/icons/sheet.png`（codex `image_generation`，黑底純白實心剪影、4×4 等分格、無文字）→ `scripts/import_icon_sheet.py`（亮度→alpha、去雜訊、bbox 裁切、縮 28px 置中、四邊透明）→ commit PNG。`ART_ICON_NAMES` 在 `OUTPUT_NAMES` 內但生成器不產不覆寫；verify 只驗尺寸／純白／1px 透明邊／有 AA／著墨 0.10-0.70。重生單格：`import_icon_sheet.py <cell.png> --grid 1x1 --keys cow`。
 - **rev 6 導覽 art**：原圖 `scripts/icons/navigation-sheet.png`，生成來源與列序記在 `scripts/icons/navigation-source.json`；4×4 依序為 `wallet,gift,shop,market,auction,mail,users,chart,coins,plug,shieldCheck,tag,transactions,clipboardCheck,server,settings`。以既有 `import_icon_sheet.py` 指定這組 keys 匯入；不得用程序化幾何冒充 AI 原圖。新增 16 張與既有 art 同受 `verify_image` 檢查。
 - **圖表排列與合法 key 分開**：`import_icon_sheet.py` 的預設排列固定服務原始 `sheet.png`，不隨全部 `ART_ICON_NAMES` 成長；其他圖表明確傳 `--keys`。`scripts/test_icon_import.py` 在暫存目錄驗證舊表預設／明示排列相同、導覽與車輛圖表可重建為出貨檔，防止新增 key 破壞舊匯入方式。
 - **rev 8 車輛／標記 art**：原圖 `scripts/icons/vehicle-sheet.png`，生成來源（實際 prompt、codex thread id、匯入指令）記在 `scripts/icons/vehicle-source.json`；4×4 依序為 `carSedan,carHatchback,carSports,carSuv,carPickup,carVan,carStepVan,carTruck,carAmbulance,carPolice,carFiretruck,carTrailer,markerStar,markerHeart,markerFlag,markerCrown`。同樣不得用程序化幾何冒充 AI 原圖。
+- **彩色吉祥物（rev 13，`mui_mascot_sleep.png`／`mui_mascot_awake.png`）**：Dock 把手唯一的彩色、不染色資產。原圖 `scripts/dock/mascot-heads-sheet.png`（gpt-image-2 經 OMP generate_image，參考圖 `scripts/poster/mascot.png`），提示詞與去背流程（白底自邊界 flood fill、min(R,G,B)≥236、2px 邊緣 alpha 漸變、兩顆頭共用縮放且底部對齊、預乘 alpha 的 Lanczos 縮到 62px 內、四邊留 1px 透明）記在 `scripts/dock/mascot-source.json`。`MASCOT_NAMES` 在 `OUTPUT_NAMES` 內但生成器不產不覆寫；`verify_image` 驗 64×64／8-bit RGBA／1px 透明邊／含非白色彩（不驗純白）。
 
 ## 7. 測試策略
 
@@ -606,7 +656,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua` 與 `scripts/test_wrap.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua` 與 `scripts/test_rev13_dock.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -614,6 +664,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - autocomplete：debounce 與首次聚焦查詢、`onQuery` 回 false 下一幀重試、過期結果丟棄、More／Empty／Partial 提示列、標籤截字與 `theme.alpha`、list 契約與 pick、`queryFailed`、`setText`／`onEnter`、停用／隱藏時關閉、`appendTargets`、Focus 自動目標／方向鍵／Enter／鍵盤聚焦維持可見。
     - rev12：`textDisabled` 兩套 palette 的 WCAG 對比門檻、Button 各樣式／TextField／Checkbox／日曆鈕停用色（停用 primary 改畫 normal）、Tabs 整列與單項停用、`drawCaption` 四種 side（`right` 飛出標籤：不透明不乘 `theme.alpha`、對框置中、尖角位置、右緣翻轉、上下夾邊）、`captionSide` 經 `collectTargets`／`Focus.render` 生效、FilterBar inline 分頁不截字（文字鈕 → 圖示鈕 → 拿掉筆數、先試本列再換列、空間恢復換回文字鈕）、FilterBar `sortInHeader`＋`toggleSort`（含直接接 TableHeader）、`dateToggle` 開收／精簡區間／程式清空收回、`kindsDropdown` 單選下拉（寬度、焦點描述、鍵盤與滑鼠選取、外部點擊／再按／隱藏／停用時關閉、新類型 chip 隱藏）、TableHeader 焦點（Tab 進入停在排序欄、左右換欄跳過不可排序欄且到邊停住、Enter 呼叫 onSort 一次、焦點框只框目前欄且說明在上方、`focusDescriptor` 快取、live=false 不處理按鍵且 Tab 不停）、`invalidate` 的替代目標沿用原框可見性（滑鼠焦點不亮框、鍵盤焦點照亮）、Toast `setAvoid`（未登記右上、移到下方且整疊相接、下方放不下改左側、不重疊不動、fn 回 nil 不避、同 owner 覆寫、fn 出錯不影響、取消登記）。
     - wrap：Dialog 內文與 Toast 多行共用的斷行，量測模型為 ASCII 7px、其他字 14px（中日文約為拉丁字兩倍寬）。涵蓋 VehicleManager 截圖那段中英混排（不在英文字後提早斷）、純英文（截到單字退到空白、剛好在單字結尾不多退）、純中文與括號禁則、中英交錯無空白（退到中英交界不切單字）、補充平面字，以及 Toast 同一段文字。harness 以 `package.preload` 只讓 `MinidoracatUI/TextWrap` 可被 require，其他 require 照舊失敗，「依賴缺席」情境不受影響。
+    - rev13_dock：缺原生 ISButton 時 `dock` 維持 false 且不註冊事件；`OnGameBoot` 的 keyBinding 區段與預設鍵；不合法 spec 回 false；order 再 id 排序、同 id 覆寫沿用同一顆按鈕；`isAvailable` 變化補位與高度重算、隱藏中仍輪詢；0／1／2+ 入口（1 個不畫把手、0 個隱藏）；`alwaysOnTop=false` 經原生 setter；預設位置對 moodle 選項 1／3／6／7（依字級）／超界；每幀 clamp；點擊與 4px 拖曳門檻（入口與把手都拖整條、放開立即存）；右鍵配對、過期與左鍵按住中不接；點把手收合並存、重開時 `TryRestore` 讀回位置與收合；收合外殼只亮一個紅點（不加總）與 warn 紅框＋「!」、無事時不加標記；入口的 active 細條、on 金框、warn 紅框＋「!」、徽章 99+／數字／紅點；回呼全部拋錯時繪製、提示、點擊照常；提示組字（快捷鍵模板、未綁不附、多行狀態與 500ms 節流、把手收合／展開與待處理行、名稱：狀態模板）；吉祥物睡臉／醒臉、缺圖退 chevron（展開翻轉）再退 `Skin.arrow`；快捷鍵工作階段（不搶 Tab、展開並聚焦第一個入口、方向鍵循環、Enter、Esc 收回且 press／release 都消耗、再按同鍵交還、別的 root 接手時結束）；手把世界選單（非手把不加、`test` 走 setTest、非玩家 0 不加、選項接手手把、方向下移、B 交還不關 Dock、A 先交還再 onClick）；Toast 避開區矩形與隱藏回 nil；無玩家自我隱藏與回來重顯；`keyboardTargets` 重用同一張表；Focus 缺席時快捷鍵只切換收合且不加手把選項。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

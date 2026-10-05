@@ -39,5 +39,10 @@
     "IGUI_MinidoracatUI_ItemPicker_More": "Showing the first %1 of %2 matches; type more to narrow it down",
     "IGUI_MinidoracatUI_Autocomplete_More": "%1 more... type more characters",
     "IGUI_MinidoracatUI_Autocomplete_Partial": "Incomplete results; narrow the search.",
-    "IGUI_MinidoracatUI_Autocomplete_Empty": "No matches"
+    "IGUI_MinidoracatUI_Autocomplete_Empty": "No matches",
+    "IGUI_MinidoracatUI_Dock_EntryHotkey": "%1 (hotkey %2)",
+    "IGUI_MinidoracatUI_Dock_Expand": "Expand (%1 entries)",
+    "IGUI_MinidoracatUI_Dock_Collapse": "Collapse (%1 entries)",
+    "IGUI_MinidoracatUI_Dock_StatusLine": "%1: %2",
+    "IGUI_MinidoracatUI_Dock_Open": "Open family toolbar"
 }

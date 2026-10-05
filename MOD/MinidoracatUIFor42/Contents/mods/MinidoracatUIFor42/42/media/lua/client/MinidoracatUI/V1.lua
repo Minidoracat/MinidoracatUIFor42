@@ -670,7 +670,9 @@ MinidoracatUI.v1 = {
     --         FilterBar、DatePicker 改用）；Tabs:setEnabled／setItemEnabled（tabsEnabled）；Focus 描述
     --         captionSide（focusCaption）；FilterBar 的 dateToggle／kindsDropdown／sortInHeader（filterBarModes）；
     --         TableHeader 鍵盤焦點：左右換欄、Enter 排序（tableHeaderFocus）；Toast.setAvoid 避開區（toastAvoid）
-    API_REVISION = 12,
+    -- rev 13：家族工具列 Dock（Widgets/Dock.lua，UI.Dock.register／unregister／refresh／isDocked）＋
+    --         keyBinding MinidoracatUI_Dock＋彩色吉祥物把手貼圖（dock）
+    API_REVISION = 13,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -697,6 +699,7 @@ MinidoracatUI.v1 = {
         filterBarModes = false, -- rev 12：FilterBar 的 dateToggle／kindsDropdown／sortInHeader（Widgets/FilterBar.lua）
         tableHeaderFocus = false, -- rev 12：TableHeader 焦點（onFocusKey／focusRect／focusDescriptor，Widgets/Table.lua）
         toastAvoid = false,       -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua）
+        dock = false,             -- rev 13：UI.Dock 家族工具列（Widgets/Dock.lua）
     },
     Theme = Theme,
     Skin = Skin,

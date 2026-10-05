@@ -299,8 +299,9 @@ if os.path.isfile(_cl):
     fail("CHANGELOG 無基礎設施洩漏樣式", leaks) if leaks else ok("CHANGELOG 無基礎設施洩漏樣式")
 
 # ---- 12. UI 貼圖（皮膚＋圖示）----
-# 42/media/ui/MinidoracatUI/ 的 OUTPUT_NAMES（皮膚＋幾何圖示＋art 圖示）逐張過
-# gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）／純白 RGB。
+# 42/media/ui/MinidoracatUI/ 的 OUTPUT_NAMES（皮膚＋幾何圖示＋art 圖示＋彩色吉祥物）逐張過
+# gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）；吉祥物以外純白 RGB。
+# 吉祥物（rev 13 Dock 把手）另驗：64x64／1px 透明邊／含非白色彩。
 # 皮膚另驗：照 NinePatchTexture.java:262-298 反解析切線＝既有 (6,4,6) 與 pill (10,4,10)／
 # 拉伸區逐列相同／參考 alpha 表逐像素比對。圖示另驗：32x32／1px 透明邊／鏡射對稱／
 # 手算探針像素（該實心的實心、該透空的透空）／著墨比例區間／有 AA 過渡。

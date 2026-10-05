@@ -39,5 +39,10 @@
     "IGUI_MinidoracatUI_ItemPicker_More": "%2 件中の先頭 %1 件を表示しています。キーワードを追加して絞り込んでください",
     "IGUI_MinidoracatUI_Autocomplete_More": "他 %1 件…もう少し入力してください",
     "IGUI_MinidoracatUI_Autocomplete_Partial": "候補は一部のみです。検索を絞ってください。",
-    "IGUI_MinidoracatUI_Autocomplete_Empty": "該当なし"
+    "IGUI_MinidoracatUI_Autocomplete_Empty": "該当なし",
+    "IGUI_MinidoracatUI_Dock_EntryHotkey": "%1（ショートカット %2）",
+    "IGUI_MinidoracatUI_Dock_Expand": "展開（%1 件）",
+    "IGUI_MinidoracatUI_Dock_Collapse": "折りたたむ（%1 件）",
+    "IGUI_MinidoracatUI_Dock_StatusLine": "%1：%2",
+    "IGUI_MinidoracatUI_Dock_Open": "ファミリーツールバーを開く"
 }

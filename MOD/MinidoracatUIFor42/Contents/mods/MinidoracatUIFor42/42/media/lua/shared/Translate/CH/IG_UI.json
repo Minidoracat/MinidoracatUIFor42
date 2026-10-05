@@ -39,5 +39,10 @@
     "IGUI_MinidoracatUI_ItemPicker_More": "顯示前 %1 項，共 %2 項符合；請再輸入關鍵字縮小範圍",
     "IGUI_MinidoracatUI_Autocomplete_More": "還有 %1 個，請輸入更多字元",
     "IGUI_MinidoracatUI_Autocomplete_Partial": "候選尚未查完，請縮小搜尋條件",
-    "IGUI_MinidoracatUI_Autocomplete_Empty": "沒有符合的結果"
+    "IGUI_MinidoracatUI_Autocomplete_Empty": "沒有符合的結果",
+    "IGUI_MinidoracatUI_Dock_EntryHotkey": "%1（快捷鍵 %2）",
+    "IGUI_MinidoracatUI_Dock_Expand": "展開（%1 個入口）",
+    "IGUI_MinidoracatUI_Dock_Collapse": "收合（%1 個入口）",
+    "IGUI_MinidoracatUI_Dock_StatusLine": "%1：%2",
+    "IGUI_MinidoracatUI_Dock_Open": "開啟家族工具列"
 }

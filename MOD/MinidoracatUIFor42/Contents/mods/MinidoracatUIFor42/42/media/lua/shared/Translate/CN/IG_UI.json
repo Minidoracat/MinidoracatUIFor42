@@ -39,5 +39,10 @@
     "IGUI_MinidoracatUI_ItemPicker_More": "显示前 %1 项，共 %2 项符合；请再输入关键字缩小范围",
     "IGUI_MinidoracatUI_Autocomplete_More": "还有 %1 个，请输入更多字符",
     "IGUI_MinidoracatUI_Autocomplete_Partial": "候选尚未查完，请缩小搜索条件",
-    "IGUI_MinidoracatUI_Autocomplete_Empty": "没有符合的结果"
+    "IGUI_MinidoracatUI_Autocomplete_Empty": "没有符合的结果",
+    "IGUI_MinidoracatUI_Dock_EntryHotkey": "%1（快捷键 %2）",
+    "IGUI_MinidoracatUI_Dock_Expand": "展开（%1 个入口）",
+    "IGUI_MinidoracatUI_Dock_Collapse": "收起（%1 个入口）",
+    "IGUI_MinidoracatUI_Dock_StatusLine": "%1：%2",
+    "IGUI_MinidoracatUI_Dock_Open": "打开家族工具栏"
 }

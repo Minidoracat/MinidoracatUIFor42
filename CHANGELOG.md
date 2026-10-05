@@ -20,6 +20,7 @@
 
 ### 新增
 
+- **家族工具列：家族 MOD 的浮動按鈕收成一條**：小地圖、公告欄、經濟系統、車輛管理、效能分析等家族 MOD 原本各自在畫面上放一顆浮動按鈕，現在改排進同一條直立工具列，放在畫面右側心情圖示欄的左邊。最上面的貓娘頭點一下就收合或展開（收合時她在睡覺），整條可以按住任一顆按鈕拖到別處；位置與收合狀態會記住。滑鼠停在按鈕上會顯示名稱、快捷鍵與目前狀態；有待領取的數量會顯示在按鈕角落，收合時只要有任何待處理就在貓娘頭上亮一個紅點，有需要注意的狀況則整條加上紅框。鍵盤按「.」（句點，可在選項的按鍵設定「Minidoracat 家族介面」分類裡改）會展開工具列並讓你用方向鍵選、Enter 開啟，Esc 收回；手把玩家在世界選單（X 鍵）選「開啟家族工具列」即可用方向鍵與 A 操作、B 離開。各 MOD 也更新到支援工具列的版本後才會加入；還沒更新的 MOD 照舊使用原本的浮動按鈕。更新後需完整重開客戶端
 - **給 MOD 作者的新能力**：頁籤可以整列或單一頁籤停用；鍵盤焦點框旁的說明可以改放上方、右側或不顯示；表格欄位標題可以用鍵盤或手把選欄、按確認切換排序；篩選列可以把起訖日期收進「自訂日期...」按鈕、把類型改成一個下拉選單、改由表格欄位標題排序；右上角通知可以避開 MOD 指定的視窗（改排到視窗下方或左側）。現有 MOD 不改程式就不受影響
 
 ### 修正
@@ -29,6 +30,7 @@
 
 > 技術要點：`API_REVISION` 12。新 theme token `textDisabled`（深色 0.40、淺色 0.52；深色黑底 3.66:1、與閒置 `textMuted` 差 2.15:1），Button 各樣式、TextField、Checkbox、Tabs、DatePicker 日曆鈕、FilterBar 箭頭的停用標籤改用它且不再乘停用淡化（chrome 照舊乘 0.45）；停用的 `primary` 改畫 `normal`。新 `CAPABILITIES`：`tabsEnabled`（`Tabs:setEnabled`／`isEnabled`／`setItemEnabled`／`isItemEnabled`）、`focusCaption`（描述欄位 `captionSide = "below"|"above"|"right"|"none"`、控制項 `_focusCaptionSide`、`Focus.drawCaption` 第 8 參數 `side`、控制項選用 `focusRect()`）、`tableHeaderFocus`（`TableHeader.new{ focusable?, focusLabel? }`、`header:focusDescriptor(label?)`、`onFocusKey`：左右換可排序欄、Enter／Space／A 呼叫 `onSort`；`live=false` 不可聚焦）、`filterBarModes`（`FilterBar.new` 選項 `dateToggle`／`kindsDropdown`／`sortInHeader`、方法 `toggleSort(key)`）、`toastAvoid`（`UI.Toast.setAvoid(owner, fn)`，`fn()` 每幀回螢幕座標 `x, y, w, h` 或 nil；與通知欄重疊時整疊移到矩形下方，放不下改左側；`fn = nil` 取消登記）。新翻譯鍵 `IGUI_MinidoracatUI_Filter_CustomDate`。`Focus.invalidate` 換替代目標時沿用原本的焦點框可見性。
 > `Focus.drawCaption` 的 `side="right"` 畫成飛出標籤：不透明底（不乘 `theme.alpha`）連同 2px 外圈、標籤疊 18% accent 淡底與 accent 框、6px 尖角指向控制項、對框垂直置中、與光暈隔 3px，右側放不下翻左。FilterBar inline 分頁不再截字：文字鈕放不下改 `chevronLeft`／`chevronRight` 圖示鈕（`fullTitle`＋tooltip 留全名），再不夠拿掉筆數；先試本列剩餘空間、都不行才換列。
+> 技術要點：`API_REVISION` 13，新 `CAPABILITIES.dock`（`Widgets/Dock.lua`，`UI.Dock.register(spec) -> boolean`／`unregister(id)`／`refresh()`／`isDocked(id)`；spec 欄位、排序分配表與繪製規則見 ARCHITECTURE §3.16）。consumer 在 `CAPABILITIES.dock` 為 true 且 `register` 回 true 時不建立自己的 FloatButton，否則照舊。位置與收合以 `ISLayoutManager` key `MinidoracatUIDock`（x、y、collapsed）存在 `layout.ini`，拖曳放開與切換收合時立即寫入；預設 x＝螢幕寬 −（10＋moodle 尺寸）−12 − Dock 寬、y＝120，換解析度先套預設再讀該解析度的記錄。新 keyBinding 區段 `[MinidoracatUI]`、`MinidoracatUI_Dock` 預設 `Keyboard.KEY_PERIOD`：原版 `keyBinding.lua` 未綁（也不是 `ISSearchManager` 的 END）、原版 Lua 與反編譯 Java 都沒有直接讀這個鍵、家族 MOD 未使用（MiniMap `/` `'` `;`、Economy `[`、DevProfiler `\`）、本機 Workshop 只有一個不作用的開發工具命中；Home／End／PgUp／PgDn 是面板內導覽鍵，不拿來開啟。手把入口走 `Events.OnFillWorldObjectContextMenu`（`ISWorldObjectContextMenu.lua:213`；手把 X 經 `ISButtonPrompt.lua:166-191`，先以 `test=true` 探測，`:1115`），只對 `JoypadState.players[1]` 的玩家 0 加選項，`test` 時回 `ISWorldObjectContextMenu.setTest()`；選項把手把焦點交給 Dock（`UI.Focus.takeJoypad`），B 或啟動入口時歸還（`ISContextMenu:onJoypadDown` 先 `closeAll()` 再呼叫選項，`ISContextMenu.lua:256-260`）。Toast 有 `toastAvoid` 時以 owner `MinidoracatUIDock` 登記 Dock 矩形。新增彩色貼圖 `mui_mascot_sleep.png`／`mui_mascot_awake.png`（64×64，來源記錄 `scripts/dock/mascot-source.json`）。
 
 ## [42.21.0-0.6.3] - 2026-10-05
 

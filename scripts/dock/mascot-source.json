@@ -1,0 +1,26 @@
+{
+  "purpose": "rev 13 Dock handle: collapsed = sleeping head with zZ, expanded = awake head",
+  "outputs": {
+    "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/ui/MinidoracatUI/mui_mascot_sleep.png": "0bb23763d4d9db7871616e535f1ad5ca",
+    "MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/ui/MinidoracatUI/mui_mascot_awake.png": "ae09c2913d8417db090d17832fa8bb02"
+  },
+  "source_sheet": {
+    "path": "scripts/dock/mascot-heads-sheet.png",
+    "md5": "f4d286c392a4a37f7602260acc75340b",
+    "size": "1774x887 RGB, left cell = sleep, right cell = awake"
+  },
+  "generation": {
+    "model": "gpt-image-2",
+    "tool": "OMP generate_image",
+    "reference_image": "scripts/poster/mascot.png",
+    "prompt": "以 Image 1 的家族吉祥物貓娘為角色原型，畫成 Q 版頭像遊戲 UI 圖示設定表：同一個角色的兩種狀態並排。保留淡紫銀色長髮、白色絨毛貓耳（耳內淺粉）、紫色眼睛、右側紫藍色大蝴蝶結（中間金色星星徽章）；只畫頭部。左格睡著（閉眼弧線、貓耳往兩側垂下、嘴巴微張、左上方白色填色深色外框的 z 符號），右格醒著（睁眼有高光、貓耳豎起、微笑露虛牙）；純白平塗背景；兩格頭像大小位置一致；日系 Q 版扁平賽璐璐、粗而連續的深紫灰外框。"
+  },
+  "cutout": [
+    "each head cropped from its sheet cell onto a shared 816x816 canvas (same scale, same placement)",
+    "white background removed by flood fill from the canvas borders, background = min(R,G,B) >= 236",
+    "2px alpha ramp on the cut edge",
+    "both heads bottom-aligned with one shared scale: union content box of the two heads (780x689 canvas px) scaled by 62/780",
+    "resize with Lanczos on premultiplied alpha (Pillow RGBa) to 62x55, pasted at x=1, bottom row 62 of a 64x64 RGBA canvas",
+    "fully transparent pixels zeroed; 1px transparent border on all sides (checked by gen_ui_textures.assert_mascot_content)"
+  ]
+}

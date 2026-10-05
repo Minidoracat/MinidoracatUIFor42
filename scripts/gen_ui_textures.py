@@ -8,6 +8,7 @@
     外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
 兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
+另有兩類 commit 進來、本檔不生成只驗證的資產：art 圖示（ART_ICON_NAMES）與彩色吉祥物（MASCOT_NAMES）。
 純確定性計算（不用 ImageDraw，避免跨 Pillow 版本的柵格化差異），重跑產物逐位元組相同；
 生成後自檢並印統計／皮膚 alpha 表／圖示 16px ASCII 預覽／md5。
 
@@ -84,7 +85,12 @@ ART_ICON_NAMES = tuple(
         "markerStar", "markerHeart", "markerFlag", "markerCrown",
     )
 )
-OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES
+# 彩色吉祥物（rev 13 Dock 把手）：AI 生成頭像經去背縮成 64×64 RGBA 後 commit，原色繪製、不染色；
+# 不由本檔生成（generate_images 不覆寫、不刪，缺檔＝assert）。來源與處理：scripts/dock/mascot-source.json。
+# verify 走 assert_mascot_content（64×64／1px 透明邊／含非白色彩）。
+MASCOT_SIZE = 64
+MASCOT_NAMES = ("mui_mascot_sleep.png", "mui_mascot_awake.png")
+OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES + MASCOT_NAMES
 
 
 def parse_alpha_table(text: str) -> tuple[tuple[int, ...], ...]:
@@ -839,11 +845,23 @@ def assert_art_icon_content(filename: str, alpha: list[list[int]]) -> float:
     return ratio
 
 
+def assert_mascot_content(filename: str, pixels: list[tuple[int, int, int, int]]) -> None:
+    """彩色吉祥物：1px 透明邊（縮放後 AA 不碰邊）＋確實是彩色（不是被誤轉成白 glyph）。"""
+    last = MASCOT_SIZE - 1
+    edge = [pixels[y * MASCOT_SIZE + x][3] for x in range(MASCOT_SIZE) for y in (0, last)]
+    edge += [pixels[y * MASCOT_SIZE + x][3] for y in range(MASCOT_SIZE) for x in (0, last)]
+    assert not any(edge), f"{filename}: 未留 1px 透明邊"
+    assert any(p[3] > 0 and p[:3] != WHITE for p in pixels), f"{filename}: 沒有非白色彩（彩色資產不該是白 glyph）"
+
+
 def verify_image(path: Path) -> dict[str, object]:
     is_icon = path.name in ICON_SPECS
     is_art = path.name in ART_ICON_NAMES
+    is_mascot = path.name in MASCOT_NAMES
     if is_icon or is_art:
         expected_size = (ICON_SIZE, ICON_SIZE)
+    elif is_mascot:
+        expected_size = (MASCOT_SIZE, MASCOT_SIZE)
     elif path.name.startswith("mui_pill_"):
         expected_size = (PILL_NINE_PATCH_SIZE, PILL_NINE_PATCH_SIZE)
     elif path.name == "mui_dot.png":
@@ -863,7 +881,10 @@ def verify_image(path: Path) -> dict[str, object]:
         size = image.size
         mode = image.mode
 
-    assert all(pixel[:3] == (255, 255, 255) for pixel in pixels), f"Non-white RGB in {path.name}"
+    if is_mascot:
+        assert_mascot_content(path.name, pixels)
+    else:
+        assert all(pixel[:3] == (255, 255, 255) for pixel in pixels), f"Non-white RGB in {path.name}"
 
     width, height, bit_depth, color_type, compression, filter_method, interlace = read_png_ihdr(path)
     assert (width, height) == expected_size
@@ -874,7 +895,9 @@ def verify_image(path: Path) -> dict[str, object]:
     alpha = [[pixels[y * width + x][3] for x in range(width)] for y in range(height)]
     nine_patch = None
     ink = None
-    if is_icon:
+    if is_mascot:
+        pass  # 內容已由 assert_mascot_content 驗過
+    elif is_icon:
         ink = assert_icon_content(path.name, alpha)
     elif is_art:
         ink = assert_art_icon_content(path.name, alpha)
@@ -900,7 +923,7 @@ def verify_image(path: Path) -> dict[str, object]:
     }
     return {
         "filename": path.name,
-        "kind": "icon" if (is_icon or is_art) else "skin",
+        "kind": "mascot" if is_mascot else "icon" if (is_icon or is_art) else "skin",
         "size": size,
         "mode": mode,
         "alpha": alpha,
@@ -929,6 +952,8 @@ def print_report(reports: list[dict[str, object]], output_dir: Path) -> None:
             print("  16px 預覽（2x2 降採樣，等同遊戲內顯示尺寸）：")
             for line in ascii_preview(report["alpha"]):
                 print(f"    |{line}|")
+            continue
+        if report["kind"] == "mascot":
             continue
         if report["nine_patch"] is None:
             print("  nine-slice: n/a")

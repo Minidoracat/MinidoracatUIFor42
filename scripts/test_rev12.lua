@@ -20,7 +20,7 @@ local function ratio(a, b)
 end
 local dark, light = UI.Theme.defaultPalette("dark"), UI.Theme.defaultPalette("light")
 local dd, lt = dark.textDisabled, light.textDisabled
-ok(dd ~= nil and lt ~= nil and nearly(dd.r, 0.40) and nearly(lt.r, 0.52) and UI.API_REVISION == 12
+ok(dd ~= nil and lt ~= nil and nearly(dd.r, 0.40) and nearly(lt.r, 0.52) and UI.API_REVISION >= 12
     and UI.CAPABILITIES.tabsEnabled and UI.CAPABILITIES.focusCaption and UI.CAPABILITIES.filterBarModes,
     "rev 12：兩套 palette 都有 textDisabled，三個新旗標在載入後為 true")
 local black = 0
