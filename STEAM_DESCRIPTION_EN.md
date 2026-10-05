@@ -5,6 +5,8 @@
 
 A [b]required UI library[/b] shared by Minidoracat mods. It [b]adds no gameplay content by itself[/b]; everything you see comes from the mods that depend on it.
 
+✨ [b]Family toolbar[/b]: the buttons of all family mods sit in one collapsible vertical strip; press the "." key to open it.
+
 [h2]📦 Who needs it[/h2]
 These mods list it under Required Items — subscribe if you use any of them:
 [list]

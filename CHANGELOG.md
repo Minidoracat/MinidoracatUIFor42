@@ -1,6 +1,6 @@
 # Changelog
 
-<!-- 撰寫規則摘要（完整版見 AGENTS.md「CHANGELOG 撰寫規則」）：
+<!-- 撰寫規則摘要（完整版見 ../pz-family-docs/conventions.md「CHANGELOG（雙受眾）」）：
   - bullet 寫給玩家，會整段照貼 Workshop 更新說明：症狀先行、遊戲內名詞、
     禁檔名/函式名/行號/引擎術語；影響版本誠實寫清楚
   - 「> 技術要點：」（選用）只放管理員/modder 需要的行為事實；單次變更的完整
@@ -12,7 +12,7 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
-## [Unreleased]
+## [42.21.0-0.7.0] - 2026-10-05
 
 ### 變更
 
