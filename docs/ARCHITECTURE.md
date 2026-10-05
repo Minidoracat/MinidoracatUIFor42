@@ -574,6 +574,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | consumer | id | order |
 |---|---|---|
 | MiniMap | `minimap` | 10 |
+| MiniMap Map Watch | `minimapwatch` | 12 |
 | NoticeBoard | `noticeboard` | 20 |
 | Economy | `economy` | 30 |
 | VehicleManager | `vehiclemanager` | 40 |
