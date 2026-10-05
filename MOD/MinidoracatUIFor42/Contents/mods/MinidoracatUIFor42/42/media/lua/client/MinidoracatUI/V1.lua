@@ -453,8 +453,10 @@ end
 -- Theme — token 化色票（深／淺雙色系），每 MOD 一個實例
 -- ============================================================
 -- 跨 MOD token（framework default 只認這些；名單見 docs/ARCHITECTURE.md §3.2）：
---   surface / surfaceTitle / well / border / text / textMuted / textFaint /
+--   surface / surfaceTitle / well / border / text / textMuted / textFaint / textDisabled /
 --   accent / hover / selected / errorSurface / errorText
+-- textDisabled（rev 12）：停用控制項的標籤與圖樣，字不乘停用淡化（chrome 才乘 0.45）——深色 #666666
+-- 在黑底 3.66:1、與閒置 textMuted 差 2.15:1（textFaint 只差 1.25:1，分不出停用）。
 -- MOD 自有 token（unread、rowHover…）由 create 的 colors 自帶，框架原樣收下。
 -- create() 逐 token 深拷貝——共享 default 永不被 mutate（NBSkin↔MiniMap 色票
 -- 複製分岔的根源就是「共用色票、各自持有可變引用」）。
@@ -475,6 +477,7 @@ local DARK = {
     text         = { r = 1,    g = 1,    b = 1,    a = 1.0 },
     textMuted    = { r = 0.62, g = 0.62, b = 0.62, a = 1.0 },
     textFaint    = { r = 0.55, g = 0.55, b = 0.55, a = 1.0 },
+    textDisabled = { r = 0.40, g = 0.40, b = 0.40, a = 1.0 },
     accent       = { r = 1,    g = 0.85, b = 0.4,  a = 1.0 },
     hover        = { r = 1,    g = 1,    b = 1,    a = 0.06 },
     selected     = { r = 1,    g = 1,    b = 1,    a = 0.12 },
@@ -492,6 +495,7 @@ local LIGHT = {
     text         = { r = 0.08, g = 0.08, b = 0.08, a = 1.0 },
     textMuted    = { r = 0.35, g = 0.35, b = 0.35, a = 1.0 },
     textFaint    = { r = 0.45, g = 0.45, b = 0.45, a = 1.0 },
+    textDisabled = { r = 0.52, g = 0.52, b = 0.52, a = 1.0 },
     accent       = { r = 0.75, g = 0.55, b = 0.1,  a = 1.0 },
     hover        = { r = 0,    g = 0,    b = 0,    a = 0.05 },
     selected     = { r = 0,    g = 0,    b = 0,    a = 0.10 },
@@ -662,7 +666,11 @@ MinidoracatUI.v1 = {
     -- rev 11：UI.Text.fit、Skin.arrow、Button 的 chip 樣式／setActive／自動截字與 tooltip、
     --         TextField 可改尺寸與 clearButton、theme.alpha 乘在元件 chrome；新增 DatePicker／Table／
     --         FilterBar／ItemPicker／Autocomplete 五個能力（收編自 Economy）
-    API_REVISION = 11,
+    -- rev 12：theme token textDisabled（停用標籤／圖樣，Button 各樣式、Tabs、TextField、Checkbox、
+    --         FilterBar、DatePicker 改用）；Tabs:setEnabled／setItemEnabled（tabsEnabled）；Focus 描述
+    --         captionSide（focusCaption）；FilterBar 的 dateToggle／kindsDropdown／sortInHeader（filterBarModes）；
+    --         TableHeader 鍵盤焦點：左右換欄、Enter 排序（tableHeaderFocus）；Toast.setAvoid 避開區（toastAvoid）
+    API_REVISION = 12,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -684,6 +692,11 @@ MinidoracatUI.v1 = {
         filterBar = false,    -- rev 11：UI.FilterBar（Widgets/FilterBar.lua）
         itemPicker = false,   -- rev 11：UI.ItemPicker（Widgets/ItemPicker.lua）
         autocomplete = false, -- rev 11：UI.Autocomplete（Widgets/Autocomplete.lua）
+        tabsEnabled = false,    -- rev 12：Tabs:setEnabled／setItemEnabled（Widgets/Controls.lua）
+        focusCaption = false,   -- rev 12：描述的 captionSide、drawCaption 的 side（Focus.lua）
+        filterBarModes = false, -- rev 12：FilterBar 的 dateToggle／kindsDropdown／sortInHeader（Widgets/FilterBar.lua）
+        tableHeaderFocus = false, -- rev 12：TableHeader 焦點（onFocusKey／focusRect／focusDescriptor，Widgets/Table.lua）
+        toastAvoid = false,       -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua）
     },
     Theme = Theme,
     Skin = Skin,

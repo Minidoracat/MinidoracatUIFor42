@@ -31,6 +31,7 @@
     "IGUI_MinidoracatUI_Filter_PageNav": "換頁",
     "IGUI_MinidoracatUI_Filter_Open": "篩選條件",
     "IGUI_MinidoracatUI_Filter_Results": "返回結果",
+    "IGUI_MinidoracatUI_Filter_CustomDate": "自訂日期...",
     "IGUI_MinidoracatUI_ItemPicker_Title": "選擇物品",
     "IGUI_MinidoracatUI_ItemPicker_Search": "依名稱或物品代碼搜尋物品",
     "IGUI_MinidoracatUI_ItemPicker_Count": "共 %1 項",

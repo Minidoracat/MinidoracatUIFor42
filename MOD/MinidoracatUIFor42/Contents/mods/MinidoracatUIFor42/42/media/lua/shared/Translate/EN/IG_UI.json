@@ -31,6 +31,7 @@
     "IGUI_MinidoracatUI_Filter_PageNav": "Paging",
     "IGUI_MinidoracatUI_Filter_Open": "Filters",
     "IGUI_MinidoracatUI_Filter_Results": "Back to results",
+    "IGUI_MinidoracatUI_Filter_CustomDate": "Custom dates...",
     "IGUI_MinidoracatUI_ItemPicker_Title": "Pick an item",
     "IGUI_MinidoracatUI_ItemPicker_Search": "Search items by name or item ID",
     "IGUI_MinidoracatUI_ItemPicker_Count": "%1 items",

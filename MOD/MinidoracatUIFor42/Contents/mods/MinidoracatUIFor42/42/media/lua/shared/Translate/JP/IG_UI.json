@@ -31,6 +31,7 @@
     "IGUI_MinidoracatUI_Filter_PageNav": "ページ送り",
     "IGUI_MinidoracatUI_Filter_Open": "絞り込み条件",
     "IGUI_MinidoracatUI_Filter_Results": "結果に戻る",
+    "IGUI_MinidoracatUI_Filter_CustomDate": "日付を指定...",
     "IGUI_MinidoracatUI_ItemPicker_Title": "アイテムを選択",
     "IGUI_MinidoracatUI_ItemPicker_Search": "名前またはアイテムIDで検索",
     "IGUI_MinidoracatUI_ItemPicker_Count": "%1 件",

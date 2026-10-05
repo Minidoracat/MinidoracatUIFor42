@@ -92,7 +92,8 @@ do
     check(ret == v1, "檔尾 return 與全域是同一實體")
     check(v1.CAPABILITIES.theme == true and v1.CAPABILITIES.skin == true, "CAPABILITIES 宣告 theme/skin")
     check(v1.CAPABILITIES.floatButton == false and v1.CAPABILITIES.toast == false
-        and v1.CAPABILITIES.virtualList == false, "未實作能力（floatButton/toast/virtualList）誠實標 false")
+        and v1.CAPABILITIES.virtualList == false and v1.CAPABILITIES.toastAvoid == false,
+        "未實作能力（floatButton/toast/virtualList/toastAvoid）誠實標 false")
 
     -- 注入 error：把 PALETTES 定義行換成 error()，模擬檔案中段失敗
     MinidoracatUI = nil
@@ -1019,14 +1020,16 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 11, "API_REVISION 進到 11")
+    check(UI.API_REVISION == 12, "API_REVISION 進到 12")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
         and UI.CAPABILITIES.datePicker == false and UI.CAPABILITIES.table == false
         and UI.CAPABILITIES.filterBar == false and UI.CAPABILITIES.itemPicker == false
-        and UI.CAPABILITIES.autocomplete == false,
-        "rev 7／8／9／10／11 能力在 widget 檔載入前誠實標 false")
+        and UI.CAPABILITIES.autocomplete == false and UI.CAPABILITIES.tabsEnabled == false
+        and UI.CAPABILITIES.focusCaption == false and UI.CAPABILITIES.filterBarModes == false
+        and UI.CAPABILITIES.tableHeaderFocus == false,
+        "rev 7／8／9／10／11／12 能力在 widget 檔載入前誠實標 false")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -1119,8 +1122,8 @@ do
     btn.rects, btn.texts = {}, {}
     btn._mouseOver, btn.pressed = true, true
     btn:prerender()
-    check(#btn.rects == 1 and nearly(btn.rects[1].a, 0.5 * 0.45) and nearly(btn.texts[1].r, 0.55),
-        "disabled：淡化、無 hover／pressed 疊色、textFaint 字")
+    check(#btn.rects == 1 and nearly(btn.rects[1].a, 0.5 * 0.45) and nearly(btn.texts[1].r, 0.40)
+        and nearly(btn.texts[1].a, 1), "disabled：chrome 淡化、無 hover／pressed 疊色、textDisabled 字不淡化（rev 12）")
 
     btn:setTooltip("tip")
     btn:prerender()
@@ -1889,8 +1892,8 @@ do
     chip:setEnabled(false)
     chip.borders, chip.texts = {}, {}
     chip:prerender()
-    check(nearly(chip.borders[1].a, 0.45) and nearly(chip.texts[1].r, 0.55),
-        "chip 停用：chrome 淡化、textFaint 字")
+    check(nearly(chip.borders[1].a, 0.45) and nearly(chip.texts[1].r, 0.40) and nearly(chip.texts[1].a, 1),
+        "chip 停用：chrome 淡化、textDisabled 字不淡化（rev 12）")
     local normal = UI.Button.new{ title = "N" }
     normal:setActive(true)
     normal:prerender()
@@ -1999,8 +2002,8 @@ end
 
 --[[
 切片測試載入器（本檔之後不必為了切片再改）：
-  依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua 與 scripts/test_wrap.lua；
-  檔案不存在記一筆失敗（六個切片都已落地）。
+  依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua、scripts/test_rev12.lua 與
+  scripts/test_wrap.lua；檔案不存在記一筆失敗（七個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2045,7 +2048,7 @@ local sliceCtx = {
     clipboard = function() return clip end,
 }
 local sliceAssertions = 0
-for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "wrap" }) do
+for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

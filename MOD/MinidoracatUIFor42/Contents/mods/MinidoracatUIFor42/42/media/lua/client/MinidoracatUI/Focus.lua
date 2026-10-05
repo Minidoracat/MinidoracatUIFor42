@@ -14,9 +14,11 @@
 --   { kind = "scroll", control = element,          label = string }
 -- 選用欄位：focusable = false（不把原生文字焦點交給它：唯讀框會吞掉所有按鍵，見唯讀陷阱）、
 --   copyAll = button（Ctrl+C 改按這顆）、frame = element（焦點框畫在這個外框上）、
---   scrollOwner = element（落點前先請它 scrollTo(control)）。
--- 控制項選用方法 control:onFocusKey(key) → true＝已處理（Tabs 左右換頁、Slider 調值、樹狀清單展開）；
+--   scrollOwner = element（落點前先請它 scrollTo(control)）、captionSide = "below"|"above"|"right"|"none"
+--   （rev 12：框旁說明放哪；自動目標讀控制項的 _focusCaptionSide）。
+-- 控制項選用方法 control:onFocusKey(key) → true＝已處理（Tabs 左右換頁、Slider 調值、樹狀清單展開、表頭換欄與排序）；
 --   手把 A 以 KEY_RETURN、方向以對應方向鍵問同一個方法，順序同鍵盤（先於各種目標的預設處理）。
+--   control:focusRect() → x, y, w, h（rev 12，選用；元素座標）：焦點框與說明只標這一塊（TableHeader 的目前欄）。
 -- 清單選用回呼 list.onHighlight(list, item, index)：方向鍵移動反白時呼叫；onSelect 只給點擊／Enter／A。
 -- root 選用方法：root:onEscape() → true（root 自己的疊層關掉了）、root:isModal()、
 --   root:onFocusShoulder(delta)（手把 LB＝-1、RB＝+1）。
@@ -408,18 +410,20 @@ local function focusEntry(root, e)
     return true
 end
 
--- 整個描述對焦點下控制項的說法（focusable、copyAll、frame 是控制項自己答不出來的）
+-- 整個描述對焦點下控制項的說法（focusable、copyAll、frame、captionSide 是控制項自己答不出來的）
 local function remember(desc)
     st.kind = desc.kind or "button"
     st.label = desc.label
     st.focusable = desc.focusable
     st.copyAll = desc.copyAll
     st.frame = desc.frame
+    st.captionSide = desc.captionSide
 end
 
 local function forget()
     st.index, st.sub = 0, 0
     st.control, st.kind, st.label, st.focusable, st.copyAll, st.frame = nil, nil, nil, nil, nil, nil
+    st.captionSide = nil
 end
 
 -- 引擎實際在跟哪個輸入框說話：勾子為持有文字焦點的輸入框觸發，常常不是焦點框留下的那個（玩家直接
@@ -788,8 +792,11 @@ function Focus.invalidate(window)
         end
     end
     if #subs == 0 then
+        -- 替代目標沿用原本的框可見性：滑鼠放的焦點（ring=false）換位後也不畫框（step 落點一律亮框）
+        local ring = st.ring
         forget()
         Focus.step(root, 1)
+        st.ring = ring
         return
     end
     if found == 0 then
@@ -1161,22 +1168,68 @@ function Focus.drawRing(el, x, y, w, h, theme)
     end
 end
 
--- 框下的說明：自己畫不出完整標籤的控制項（純圖示、被截短的標題）在這裡給鍵盤玩家讀全文。
--- 放在框下方，碰到 el 底邊就翻到上方，並永遠留在 el 的寬度內。
-function Focus.drawCaption(el, x, y, w, h, caption, theme)
-    if type(caption) ~= "string" or caption == "" then return end
+-- 框旁的說明：自己畫不出完整標籤的控制項（純圖示、被截短的標題）在這裡給鍵盤玩家讀全文。
+-- side（rev 12）："below"（預設：框下方，碰到 el 底邊翻到上方）｜"above"（框上方，碰到頂邊翻到下方）｜
+-- "right"（tooltip 式飛出標籤：框右側 FLY_GAP 外、對框垂直置中，尖角指向控制項，碰到右緣翻到左側）｜
+-- "none"（不畫）。永遠夾在 el 之內。預設不自動避開別的控制項（會改變既有 consumer 的畫面）：
+-- 直排導覽列、說明行緊貼控制項的版面由 owner 在描述指定 side。
+-- 底色一律不透明（不乘 theme alpha、不吃 surface 自己的 a）。right 會蓋到旁邊的內容，所以要讀得出是
+-- 浮動標籤、不是被切掉的字：外圈 FLY_HALO 的不透明 surface 讓內容和框線之間空出一條，底色再疊一層
+-- accent（FLY_TINT），和頁面的黑底分得開。
+local FLY_GAP = 3    -- right：焦點框外緣（含 surface 光暈）到尖角的距離
+local NOTCH = 6      -- right：尖角深度（半高同值）
+local FLY_HALO = 2   -- right：標籤外圈的不透明 surface
+local FLY_TINT = 0.18 -- right：疊在底色上的 accent
+function Focus.drawCaption(el, x, y, w, h, caption, theme, side)
+    if type(caption) ~= "string" or caption == "" or side == "none" then return end
     local colors = themeOf(el, theme).colors
     local tm = getTextManager()
     local o = RING_GAP + RING_W
+    local bg, bd, tc = colors.surface, colors.accent, colors.text
+    if side == "right" then
+        local bw = tm:MeasureStringX(UIFont.Small, caption) + 16
+        local bh = tm:getFontHeight(UIFont.Small) + 8
+        -- 光暈外緣最後一個像素在 x+w+o+RING_W-1（左側 x-o-RING_W）：兩側都留 FLY_GAP 像素再接尖端
+        local edge = o + RING_W + FLY_GAP
+        local tip = x + w + edge
+        local bx, dir = tip + NOTCH, 1
+        -- 夾邊連外圈一起算：外圈也要留在 el 裡
+        if bx + bw + FLY_HALO > el.width then
+            tip = x - edge - 1
+            bx, dir = tip - NOTCH + 1 - bw, -1
+        end
+        if bx < FLY_HALO then bx = FLY_HALO end
+        local cy = y + math.floor(h / 2)
+        local by = cy - math.floor(bh / 2)
+        if by + bh + FLY_HALO > el.height then by = el.height - bh - FLY_HALO end
+        if by < FLY_HALO then by = FLY_HALO end
+        local ny = math.max(by + NOTCH, math.min(by + bh - 1 - NOTCH, cy))
+        -- 標籤連同外圈一次填不透明底，accent 只疊在標籤本身
+        el:drawRect(bx - FLY_HALO, by - FLY_HALO, bw + FLY_HALO * 2, bh + FLY_HALO * 2, 1, bg.r, bg.g, bg.b)
+        el:drawRect(bx, by, bw, bh, FLY_TINT, bd.r, bd.g, bd.b)
+        el:drawRectBorder(bx, by, bw, bh, 1, bd.r, bd.g, bd.b)
+        -- 尖角：從尖端往標籤逐欄加高的 1px 直條（實心 accent，緊接外框）
+        for i = 0, NOTCH - 1 do
+            el:drawRect(tip + dir * i, ny - i, 1, i * 2 + 1, 1, bd.r, bd.g, bd.b)
+        end
+        el:drawText(caption, bx + 8, by + 4, tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
+        return
+    end
     local bw = tm:MeasureStringX(UIFont.Small, caption) + 10
     local bh = tm:getFontHeight(UIFont.Small) + 6
     local bx = x + math.floor((w - bw) / 2)
-    local by = y + h + o + 2
-    if by + bh > el.height then by = y - o - 2 - bh end
+    local by
+    if side == "above" then
+        by = y - o - 2 - bh
+        if by < 0 then by = y + h + o + 2 end
+    else
+        by = y + h + o + 2
+        if by + bh > el.height then by = y - o - 2 - bh end
+    end
+    if by + bh > el.height then by = el.height - bh end
     if by < 0 then by = 0 end
     if bx + bw > el.width then bx = el.width - bw end
     if bx < 0 then bx = 0 end
-    local bg, bd, tc = colors.surface, colors.accent, colors.text
     el:drawRect(bx, by, bw, bh, 1, bg.r, bg.g, bg.b)
     el:drawRectBorder(bx, by, bw, bh, bd.a or 1, bd.r, bd.g, bd.b)
     el:drawText(caption, bx + 5, by + 3, tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
@@ -1233,8 +1286,13 @@ function Focus.render(el, theme)
     local y = f:getAbsoluteY() - el:getAbsoluteY()
     local w = f.width or 0
     local h = f.height or 0
+    if f == c and c.focusRect then
+        -- rev 12：控制項只標一部分（表頭的目前欄）：矩形是控制項的元素座標
+        local rx, ry, rw, rh = c:focusRect()
+        if rx ~= nil then x, y, w, h = x + rx, y + ry, rw, rh end
+    end
     Focus.drawRing(el, x, y, w, h, theme)
-    Focus.drawCaption(el, x, y, w, h, captionOf(c, st.label), theme)
+    Focus.drawCaption(el, x, y, w, h, captionOf(c, st.label), theme, st.captionSide)
 end
 
 -- ---------- 自動目標（框架 Window 預設的 keyboardTargets） ----------
@@ -1321,6 +1379,7 @@ function Focus.collectTargets(root)
             i = i + 1
         end
         d.label = c._focusLabel
+        d.captionSide = c._focusCaptionSide
         list[count] = d
     end
     for k = #list, count + 1, -1 do list[k] = nil end
@@ -1329,5 +1388,6 @@ end
 
 UI.Focus = Focus
 UI.CAPABILITIES.focus = true
+UI.CAPABILITIES.focusCaption = true
 
 return Focus

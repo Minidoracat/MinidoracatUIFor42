@@ -1,6 +1,6 @@
 -- MinidoracatUI Widgets/Controls — 現代控制元件（API rev 7）：Button／TextField／Checkbox／Tabs；
 -- rev 8 加 ColorPicker（CAPABILITIES.colorPicker）；rev 9 加 Slider（CAPABILITIES.slider），
--- ColorPicker 的 R/G/B 改用 Slider。
+-- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）。
 --
 -- 外觀全由框架自繪（theme token＋Skin 圓角，貼圖缺失退直角），原生 class 只當輸入／事件基底：
 --   * Button 以 ISButton 為基底：保留原生 pressed／enable／onclick(target, button)／tooltip／
@@ -44,7 +44,7 @@ local Icons = UI.Icons
 local PAD_X = 10
 local ICON_SIZE = 16
 local ICON_GAP = 6
-local DISABLED_ALPHA = 0.45
+local DISABLED_ALPHA = 0.45 -- 停用時只淡化 chrome；標籤與圖樣改用 textDisabled、不淡化
 -- primary 的深色字：accent 在兩套 palette 都是亮／中琥珀，theme 無對應 token
 local PRIMARY_TEXT = { r = 0.1, g = 0.08, b = 0.02, a = 1 }
 
@@ -68,6 +68,11 @@ end
 local function chromeAlpha(theme)
     local a = theme.alpha
     return type(a) == "number" and a or 1
+end
+
+-- rev 12 停用標籤色：theme 不是 Theme.create 建的（缺 textDisabled）時退回 textFaint，不 nil 炸
+local function disabledColor(colors)
+    return colors.textDisabled or colors.textFaint
 end
 
 -- ============================================================
@@ -129,7 +134,7 @@ function Button:prerender()
     local colors = self.theme.colors
     local w, h = self.width, self.height
     local enabled = self.enable
-    local alpha = enabled and 1 or DISABLED_ALPHA
+    local alpha = enabled and 1 or DISABLED_ALPHA -- 只乘 chrome；字與圖樣停用時改 textDisabled
     local ca = chromeAlpha(self.theme)
     local chrome = alpha * ca
     local hovered = enabled and self:isMouseOver()
@@ -138,7 +143,7 @@ function Button:prerender()
     local shape = nil
     local textColor
 
-    if style == "primary" then
+    if style == "primary" and enabled then
         Skin.fill(self, 0, 0, w, h, colors.accent, nil, chrome)
         Skin.border(self, 0, 0, w, h, colors.accent, nil, chrome)
         textColor = PRIMARY_TEXT
@@ -162,7 +167,7 @@ function Button:prerender()
             Skin.border(self, 0, 0, w, h, colors.border, shape, chrome)
             textColor = hovered and colors.text or colors.textMuted
         end
-    else
+    else -- normal；停用的 primary 也畫成 normal：淡化琥珀底上的 textDisabled 對比只有 1.04:1
         Skin.fill(self, 0, 0, w, h, colors.well, nil, chrome)
         Skin.border(self, 0, 0, w, h, colors.border, nil, chrome)
         textColor = colors.text
@@ -172,8 +177,8 @@ function Button:prerender()
     elseif hovered and style ~= "chip" then
         Skin.fill(self, 0, 0, w, h, colors.hover, nil, ca)
     end
-    if not enabled and style ~= "primary" then
-        textColor = colors.textFaint
+    if not enabled then
+        textColor = disabledColor(colors)
     end
     if self.joypadFocused then
         Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, nil, ca)
@@ -188,11 +193,11 @@ function Button:prerender()
     local x = math.floor((w - contentW) / 2)
     if hasIcon then
         Icons.draw(self, self.icon, x, math.floor((h - ICON_SIZE) / 2), ICON_SIZE,
-            textColor, (textColor.a or 1) * alpha)
+            textColor, textColor.a or 1)
         x = x + ICON_SIZE + ICON_GAP
     end
     if titleW > 0 then
-        drawColorText(self, self._fitTitle, x, math.floor((h - self._fontH) / 2), textColor, alpha, self.font)
+        drawColorText(self, self._fitTitle, x, math.floor((h - self._fontH) / 2), textColor, 1, self.font)
     end
 end
 
@@ -315,7 +320,7 @@ end
 
 local function applyEntryTextColor(field)
     local colors = field.theme.colors
-    local c = field._enabled and colors.text or colors.textFaint
+    local c = field._enabled and colors.text or disabledColor(colors)
     field._entry:setTextRGBA(c.r, c.g, c.b, c.a or 1)
 end
 
@@ -366,7 +371,7 @@ function TextField:prerender()
     refitPlaceholder(self)
     if text == "" and not focused and self._phFit then
         drawColorText(self, self._phFit, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
-            colors.textFaint, alpha, self.font)
+            self._enabled and colors.textFaint or disabledColor(colors), 1, self.font)
     end
 end
 
@@ -517,7 +522,7 @@ function Checkbox:prerender()
         drawFallbackBox(self, alpha * ca, colors)
     end
     drawColorText(self, self.label, TOGGLE_WIDTH + LABEL_GAP, math.floor((self.height - self._fontH) / 2),
-        self._enabled and colors.text or colors.textFaint, 1, self.font)
+        self._enabled and colors.text or disabledColor(colors), 1, self.font)
 end
 
 function Checkbox:onMouseDown(x, y)
@@ -648,17 +653,20 @@ local function itemAt(tabs, x)
     return nil
 end
 
+-- 停用（整列 setEnabled(false) 或單項 setItemEnabled）：標籤 textDisabled、不 hover、點不動；整列停用時
+-- chrome 另乘 DISABLED_ALPHA。選中項仍畫底與底線（停用不改選取）
 function Tabs:prerender()
     if self.isCollapsed then
         return
     end
     local colors = self.theme.colors
     local h = self.height
-    local ca = chromeAlpha(self.theme)
+    local enabled = self._enabled
+    local ca = chromeAlpha(self.theme) * (enabled and 1 or DISABLED_ALPHA)
     Skin.fill(self, 0, 0, self.width, h, colors.well, nil, ca)
     Skin.border(self, 0, 0, self.width, h, colors.border, nil, ca)
 
-    local hovered = self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
+    local hovered = enabled and self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
     local textY = math.floor((h - self._fontH) / 2)
     local items = self._items
     for i = 1, #items do
@@ -671,9 +679,12 @@ function Tabs:prerender()
                 self:drawRect(item.x + 6, h - TAB_INSET - 2, item.width - 12, 2,
                     (accent.a or 1) * ca, accent.r, accent.g, accent.b)
                 textColor = colors.text
-            elseif item == hovered then
+            elseif item == hovered and item.enabled then
                 Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.hover, nil, ca)
                 textColor = colors.text
+            end
+            if not (enabled and item.enabled) then
+                textColor = disabledColor(colors)
             end
             drawColorText(self, item.label, item.x + math.floor((item.width - item.labelWidth) / 2),
                 textY, textColor, 1, self.font)
@@ -682,8 +693,8 @@ function Tabs:prerender()
 end
 
 function Tabs:onMouseDown(x, y)
-    local item = itemAt(self, x)
-    if item then
+    local item = self._enabled and itemAt(self, x)
+    if item and item.enabled then
         self:setSelected(item.id)
     end
     return true
@@ -703,8 +714,11 @@ function Tabs:getSelected()
     return self.selected
 end
 
--- 往前／後切到下一個可見頁籤（不循環；手把 LB／RB 與焦點框上的左右鍵）。回 true＝有切換
+-- 往前／後切到下一個可見且可用的頁籤（不循環；手把 LB／RB 與焦點框上的左右鍵）。回 true＝有切換
 function Tabs:selectRelative(delta)
+    if not self._enabled then
+        return false
+    end
     local items = self._items
     local at = nil
     for i = 1, #items do
@@ -712,7 +726,7 @@ function Tabs:selectRelative(delta)
     end
     local i = (at or 0) + delta
     while i >= 1 and i <= #items do
-        if items[i].visible then
+        if items[i].visible and items[i].enabled then
             self:setSelected(items[i].id)
             return true
         end
@@ -749,6 +763,28 @@ function Tabs:setItemLabel(id, label)
     layoutTabs(self)
 end
 
+-- rev 12：整列停用（Focus 跳過它）。程式呼叫 setSelected 不受停用限制
+function Tabs:setEnabled(enabled)
+    self._enabled = enabled ~= false
+end
+
+function Tabs:isEnabled()
+    return self._enabled
+end
+
+-- rev 12：單項停用：照樣顯示、標籤 textDisabled，點擊與左右鍵跳過；停用選中項不自動切換
+function Tabs:setItemEnabled(id, enabled)
+    local item = findItem(self, id)
+    if item then
+        item.enabled = enabled ~= false
+    end
+end
+
+function Tabs:isItemEnabled(id)
+    local item = findItem(self, id)
+    return item ~= nil and item.enabled
+end
+
 -- opts: x, y, width?, height?, items={ {id=, label=}, ... }, selected?, theme?, font?, target?, onSelect?
 -- onSelect(target, id, tabs)；點已選中的不觸發
 function Tabs.new(opts)
@@ -768,9 +804,10 @@ function Tabs.new(opts)
     for i = 1, #source do
         local label = source[i].label or ""
         o._items[i] = { id = source[i].id, label = label, labelWidth = measure(font, label),
-            visible = true, x = 0, width = 0 }
+            visible = true, enabled = true, x = 0, width = 0 }
     end
     o.selected = opts.selected
+    o._enabled = true
     o._focusKind = "button"
     layoutTabs(o)
     o:initialise()
@@ -1260,5 +1297,6 @@ UI.ColorPicker = ColorPicker
 UI.CAPABILITIES.controls = true
 UI.CAPABILITIES.colorPicker = true
 UI.CAPABILITIES.slider = true
+UI.CAPABILITIES.tabsEnabled = true
 
 return Button

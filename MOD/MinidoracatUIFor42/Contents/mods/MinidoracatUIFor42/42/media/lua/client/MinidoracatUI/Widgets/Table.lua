@@ -338,6 +338,30 @@ local function headerSlot(header, i, c)
     return s
 end
 
+-- rev 12 鍵盤焦點：目前停在第幾欄（只停可排序欄）。失效（沒設過、欄變了、該欄不可排序）時改停目前排序欄，
+-- 沒有就第一個可排序欄；一個都沒有回 nil。每幀 focusRect 也走這裡，不配置
+local function focusColumn(header)
+    local cols = header._cols
+    local i = header._focusCol
+    if i ~= nil and cols[i] ~= nil and cols[i].sortable ~= false then
+        return i
+    end
+    local key = header.sort and header.sort(header.target) or nil
+    local first = nil
+    for k = 1, #cols do
+        local c = cols[k]
+        if c.sortable ~= false then
+            if key ~= nil and c.key == key then
+                first = k
+                break
+            end
+            first = first or k
+        end
+    end
+    header._focusCol = first
+    return first
+end
+
 function TableHeader:prerender()
     local theme = self.theme
     local colors = theme.colors
@@ -350,7 +374,10 @@ function TableHeader:prerender()
     if self.sort then
         sortKey, desc = self.sort(self.target)
     end
-    local idle = self:isLive() and colors.textMuted or colors.textFaint
+    local live = self:isLive()
+    -- Focus 以 _enabled == false 排除：live=false 或沒有可排序欄時整個表頭不可聚焦
+    self._enabled = live and focusColumn(self) ~= nil
+    local idle = live and colors.textMuted or colors.textFaint
     local cols = self._cols
     for i = 1, #cols do
         local c = cols[i]
@@ -383,7 +410,56 @@ function TableHeader:onMouseDown(x)
     return true
 end
 
--- opts: { x?, y?, width?, height?=字高+10, theme?, font?, target?, sort?, live?, onSort? }
+-- rev 12：焦點框上的按鍵（Focus 先問控制項）。左右在可排序欄間移動（到邊停住），Enter／Space／手把 A
+-- 走 onSort(target, 該欄 key, header)，同滑鼠點那一欄。live=false 不處理
+function TableHeader:onFocusKey(key)
+    local i = self:isLive() and focusColumn(self) or nil
+    if i == nil then
+        return false
+    end
+    local k = Keyboard
+    if key == k.KEY_LEFT or key == k.KEY_RIGHT then
+        local cols = self._cols
+        local step = key == k.KEY_LEFT and -1 or 1
+        local j = i + step
+        while cols[j] ~= nil do
+            if cols[j].sortable ~= false then
+                self._focusCol = j
+                break
+            end
+            j = j + step
+        end
+        return true
+    end
+    if key == k.KEY_RETURN or key == k.KEY_NUMPADENTER or key == k.KEY_SPACE then
+        if self.onSort then
+            self.onSort(self.target, self._cols[i].key, self)
+        end
+        return true
+    end
+    return false
+end
+
+-- rev 12：Focus 把焦點框畫在這個矩形（元素座標）上，而不是整條表頭
+function TableHeader:focusRect()
+    local i = focusColumn(self)
+    if i == nil then
+        return nil
+    end
+    local c = self._cols[i]
+    return c.x, 0, c.w, self.height
+end
+
+-- rev 12：原生 root 的 keyboardTargets 用。建構時快取一張描述（不配置）；label 省略＝「排序」，
+-- 說明預設畫在框上方（表頭下方緊貼著第一列資料）
+function TableHeader:focusDescriptor(label)
+    local d = self._focusDesc
+    d.label = label or self._focusLabel
+    return d
+end
+
+-- opts: { x?, y?, width?, height?=字高+10, theme?, font?, target?, sort?, live?, onSort?, focusable?, focusLabel? }
+-- focusable=true（rev 12）：框架 Window 的自動目標收它（_focusKind="button"）
 function TableHeader.new(opts)
     opts = opts or {}
     local font = opts.font or UIFont.Small
@@ -395,6 +471,13 @@ function TableHeader.new(opts)
     o.target = opts.target
     o.sort, o.live, o.onSort = opts.sort, opts.live, opts.onSort
     o._cols, o._slots = EMPTY, {}
+    o._enabled = true
+    o._focusLabel = opts.focusLabel or getText("IGUI_MinidoracatUI_Filter_Sort")
+    o._focusCaptionSide = "above"
+    o._focusDesc = { kind = "button", control = o, label = o._focusLabel, captionSide = "above" }
+    if opts.focusable then
+        o._focusKind = "button"
+    end
     o:initialise()
     return o
 end
@@ -403,5 +486,6 @@ Table.TextCell = TextCell
 UI.Table = Table
 UI.TableHeader = TableHeader
 UI.CAPABILITIES.table = true
+UI.CAPABILITIES.tableHeaderFocus = true
 
 return Table

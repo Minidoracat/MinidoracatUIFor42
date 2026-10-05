@@ -65,7 +65,6 @@ local TextField = UI.TextField
 local T = "IGUI_MinidoracatUI_Date_"
 local DAY_MS = 86400000
 local MIN_YEAR, MAX_YEAR = 1, 9999 -- 欄位只有四位數年份，月曆不離開這個範圍
-local DISABLED_ALPHA = 0.45        -- 同 Controls：停用時文字與圖樣的淡化
 
 local function chromeAlpha(theme)
     local a = theme.alpha
@@ -314,12 +313,11 @@ function DateButton:render()
     local size = math.min(self.width, self.height) - 10
     if size < 9 then size = 9 end
     local colors = self.theme.colors
-    local c, alpha = colors.textFaint, DISABLED_ALPHA
+    local c = colors.textDisabled or colors.textFaint -- rev 12：停用圖樣同停用標籤，不另外淡化
     if self.enable then
-        alpha = 1
         c = (self:isActive() or self:isMouseOver()) and colors.accent or colors.textMuted
     end
-    drawGlyph(self, math.floor((self.width - size) / 2), math.floor((self.height - size) / 2), size, c, alpha)
+    drawGlyph(self, math.floor((self.width - size) / 2), math.floor((self.height - size) / 2), size, c, 1)
 end
 
 -- 同一個欄位再按一次＝關閉

@@ -9,6 +9,9 @@
 -- 疊放位置——兩個 MOD 同時通知不會互相重疊蓋字。每則自帶 title 與色票
 -- 區分來源；色票缺省用框架 dark 值。
 --
+-- 【避開區（rev 12，CAPABILITIES.toastAvoid）】Toast.setAvoid(owner, fn) 登記 consumer 的視窗等矩形；
+-- 堆疊與它重疊時改放到它下方（放不下就左側），fn 回 nil 時照舊右上。
+--
 -- 動畫座標是小數：Skin 內部會 floor 絕對座標再交給 NinePatchTexture（防抖）。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
@@ -48,6 +51,8 @@ local FALLBACK = {
 -- 全域共用堆疊（框架單例；重載防重）
 Toast.active = Toast.active or {}
 Toast.pending = Toast.pending or {}
+-- rev 12 避開區：{ owner, fn } 依登記順序；fn() → x, y, w, h（螢幕座標）或 nil
+Toast.avoid = Toast.avoid or {}
 
 local function isHighSurrogate(unit)
     return unit ~= nil and unit >= 55296 and unit <= 56319
@@ -181,6 +186,57 @@ local function stackTop(left, right)
     return math.max(STACK_TOP, sc:getY() + sc:getHeight() + STACK_GAP)
 end
 
+-- rev 12：登記一個要避開的矩形（例：consumer 開著的視窗）。fn() 回螢幕座標 x, y, w, h，回 nil＝此刻不用避；
+-- fn 為 nil＝取消該 owner 的登記。同一個 owner 再登記會覆寫。fn 每幀呼叫（pcall），不要在裡面配置 table。
+function Toast.setAvoid(owner, fn)
+    if owner == nil then
+        return
+    end
+    local list = Toast.avoid
+    for i = 1, #list do
+        if list[i].owner == owner then
+            if fn == nil then
+                table.remove(list, i)
+            else
+                list[i].fn = fn
+            end
+            return
+        end
+    end
+    if fn ~= nil then
+        list[#list + 1] = { owner = owner, fn = fn }
+    end
+end
+
+-- 堆疊欄的位置：預設右上（速度鈕下方）。依登記順序看每個避開區：與欄位水平、垂直都重疊時，整疊放得下就
+-- 移到它下方，放不下就移到它左側；左側也放不下就留原位（無法避開）。fn 出錯或回非數字＝不避。
+function Toast.stackOrigin(width)
+    local screenW, screenH = getCore():getScreenWidth(), getCore():getScreenHeight()
+    local x = screenW - width - SCREEN_MARGIN
+    local top = stackTop(x, x + width)
+    local list = Toast.avoid
+    if #list == 0 then
+        return x, top
+    end
+    local stackH = 0
+    for i = 1, #Toast.active do
+        stackH = stackH + Toast.active[i].height + (i > 1 and STACK_GAP or 0)
+    end
+    for i = 1, #list do
+        local ok, ax, ay, aw, ah = pcall(list[i].fn)
+        if ok and type(ax) == "number" and type(ay) == "number" and type(aw) == "number" and type(ah) == "number"
+            and ax < x + width and ax + aw > x and ay < top + stackH and ay + ah > top then
+            local below = ay + ah + STACK_GAP
+            if below + stackH <= screenH then
+                top = math.max(top, below)
+            elseif ax - width - SCREEN_MARGIN >= 0 then
+                x = ax - width - SCREEN_MARGIN
+            end
+        end
+    end
+    return x, top
+end
+
 function Toast:prerender()
     local elapsed = getTimestampMs() - self.startedAtMs
     local totalDuration = ENTER_MS + self.holdMs + EXIT_MS
@@ -190,8 +246,7 @@ function Toast:prerender()
     end
 
     local index = activeIndex(self)
-    local targetX = getCore():getScreenWidth() - self.width - SCREEN_MARGIN
-    local targetY = stackTop(targetX, targetX + self.width)
+    local targetX, targetY = Toast.stackOrigin(self.width)
     for i = 1, index - 1 do
         targetY = targetY + Toast.active[i].height + STACK_GAP
     end
@@ -199,7 +254,11 @@ function Toast:prerender()
 
     if elapsed < ENTER_MS then
         local fraction = elapsed / ENTER_MS
+        -- 預設從螢幕外右滑入；被避開區移到左側時只短距離滑入（不從視窗上方掃過）
         local startX = getCore():getScreenWidth() + self.width
+        if targetX + self.width + SCREEN_MARGIN < getCore():getScreenWidth() then
+            startX = targetX + 40
+        end
         x = startX + (targetX - startX) * fraction
         alpha = fraction
     elseif elapsed >= ENTER_MS + self.holdMs then
@@ -261,13 +320,15 @@ function Toast._create(entry)
     return o
 end
 
--- 只給測試用：清空堆疊（不觸碰 UIManager——harness 的 stub 不需要）
+-- 只給測試用：清空堆疊與避開區（不觸碰 UIManager——harness 的 stub 不需要）
 function Toast._resetForTests()
     Toast.active = {}
     Toast.pending = {}
+    Toast.avoid = {}
 end
 
 UI.Toast = Toast
 UI.CAPABILITIES.toast = true
+UI.CAPABILITIES.toastAvoid = true
 
 return Toast

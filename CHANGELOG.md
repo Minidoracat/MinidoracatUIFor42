@@ -12,6 +12,24 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 變更
+
+- **停用的按鈕與選項看得出是停用的，字也讀得到**：依賴本函式庫的 MOD 裡，暫時不能按的按鈕、開關、頁籤與輸入框，文字原本不是淡到幾乎看不見，就是和一般可按的灰字幾乎一樣。現在停用的文字改用一個固定的深灰，比一般灰字明顯更暗、但在深色底上仍清楚可讀；停用的金色主按鈕改成一般按鈕的樣子，不再出現看不清的暗金底配暗字。影響所有用到本函式庫按鈕、開關、頁籤、輸入框或日期欄的 MOD（目前為經濟系統、車輛管理、KnoxPass 門禁），更新後需完整重開客戶端
+
+### 新增
+
+- **給 MOD 作者的新能力**：頁籤可以整列或單一頁籤停用；鍵盤焦點框旁的說明可以改放上方、右側或不顯示；表格欄位標題可以用鍵盤或手把選欄、按確認切換排序；篩選列可以把起訖日期收進「自訂日期...」按鈕、把類型改成一個下拉選單、改由表格欄位標題排序；右上角通知可以避開 MOD 指定的視窗（改排到視窗下方或左側）。現有 MOD 不改程式就不受影響
+
+### 修正
+
+- **用滑鼠操作後不再無故冒出鍵盤焦點框**：依賴本函式庫的 MOD 裡，用滑鼠開關選物框或建立拍賣這類疊層、再切換分頁後，畫面上其他按鈕（例如經濟中心左側導覽的「錢包」）會突然出現金色焦點框，像是被鍵盤選中。現在原本用滑鼠點的控制項消失時，焦點換到別的控制項也不會畫框；用鍵盤操作時照常顯示。0.6.0 加入鍵盤焦點以來都有這個問題，更新後需完整重開客戶端
+- **篩選列的頁碼與翻頁按鈕不再被截成「...」**：依賴本函式庫的 MOD 裡（例如經濟系統管理台的伺服器交易），視窗拉小時頁碼後面的筆數只剩「1...」，「上一頁」按鈕的名稱也被切掉一半。現在空間不夠時翻頁按鈕先改成左右箭頭圖示（滑鼠停留或鍵盤選到時仍顯示完整名稱），還不夠就先拿掉筆數，頁碼永遠完整顯示。更新後需完整重開客戶端
+
+> 技術要點：`API_REVISION` 12。新 theme token `textDisabled`（深色 0.40、淺色 0.52；深色黑底 3.66:1、與閒置 `textMuted` 差 2.15:1），Button 各樣式、TextField、Checkbox、Tabs、DatePicker 日曆鈕、FilterBar 箭頭的停用標籤改用它且不再乘停用淡化（chrome 照舊乘 0.45）；停用的 `primary` 改畫 `normal`。新 `CAPABILITIES`：`tabsEnabled`（`Tabs:setEnabled`／`isEnabled`／`setItemEnabled`／`isItemEnabled`）、`focusCaption`（描述欄位 `captionSide = "below"|"above"|"right"|"none"`、控制項 `_focusCaptionSide`、`Focus.drawCaption` 第 8 參數 `side`、控制項選用 `focusRect()`）、`tableHeaderFocus`（`TableHeader.new{ focusable?, focusLabel? }`、`header:focusDescriptor(label?)`、`onFocusKey`：左右換可排序欄、Enter／Space／A 呼叫 `onSort`；`live=false` 不可聚焦）、`filterBarModes`（`FilterBar.new` 選項 `dateToggle`／`kindsDropdown`／`sortInHeader`、方法 `toggleSort(key)`）、`toastAvoid`（`UI.Toast.setAvoid(owner, fn)`，`fn()` 每幀回螢幕座標 `x, y, w, h` 或 nil；與通知欄重疊時整疊移到矩形下方，放不下改左側；`fn = nil` 取消登記）。新翻譯鍵 `IGUI_MinidoracatUI_Filter_CustomDate`。`Focus.invalidate` 換替代目標時沿用原本的焦點框可見性。
+> `Focus.drawCaption` 的 `side="right"` 畫成飛出標籤：不透明底（不乘 `theme.alpha`）連同 2px 外圈、標籤疊 18% accent 淡底與 accent 框、6px 尖角指向控制項、對框垂直置中、與光暈隔 3px，右側放不下翻左。FilterBar inline 分頁不再截字：文字鈕放不下改 `chevronLeft`／`chevronRight` 圖示鈕（`fullTitle`＋tooltip 留全名），再不夠拿掉筆數；先試本列剩餘空間、都不行才換列。
+
 ## [42.21.0-0.6.3] - 2026-10-05
 
 ### 修正
