@@ -26,6 +26,12 @@
 
 > 技術要點：`API_REVISION` 16（additive），新 `CAPABILITIES`：`scrollPanel`（`UI.ScrollPanel.new{ x, y, width, height, theme?, font? }`、`contentWidth()`、`scrollTo(el)`，捲動位置用原生 `getYScroll`／`setYScroll`，ARCHITECTURE §3.18）、`textWrap`（`UI.Text.wrap(text, maxWidth, font?)` 回行陣列，以 (font, 寬, 字串) 快取、命中回同一張唯讀表，§3.4）、`textFieldInvalid`（`TextField:setInvalid(invalid, message?)`／`isInvalid()`，§3.7）、`focusLabel`（控制項選用 `focusLabel()` 每幀說明；Focus 的自動目標把捲動容器裡的目標排成一塊、焦點換到容器裡時自動捲過去、翻頁鍵與右搖桿捲容器，§3.10）。既有元件外觀與行為不變；文件補註 TextField 的 `onChange` 只在畫出來的幀比對，隱藏分頁上的欄位不會即時觸發。
 
+### 修正
+
+- **通知不再蓋住手錶的時鐘**：戴著手錶（或手上拿著鬧鐘）時，畫面右上角會出現時間、日期與氣溫；依賴本函式庫的 MOD 跳出的通知原本會疊在時鐘下半部，在多人伺服器上幾乎每次都會遇到。現在時鐘出現時，通知會自動排在它的下方；拿掉手錶後通知回到原本的位置。更新後需完整重開客戶端
+
+> 技術要點：堆疊欄在原版時鐘可見、在 UI 清單內且與它水平、垂直都重疊時，套用與 rev 12 避開區相同的規則（下方放得下就從時鐘下緣＋8px 起疊，否則移到左側），先於 consumer 以 `UI.Toast.setAvoid` 登記的矩形。預設大時鐘下堆疊上緣約為 y=80（單人時速度鈕已在時鐘下方，位置不變）；小時鐘與分割畫面置中的時鐘不重疊、位置不變。公開 API 不變，`API_REVISION` 仍為 16、不加能力旗標。
+
 ## [42.21.0-0.7.1] - 2026-10-06
 
 ### 變更

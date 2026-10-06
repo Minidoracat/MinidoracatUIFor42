@@ -208,30 +208,40 @@ function Toast.setAvoid(owner, fn)
     end
 end
 
--- 堆疊欄的位置：預設右上（速度鈕下方）。依登記順序看每個避開區：與欄位水平、垂直都重疊時，整疊放得下就
--- 移到它下方，放不下就移到它左側；左側也放不下就留原位（無法避開）。fn 出錯或回非數字＝不避。
+-- 矩形與堆疊欄水平、垂直都重疊時：整疊放得下就移到它下方，放不下就移到它左側；左側也放不下就留原位。
+local function dodge(x, top, width, stackH, screenH, ax, ay, aw, ah)
+    if ax < x + width and ax + aw > x and ay < top + stackH and ay + ah > top then
+        local below = ay + ah + STACK_GAP
+        if below + stackH <= screenH then
+            top = math.max(top, below)
+        elseif ax - width - SCREEN_MARGIN >= 0 then
+            x = ax - width - SCREEN_MARGIN
+        end
+    end
+    return x, top
+end
+
+-- 堆疊欄的位置：預設右上（速度鈕下方）。先避原版時鐘，再依登記順序看每個避開區（同一套 dodge 規則）。
+-- 時鐘戴錶才顯示（Clock.java:328-404，isVisible），預設大時鐘 156x62 在 y=10、落在欄內（UIManager.java:223-231）；
+-- MP 沒有速度鈕把欄位推下去，60 起疊會蓋住它的下緣。Last Stand 不加進 UI 清單（UIManager.java:229-231）。
+-- 避開區 fn 出錯或回非數字＝不避。
 function Toast.stackOrigin(width)
     local screenW, screenH = getCore():getScreenWidth(), getCore():getScreenHeight()
     local x = screenW - width - SCREEN_MARGIN
     local top = stackTop(x, x + width)
-    local list = Toast.avoid
-    if #list == 0 then
-        return x, top
-    end
     local stackH = 0
     for i = 1, #Toast.active do
         stackH = stackH + Toast.active[i].height + (i > 1 and STACK_GAP or 0)
     end
+    local clock = UIManager and UIManager.getClock and UIManager.getClock()
+    if clock and clock:isVisible() and UIManager.getUI():contains(clock) then
+        x, top = dodge(x, top, width, stackH, screenH, clock:getX(), clock:getY(), clock:getWidth(), clock:getHeight())
+    end
+    local list = Toast.avoid
     for i = 1, #list do
         local ok, ax, ay, aw, ah = pcall(list[i].fn)
-        if ok and type(ax) == "number" and type(ay) == "number" and type(aw) == "number" and type(ah) == "number"
-            and ax < x + width and ax + aw > x and ay < top + stackH and ay + ah > top then
-            local below = ay + ah + STACK_GAP
-            if below + stackH <= screenH then
-                top = math.max(top, below)
-            elseif ax - width - SCREEN_MARGIN >= 0 then
-                x = ax - width - SCREEN_MARGIN
-            end
+        if ok and type(ax) == "number" and type(ay) == "number" and type(aw) == "number" and type(ah) == "number" then
+            x, top = dodge(x, top, width, stackH, screenH, ax, ay, aw, ah)
         end
     end
     return x, top

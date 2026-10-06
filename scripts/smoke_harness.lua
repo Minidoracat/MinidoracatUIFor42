@@ -808,6 +808,28 @@ do
     check(stackY() == 60, "沒戴錶時速度鈕在 60 以上：不往下推")
     speed.y, speed.visible = 82, false
     check(stackY() == 60, "速度鈕隱藏：不讓位")
+
+    -- 原版時鐘（戴錶時右上 y=10；預設大時鐘 156x62，UIManager.java:223-231,429-435；Clock.java:328-416）：
+    -- MP 沒有速度鈕，60 起疊的通知會蓋住時鐘下緣
+    speed.visible = false
+    local clock = { x = 1920 - 166, y = 10, w = 156, h = 62, visible = true, listed = true }
+    clock.isVisible, clock.getX, clock.getY = speed.isVisible, speed.getX, speed.getY
+    clock.getWidth, clock.getHeight = speed.getWidth, speed.getHeight
+    uiList.contains = function(_, o) return (o == speed and speed.listed) or (o == clock and clock.listed) end
+    UIManager.getClock = function() return clock end
+    y1, y2, h1 = stackY()
+    check(y1 == 10 + 62 + 8 and y2 == y1 + h1 + 8, "時鐘可見且與通知欄重疊：從它下緣＋8 起疊，第二則照常累加")
+    clock.visible = false
+    check(stackY() == 60, "時鐘隱藏（沒戴錶）：照舊從 60 起疊")
+    clock.visible, clock.listed = true, false
+    check(stackY() == 60, "時鐘不在 UI 清單（Last Stand）：不讓位")
+    clock.listed, clock.x, clock.w, clock.h = true, 1920 - 91, 81, 32
+    check(stackY() == 60, "小時鐘（10..42）在 60 以上：不往下推")
+    clock.x, clock.y, clock.w, clock.h = 960 - 83, 1080 - 70, 156, 62
+    check(stackY() == 60, "分割畫面時鐘在下方置中：不讓位")
+    clock.x, clock.y = 1920 - 166, 10
+    speed.visible = true
+    check(stackY() == 82 + 28 + 8, "單人：速度鈕已在時鐘下方，堆疊仍只在速度鈕下緣")
     UIManager = nil
     Toast._resetForTests()
 end
@@ -2089,7 +2111,7 @@ end
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
 -- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
-local EXPECTED_ASSERTIONS = 401
+local EXPECTED_ASSERTIONS = 407
 print()
 if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)
