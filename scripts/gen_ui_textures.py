@@ -4,7 +4,7 @@
 輸出到 42/media/ui/MinidoracatUI/，兩類資產：
   皮膚（7 張）：既有 4 張 17x17 NinePatchTexture、1 張 16x16 圓點，以及 rev 3
     專用的 2 張 25x25 pill 9-slice（10/4/10 cap，精確 20px 高）。
-  圖示（20 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
+  圖示（32 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
     外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
 兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
@@ -67,6 +67,18 @@ ICON_NAMES = (
     "mui_icon_close.png",
     "mui_icon_locate.png",
     "mui_icon_copy.png",
+    "mui_icon_battery.png",
+    "mui_icon_lightbulb.png",
+    "mui_icon_card.png",
+    "mui_icon_screwdriver.png",
+    "mui_icon_insert.png",
+    "mui_icon_eject.png",
+    "mui_icon_plus.png",
+    "mui_icon_check.png",
+    "mui_icon_clock.png",
+    "mui_icon_pause.png",
+    "mui_icon_warning.png",
+    "mui_icon_infinity.png",
 )
 # art 圖示：AI 生成剪影經 scripts/import_icon_sheet.py 轉成 32×32 純白 alpha PNG
 # 後 commit；不由本檔幾何生成（generate_images 不覆寫、不刪，缺檔＝assert），verify 走
@@ -387,7 +399,7 @@ def polygon_fill(points):
 
 
 def icon_shapes() -> dict:
-    """二十個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
+    """三十二個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
 
     共同語彙：主描邊 3px、端點與轉折圓頭、無漸層無陰影、內容全部落在 [1, 31] 之間
     （外圍 1px 透明邊，verify 會逐張確認——被裁到邊的圖示縮小後會黏在按鈕框上）。
@@ -496,6 +508,68 @@ def icon_shapes() -> dict:
             stroke_path([(16, 13), (16, 21)]),
             stroke_path([(12, 25), (20, 25)]),
         ),
+        # 電池：外框內緣恰落在整數 x 5..24、y 11..21（consumer 在框內自畫電量格），正極凸頭貼外框右緣
+        "mui_icon_battery.png": (
+            rrect_outline(3.5, 9.5, 25.5, 22.5, 3),
+            stroke_path([(28.5, 14), (28.5, 18)]),
+        ),
+        # 燈泡：底部開口的球形弧＋收窄的燈頸，下方一道燈座短線
+        "mui_icon_lightbulb.png": (
+            arc(16, 13, 8.5, 135, 405),
+            stroke_path([(10, 19), (12, 22.5), (20, 22.5), (22, 19)]),
+            stroke_path([(13.5, 27.5), (18.5, 27.5)]),
+        ),
+        # 門禁卡：卡片外框＋全寬磁條＋左下實心晶片
+        "mui_icon_card.png": (
+            rrect_outline(3.5, 7.5, 28.5, 24.5, 3),
+            stroke_path([(3.5, 13.5), (28.5, 13.5)]),
+            rrect_fill(8, 17, 14, 21, 1),
+        ),
+        # 螺絲起子：左下實心粗握柄（7px 膠囊）接 45° 細桿朝右上
+        "mui_icon_screwdriver.png": (
+            stroke_path([(6, 26), (12.5, 19.5)], half=3.5),
+            stroke_path([(12.5, 19.5), (27, 5)]),
+        ),
+        # 放入／取出共用同一個開口托盤與同一條箭桿，只差箭頭在下端（放入）或上端（取出）
+        "mui_icon_insert.png": (
+            stroke_path([(4.5, 20), (4.5, 27.5), (27.5, 27.5), (27.5, 20)]),
+            stroke_path([(16, 4), (16, 21)]),
+            stroke_path([(9.5, 14.5), (16, 21), (22.5, 14.5)]),
+        ),
+        "mui_icon_eject.png": (
+            stroke_path([(4.5, 20), (4.5, 27.5), (27.5, 27.5), (27.5, 20)]),
+            stroke_path([(16, 4), (16, 21)]),
+            stroke_path([(9.5, 10.5), (16, 4), (22.5, 10.5)]),
+        ),
+        "mui_icon_plus.png": (
+            stroke_path([(16, 6.5), (16, 25.5)]),
+            stroke_path([(6.5, 16), (25.5, 16)]),
+        ),
+        "mui_icon_check.png": (
+            stroke_path([(6.5, 16.5), (12.5, 22.5), (25.5, 9.5)]),
+        ),
+        # 時鐘：外圈＋時針（12 點）與分針（約 4 點）共用圓心
+        "mui_icon_clock.png": (
+            ring(16, 16, 11.5),
+            stroke_path([(16, 9.5), (16, 16), (20.5, 19)]),
+        ),
+        "mui_icon_pause.png": (
+            stroke_path([(11.5, 8), (11.5, 24)]),
+            stroke_path([(20.5, 8), (20.5, 24)]),
+        ),
+        # 警告：閉合三角＋驚嘆號（豎線＋零長度線段即圓點；點半徑 2 讓它在 16px 對齊成 2x2）
+        "mui_icon_warning.png": (
+            stroke_path([(16, 4.5), (29, 27.5), (3, 27.5)], closed=True),
+            stroke_path([(16, 11.5), (16, 16.5)]),
+            stroke_path([(16, 22), (16, 22)], half=2.0),
+        ),
+        # 無限：兩個 270° 圓弧（缺口朝中心）＋中央 X；圓心距 r·√2（5.5·√2≈7.78）讓 X 的 45° 線與弧端相切
+        "mui_icon_infinity.png": (
+            arc(8.22, 16, 5.5, 45, 315),
+            arc(23.78, 16, 5.5, 225, 495),
+            stroke_path([(12.11, 12.11), (19.89, 19.89)]),
+            stroke_path([(12.11, 19.89), (19.89, 12.11)]),
+        ),
     }
 
 
@@ -601,6 +675,66 @@ ICON_SPECS = {
         "symmetry": "v",
         "solid": ((7, 16), (16, 3), (16, 17), (16, 28)),
         "clear": ((10, 12), (4, 4)),
+    },
+    "mui_icon_battery.png": {
+        "symmetry": "h",
+        "solid": ((14, 9), (3, 16), (28, 16)),   # 上緣、左緣、正極凸頭
+        "clear": ((14, 16), (29, 10)),           # 內框（consumer 的電量區）必須空、凸頭上方
+    },
+    "mui_icon_lightbulb.png": {
+        "symmetry": "v",
+        "solid": ((16, 4), (16, 22), (16, 27)),  # 球頂、燈頸底、燈座
+        "clear": ((16, 13), (16, 25), (4, 28)),  # 球心、燈頸與燈座的間隙
+    },
+    "mui_icon_card.png": {
+        "symmetry": "",
+        "solid": ((16, 13), (10, 19), (3, 16)),  # 磁條、晶片、左緣
+        "clear": ((16, 10), (20, 19), (16, 3)),  # 磁條上方、晶片右側卡面
+    },
+    "mui_icon_screwdriver.png": {
+        "symmetry": "",
+        "solid": ((7, 24), (20, 11)),            # 左下握柄、右上桿身
+        "clear": ((8, 8), (24, 24)),             # 另一條對角線兩端（鏡射方向錯就會紅）
+    },
+    "mui_icon_insert.png": {
+        "symmetry": "v",
+        "solid": ((16, 10), (12, 16), (5, 24), (16, 27)),  # 箭桿、下端箭頭、托盤側壁與底
+        "clear": ((12, 7), (16, 24)),            # 上端無箭頭（＝eject 的箭頭位置）、箭尖下方
+    },
+    "mui_icon_eject.png": {
+        "symmetry": "v",
+        "solid": ((16, 10), (12, 7), (5, 24), (16, 27)),   # 箭桿、上端箭頭、同一托盤
+        "clear": ((12, 16), (16, 24)),           # 下端無箭頭（＝insert 的箭頭位置）
+    },
+    "mui_icon_plus.png": {
+        "symmetry": "hv",
+        "solid": ((16, 16), (16, 7), (7, 16)),
+        "clear": ((8, 8), (16, 3)),
+    },
+    "mui_icon_check.png": {
+        "symmetry": "",
+        "solid": ((7, 17), (12, 21), (22, 12)),  # 短臂、轉折、長臂
+        "clear": ((12, 12), (24, 22)),           # 轉折上方、長臂下方
+    },
+    "mui_icon_clock.png": {
+        "symmetry": "",
+        "solid": ((16, 4), (16, 12), (19, 18)),  # 外圈頂、時針、分針
+        "clear": ((21, 11), (11, 20), (3, 3)),
+    },
+    "mui_icon_pause.png": {
+        "symmetry": "hv",
+        "solid": ((11, 16), (20, 16), (11, 8)),
+        "clear": ((16, 16), (5, 16)),
+    },
+    "mui_icon_warning.png": {
+        "symmetry": "v",
+        "solid": ((16, 4), (16, 14), (16, 22), (16, 27)),  # 頂點、豎線、圓點、底邊
+        "clear": ((16, 19), (16, 24), (5, 5)),   # 豎線與圓點間隙、圓點與底邊間隙
+    },
+    "mui_icon_infinity.png": {
+        "symmetry": "hv",
+        "solid": ((16, 16), (3, 15), (8, 10)),   # 中央交叉、左環外緣、左環頂
+        "clear": ((8, 16), (16, 10), (16, 5)),   # 左環孔、交叉上方
     },
 }
 

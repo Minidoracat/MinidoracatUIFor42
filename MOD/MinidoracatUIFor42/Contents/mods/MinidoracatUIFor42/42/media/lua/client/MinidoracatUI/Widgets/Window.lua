@@ -55,6 +55,19 @@ local function chromeAlpha(theme)
     return type(a) == "number" and a or 1
 end
 
+-- rev 14：標題列圖示可傳 Texture（原色，例如物品圖示）；pcall 具名函式，不建 per-frame closure
+local function drawTextureIcon(el, texture, x, y, size)
+    el:drawTextureScaled(texture, x, y, size, size, 1, 1, 1, 1)
+end
+
+-- 回 true＝已畫：字串走 Icons（以標題字色染色），其他非 nil 值當 Texture 原色畫
+local function drawTitleIcon(win, icon, x, y, size, color)
+    if type(icon) == "string" then
+        return Icons.draw(win, icon, x, y, size, color)
+    end
+    return pcall(drawTextureIcon, win, icon, x, y, size)
+end
+
 -- ============================================================
 -- Window
 -- ============================================================
@@ -125,8 +138,8 @@ function Window:prerender()
     Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, "roundTop", ca)
 
     local x = TITLE_PAD
-    local textColor = colors.text
-    if self.icon and Icons.draw(self, self.icon, x, math.floor((titleH - TITLE_ICON) / 2),
+    local textColor = colors.titleText or colors.text -- rev 14 token；theme 不是 create 建的退回 text
+    if self.icon and drawTitleIcon(self, self.icon, x, math.floor((titleH - TITLE_ICON) / 2),
             TITLE_ICON, textColor) then
         x = x + TITLE_ICON + 6
     end
@@ -149,7 +162,7 @@ function Window:render()
         if hovered then
             Skin.fill(self, cx + 3, cy + 3, cw - 6, ch - 6, colors.hover, nil, ca)
         end
-        local c = hovered and colors.text or colors.textMuted
+        local c = hovered and (colors.titleText or colors.text) or (colors.titleMuted or colors.textMuted)
         if not Icons.draw(self, "close", cx + math.floor((cw - CLOSE_ICON) / 2),
                 cy + math.floor((ch - CLOSE_ICON) / 2), CLOSE_ICON, c) then
             self:drawTextCentre("x", cx + cw / 2, cy + math.floor((ch - self._fontH) / 2),
@@ -372,7 +385,7 @@ local function newWindow(class, opts)
     return o
 end
 
--- opts: x, y, width, height, title, icon?, theme?, font?, resizable?, minWidth?, minHeight?,
+-- opts: x, y, width, height, title, icon?（Icons key 或 Texture，rev 14）, theme?, font?, resizable?, minWidth?, minHeight?,
 --       closable?（預設 true）, onClose(win)?, onResize(win, w, h)?
 -- 回傳已 initialise 的實例；consumer 自行 addToUIManager。
 function Window.new(opts)

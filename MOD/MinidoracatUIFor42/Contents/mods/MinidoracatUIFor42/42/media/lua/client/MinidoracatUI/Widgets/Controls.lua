@@ -45,7 +45,7 @@ local PAD_X = 10
 local ICON_SIZE = 16
 local ICON_GAP = 6
 local DISABLED_ALPHA = 0.45 -- 停用時只淡化 chrome；標籤與圖樣改用 textDisabled、不淡化
--- primary 的深色字：accent 在兩套 palette 都是亮／中琥珀，theme 無對應 token
+-- primary 的深色字：theme 不是 Theme.create 建的（缺 rev 14 的 onAccent）時的退回值，與 onAccent 預設相同
 local PRIMARY_TEXT = { r = 0.1, g = 0.08, b = 0.02, a = 1 }
 
 local function themeOf(opts)
@@ -75,6 +75,23 @@ local function disabledColor(colors)
     return colors.textDisabled or colors.textFaint
 end
 
+-- rev 14：icon 是 Icons key（字串，以字色染色）或 consumer 的 Texture（原色，例如物品圖示）。
+-- 回可畫的貼圖；未知 key／缺圖回 nil（只畫文字）。
+local function iconTexture(icon)
+    if icon == nil then
+        return nil
+    end
+    if type(icon) == "string" then
+        return Icons.get(icon)
+    end
+    return icon
+end
+
+-- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白
+local function drawTextureIcon(el, texture, x, y, size, a)
+    el:drawTextureScaled(texture, x, y, size, size, a, 1, 1, 1)
+end
+
 -- ============================================================
 -- Button
 -- ============================================================
@@ -95,7 +112,7 @@ local function refitTitle(btn)
     end
     btn._fitSrc, btn._fitWidth = title, width
     local avail = width - FIT_INSET
-    if btn.icon ~= nil and Icons.get(btn.icon) ~= nil then
+    if iconTexture(btn.icon) ~= nil then
         avail = avail - ICON_SIZE - ICON_GAP
     end
     local fitted = UI.Text.fit(title, avail, btn.font)
@@ -146,7 +163,7 @@ function Button:prerender()
     if style == "primary" and enabled then
         Skin.fill(self, 0, 0, w, h, colors.accent, nil, chrome)
         Skin.border(self, 0, 0, w, h, colors.accent, nil, chrome)
-        textColor = PRIMARY_TEXT
+        textColor = colors.onAccent or PRIMARY_TEXT
     elseif style == "danger" then
         Skin.fill(self, 0, 0, w, h, colors.errorSurface, nil, chrome)
         Skin.border(self, 0, 0, w, h, colors.errorText, nil, chrome)
@@ -190,15 +207,20 @@ function Button:prerender()
     end
 
     local titleW = self._fitW
-    local hasIcon = self.icon ~= nil and Icons.get(self.icon) ~= nil
+    local texture = iconTexture(self.icon)
     local contentW = titleW
-    if hasIcon then
+    if texture then
         contentW = contentW + ICON_SIZE + (titleW > 0 and ICON_GAP or 0)
     end
     local x = math.floor((w - contentW) / 2)
-    if hasIcon then
-        Icons.draw(self, self.icon, x, math.floor((h - ICON_SIZE) / 2), ICON_SIZE,
-            textColor, textColor.a or 1)
+    if texture then
+        local iy = math.floor((h - ICON_SIZE) / 2)
+        if type(self.icon) == "string" then
+            Icons.draw(self, self.icon, x, iy, ICON_SIZE, textColor, textColor.a or 1)
+        else
+            -- 原色貼圖無法改成 textDisabled，停用時改以 DISABLED_ALPHA 淡化
+            pcall(drawTextureIcon, self, texture, x, iy, ICON_SIZE, enabled and 1 or DISABLED_ALPHA)
+        end
         x = x + ICON_SIZE + ICON_GAP
     end
     if titleW > 0 then
@@ -269,7 +291,19 @@ function Button:isActive()
     return self._active == true
 end
 
--- opts: x, y, width?, height?, title, icon?, style?（normal／primary／danger／ghost／chip）,
+-- rev 14：換圖示（Icons key、Texture 或 nil）。自動寬度時重算寬度；截字下一幀依新的可用寬重算
+function Button:setIcon(icon)
+    if icon == self.icon then
+        return
+    end
+    self.icon = icon
+    self._fitSrc = nil
+    if self._autoWidth then
+        self:fitWidth()
+    end
+end
+
+-- opts: x, y, width?, height?, title, icon?（Icons key 或 Texture，rev 14）, style?（normal／primary／danger／ghost／chip）,
 -- active?, theme?, font?, target?, onClick?, tooltip?
 -- onClick(target, button)；disabled 時原生 onMouseUp 不觸發（ISButton.lua:45）。
 -- 標題放不下時自動截字（見 refitTitle），self.title 仍是全標題。

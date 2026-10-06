@@ -1020,7 +1020,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 13, "API_REVISION 進到 13")
+    check(UI.API_REVISION == 14, "API_REVISION 進到 14")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1028,8 +1028,9 @@ do
         and UI.CAPABILITIES.filterBar == false and UI.CAPABILITIES.itemPicker == false
         and UI.CAPABILITIES.autocomplete == false and UI.CAPABILITIES.tabsEnabled == false
         and UI.CAPABILITIES.focusCaption == false and UI.CAPABILITIES.filterBarModes == false
-        and UI.CAPABILITIES.tableHeaderFocus == false and UI.CAPABILITIES.dock == false,
-        "rev 7／8／9／10／11／12／13 能力在 widget 檔載入前誠實標 false")
+        and UI.CAPABILITIES.tableHeaderFocus == false and UI.CAPABILITIES.dock == false
+        and UI.CAPABILITIES.dropdown == false,
+        "rev 7／8／9／10／11／12／13／14 能力在 widget 檔載入前誠實標 false")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -2011,7 +2012,8 @@ end
 --[[
 切片測試載入器（本檔之後不必為了切片再改）：
   依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua、scripts/test_rev12.lua、
-  scripts/test_wrap.lua 與 scripts/test_rev13_dock.lua；檔案不存在記一筆失敗（八個切片都已落地）。
+  scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua 與 scripts/test_rev14_dropdown.lua；
+  檔案不存在記一筆失敗（十個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2057,7 +2059,7 @@ local sliceCtx = {
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
-    "rev13_dock" }) do
+    "rev13_dock", "rev14", "rev14_dropdown" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

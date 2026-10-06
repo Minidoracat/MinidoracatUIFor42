@@ -361,6 +361,19 @@ local ICON_FILES = {
     close        = "mui_icon_close.png",
     locate       = "mui_icon_locate.png",
     copy         = "mui_icon_copy.png",
+    -- rev 14：程序化幾何圖示（地圖錶的按鈕、狀態與橫幅；同一套描邊語彙）
+    battery      = "mui_icon_battery.png",
+    lightbulb    = "mui_icon_lightbulb.png",
+    card         = "mui_icon_card.png",
+    screwdriver  = "mui_icon_screwdriver.png",
+    insert       = "mui_icon_insert.png",
+    eject        = "mui_icon_eject.png",
+    plus         = "mui_icon_plus.png",
+    check        = "mui_icon_check.png",
+    clock        = "mui_icon_clock.png",
+    pause        = "mui_icon_pause.png",
+    warning      = "mui_icon_warning.png",
+    infinity     = "mui_icon_infinity.png",
     -- rev 4：art 圖示（AI 生成剪影、scripts/import_icon_sheet.py 轉 32×32 白 glyph；
     -- 非幾何確定性生成，verify 只驗尺寸／純白／透明邊／著墨比例）。地圖符號類
     -- 供 consumer 畫在地圖上與設定視窗同用，同一 key 同一張
@@ -454,9 +467,12 @@ end
 -- ============================================================
 -- 跨 MOD token（framework default 只認這些；名單見 docs/ARCHITECTURE.md §3.2）：
 --   surface / surfaceTitle / well / border / text / textMuted / textFaint / textDisabled /
---   accent / hover / selected / errorSurface / errorText
+--   accent / hover / selected / errorSurface / errorText / onAccent / titleText / titleMuted
 -- textDisabled（rev 12）：停用控制項的標籤與圖樣，字不乘停用淡化（chrome 才乘 0.45）——深色 #666666
 -- 在黑底 3.66:1、與閒置 textMuted 差 2.15:1（textFaint 只差 1.25:1，分不出停用）。
+-- onAccent／titleText／titleMuted（rev 14）：accent 底上的字（primary 按鈕）、標題列上的標題與關閉鈕。
+-- 預設值等於 rev 13 的實際繪製色（元件內常數／text／textMuted），外觀不變；給標題列或 accent 換成
+-- 淺色／深色的 consumer 皮膚用。框架元件讀 `colors.onAccent or <舊來源>`（theme 不是 create 建的也不炸）。
 -- MOD 自有 token（unread、rowHover…）由 create 的 colors 自帶，框架原樣收下。
 -- create() 逐 token 深拷貝——共享 default 永不被 mutate（NBSkin↔MiniMap 色票
 -- 複製分岔的根源就是「共用色票、各自持有可變引用」）。
@@ -483,6 +499,9 @@ local DARK = {
     selected     = { r = 1,    g = 1,    b = 1,    a = 0.12 },
     errorSurface = { r = 0.3,  g = 0.05, b = 0.05, a = 0.5 },
     errorText    = { r = 0.9,  g = 0.35, b = 0.3,  a = 1.0 },
+    onAccent     = { r = 0.1,  g = 0.08, b = 0.02, a = 1.0 },
+    titleText    = { r = 1,    g = 1,    b = 1,    a = 1.0 },
+    titleMuted   = { r = 0.62, g = 0.62, b = 0.62, a = 1.0 },
 }
 
 -- 淺色（experimental，v0.1 首發後依實測調值）：白色疊層族改黑色疊層、
@@ -501,6 +520,9 @@ local LIGHT = {
     selected     = { r = 0,    g = 0,    b = 0,    a = 0.10 },
     errorSurface = { r = 0.9,  g = 0.75, b = 0.75, a = 0.7 },
     errorText    = { r = 0.6,  g = 0.1,  b = 0.08, a = 1.0 },
+    onAccent     = { r = 0.1,  g = 0.08, b = 0.02, a = 1.0 },
+    titleText    = { r = 0.08, g = 0.08, b = 0.08, a = 1.0 },
+    titleMuted   = { r = 0.35, g = 0.35, b = 0.35, a = 1.0 },
 }
 
 local PALETTES = { dark = DARK, light = LIGHT }
@@ -672,7 +694,10 @@ MinidoracatUI.v1 = {
     --         TableHeader 鍵盤焦點：左右換欄、Enter 排序（tableHeaderFocus）；Toast.setAvoid 避開區（toastAvoid）
     -- rev 13：家族工具列 Dock（Widgets/Dock.lua，UI.Dock.register／unregister／refresh／isDocked）＋
     --         keyBinding MinidoracatUI_Dock＋彩色吉祥物把手貼圖（dock）
-    API_REVISION = 13,
+    -- rev 14：12 個幾何圖示 key（battery／lightbulb／card／screwdriver／insert／eject／plus／check／
+    --         clock／pause／warning／infinity）；theme token onAccent／titleText／titleMuted；Button／Window
+    --         的 icon 可傳 Texture（原色）、Button:setIcon；UI.Dropdown 下拉選單（dropdown）
+    API_REVISION = 14,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -700,6 +725,7 @@ MinidoracatUI.v1 = {
         tableHeaderFocus = false, -- rev 12：TableHeader 焦點（onFocusKey／focusRect／focusDescriptor，Widgets/Table.lua）
         toastAvoid = false,       -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua）
         dock = false,             -- rev 13：UI.Dock 家族工具列（Widgets/Dock.lua）
+        dropdown = false,         -- rev 14：UI.Dropdown 下拉選單（Widgets/Dropdown.lua）
     },
     Theme = Theme,
     Skin = Skin,

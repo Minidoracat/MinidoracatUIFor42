@@ -167,7 +167,7 @@ ok(UI.CAPABILITIES.dock == false and UI.Dock == nil and handlers.OnKeyPressed ==
     "原生 ISButton 缺席：dock 維持 false、不掛 UI.Dock、不註冊事件")
 dofile(DOCK_LUA)
 local D = UI.Dock
-ok(UI.API_REVISION == 13 and UI.CAPABILITIES.dock == true and D ~= nil, "載入成功：API_REVISION 13、dock 翻 true")
+ok(UI.API_REVISION >= 13 and UI.CAPABILITIES.dock == true and D ~= nil, "載入成功：API_REVISION >= 13、dock 翻 true")
 handlers.OnGameBoot()
 ok(#keyBinding == 2 and keyBinding[1].value == "[MinidoracatUI]" and keyBinding[2].value == "MinidoracatUI_Dock"
     and keyBinding[2].key == 52, "OnGameBoot 註冊 [MinidoracatUI] 區段與 MinidoracatUI_Dock（預設 KEY_PERIOD）")

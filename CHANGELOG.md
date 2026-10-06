@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **給依賴本函式庫的 MOD 用的新零件：下拉選單、十二個新圖示、彩色圖示按鈕與可換配色的標題列**：這一版本身不改變任何現有畫面，是讓之後的地圖錶面板、付款與管理員設定能全部用本函式庫的現代外觀，不再出現原版的灰色按鈕與下拉框。新零件包括可用滑鼠、鍵盤與手把操作的下拉選單（選項多時可以捲動），電池、燈泡、解鎖卡、螺絲起子、放入、取出、加號、勾、時鐘、暫停、警告、無限等圖示，按鈕與視窗標題可以直接放物品原本的彩色圖示，以及讓各 MOD 換上淺色標題列或白字主按鈕的配色選項。更新後需完整重開客戶端
+
+> 技術要點：`API_REVISION` 14（additive）。新增 `UI.Dropdown`（`CAPABILITIES.dropdown`，ARCHITECTURE §3.17）；Icons 新增 12 個幾何 key（`battery`／`lightbulb`／`card`／`screwdriver`／`insert`／`eject`／`plus`／`check`／`clock`／`pause`／`warning`／`infinity`）；theme token `onAccent`／`titleText`／`titleMuted`（預設值等於原本的繪製色，既有外觀不變）；`UI.Button`／`UI.Window` 的 `icon` 可傳 Texture（原色繪製），新增 `Button:setIcon(icon)`。
+
 ## [42.21.0-0.7.1] - 2026-10-06
 
 ### 變更
