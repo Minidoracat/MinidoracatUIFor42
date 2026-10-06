@@ -187,7 +187,7 @@ local function stackTop(left, right)
 end
 
 -- rev 12：登記一個要避開的矩形（例：consumer 開著的視窗）。fn() 回螢幕座標 x, y, w, h，回 nil＝此刻不用避；
--- fn 為 nil＝取消該 owner 的登記。同一個 owner 再登記會覆寫。fn 每幀呼叫（pcall），不要在裡面配置 table。
+-- fn 為 nil＝取消該 owner 的登記。同一個 owner 再登記會覆寫。fn 每幀可能被呼叫多次（pcall），不要在裡面配置 table。
 function Toast.setAvoid(owner, fn)
     if owner == nil then
         return
@@ -221,10 +221,26 @@ local function dodge(x, top, width, stackH, screenH, ax, ay, aw, ah)
     return x, top
 end
 
--- 堆疊欄的位置：預設右上（速度鈕下方）。先避原版時鐘，再依登記順序看每個避開區（同一套 dodge 規則）。
+-- 一趟：時鐘（有的話）＋每個登記的避開區各 dodge 一次。fn 出錯或回非數字＝不避。
+local function dodgeAll(x, top, width, stackH, screenH, clock)
+    if clock then
+        x, top = dodge(x, top, width, stackH, screenH, clock:getX(), clock:getY(), clock:getWidth(), clock:getHeight())
+    end
+    local list = Toast.avoid
+    for i = 1, #list do
+        local ok, ax, ay, aw, ah = pcall(list[i].fn)
+        if ok and type(ax) == "number" and type(ay) == "number" and type(aw) == "number" and type(ah) == "number" then
+            x, top = dodge(x, top, width, stackH, screenH, ax, ay, aw, ah)
+        end
+    end
+    return x, top
+end
+
+-- 堆疊欄的位置：預設右上（速度鈕下方），再避原版時鐘與登記的避開區（同一套 dodge 規則）。
 -- 時鐘戴錶才顯示（Clock.java:328-404，isVisible），預設大時鐘 156x62 在 y=10、落在欄內（UIManager.java:223-231）；
 -- MP 沒有速度鈕把欄位推下去，60 起疊會蓋住它的下緣。Last Stand 不加進 UI 清單（UIManager.java:229-231）。
--- 避開區 fn 出錯或回非數字＝不避。
+-- 單趟依登記順序會讓結果看順序：先比到的區域不重疊、被後面的推下去後才重疊。所以反覆整趟 dodge 到位置不再改變，
+-- 最多（區域數＋1）趟；仍不穩定（左右退路互相打架）就用最後一趟的位置。
 function Toast.stackOrigin(width)
     local screenW, screenH = getCore():getScreenWidth(), getCore():getScreenHeight()
     local x = screenW - width - SCREEN_MARGIN
@@ -234,15 +250,15 @@ function Toast.stackOrigin(width)
         stackH = stackH + Toast.active[i].height + (i > 1 and STACK_GAP or 0)
     end
     local clock = UIManager and UIManager.getClock and UIManager.getClock()
-    if clock and clock:isVisible() and UIManager.getUI():contains(clock) then
-        x, top = dodge(x, top, width, stackH, screenH, clock:getX(), clock:getY(), clock:getWidth(), clock:getHeight())
+    if not (clock and clock:isVisible() and UIManager.getUI():contains(clock)) then
+        clock = nil
     end
-    local list = Toast.avoid
-    for i = 1, #list do
-        local ok, ax, ay, aw, ah = pcall(list[i].fn)
-        if ok and type(ax) == "number" and type(ay) == "number" and type(aw) == "number" and type(ah) == "number" then
-            x, top = dodge(x, top, width, stackH, screenH, ax, ay, aw, ah)
+    for _ = 1, #Toast.avoid + 2 do
+        local nx, ntop = dodgeAll(x, top, width, stackH, screenH, clock)
+        if nx == x and ntop == top then
+            break
         end
+        x, top = nx, ntop
     end
     return x, top
 end

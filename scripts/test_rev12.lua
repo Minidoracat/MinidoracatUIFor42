@@ -456,7 +456,21 @@ do
     Toast.setAvoid("economy", nil)
     a:prerender()
     ok(a.y == 60 and #Toast.avoid == 1, "fn 出錯不影響通知；setAvoid(owner, nil) 取消登記")
+
+    -- 兩個避開區連鎖：先比到的（小地圖，60 起不重疊）被後面的（Dock）推下去後才重疊。
+    -- 單趟依登記順序會疊進小地圖；結果必須與登記順序無關。
+    local function chained(first, second)
+        Toast._resetForTests()
+        local rects = { minimap = { 1500, 200, 400, 200 }, dock = { 1800, 40, 100, 150 } }
+        for _, owner in ipairs({ first, second }) do
+            local r = rects[owner]
+            Toast.setAvoid(owner, function() return r[1], r[2], r[3], r[4] end)
+        end
+        return settle(Toast.show("a")).y
+    end
+    local y1, y2 = chained("minimap", "dock"), chained("dock", "minimap")
+    ok(y1 == 200 + 200 + 8 and y2 == y1, "連鎖避開區：兩種登記順序都落在兩者下方（不疊進先登記的）")
     Toast._resetForTests()
 end
 
-return 78
+return 79
