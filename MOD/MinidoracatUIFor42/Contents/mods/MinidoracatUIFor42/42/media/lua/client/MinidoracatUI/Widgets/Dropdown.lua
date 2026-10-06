@@ -242,8 +242,9 @@ function Popup:prerender()
     local colors = dd.theme.colors
     local ca = chromeAlpha(dd.theme)
     local w, h, rh = self.width, self.height, self.rowH
-    Skin.fill(self, 0, 0, w, h, colors.surface, nil, ca)
-    Skin.border(self, 0, 0, w, h, colors.border, nil, ca)
+    local shape = Skin.shapeOf(dd.theme, "control") -- rev 15：清單與元件同一個圓角（沒設＝rev 14 外觀）
+    Skin.fill(self, 0, 0, w, h, colors.surface, shape, ca)
+    Skin.border(self, 0, 0, w, h, colors.border, shape, ca)
     local opts = dd._options
     local n = #opts
     local scroll = n > self.rows
@@ -383,15 +384,16 @@ function Dropdown:prerender()
     local chrome = ca * (enabled and 1 or DISABLED_ALPHA)
     local open = popup ~= nil and popup.owner == self
     local hovered = enabled and self:isMouseOver()
-    Skin.fill(self, 0, 0, w, h, colors.well, nil, chrome)
-    Skin.border(self, 0, 0, w, h, open and colors.accent or colors.border, nil, chrome)
+    local shape = Skin.shapeOf(self.theme, "control") -- rev 15
+    Skin.fill(self, 0, 0, w, h, colors.well, shape, chrome)
+    Skin.border(self, 0, 0, w, h, open and colors.accent or colors.border, shape, chrome)
     if hovered and self.pressed then
-        Skin.fill(self, 0, 0, w, h, colors.selected, nil, ca)
+        Skin.fill(self, 0, 0, w, h, colors.selected, shape, ca)
     elseif hovered then
-        Skin.fill(self, 0, 0, w, h, colors.hover, nil, ca)
+        Skin.fill(self, 0, 0, w, h, colors.hover, shape, ca)
     end
     if self.joypadFocused then
-        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, nil, ca)
+        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, shape, ca)
     end
     local textColor, arrowColor
     if not enabled then
@@ -508,7 +510,7 @@ end
 -- maxRows 省略或小於 1＝8。原生 ISButton 只當輸入基底：onclick 是開關、forceClick（Focus 的 Enter／Space／A）＝開啟
 function Dropdown.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = getTextManager():getFontHeight(font)
     local o = ISButton.new(Dropdown, opts.x or 0, opts.y or 0, opts.width or 1, opts.height or (fontH + 10), "",
         opts.target, onClick)

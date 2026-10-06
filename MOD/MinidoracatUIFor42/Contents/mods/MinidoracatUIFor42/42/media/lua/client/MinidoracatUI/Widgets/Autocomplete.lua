@@ -130,8 +130,8 @@ function List:prerender()
     local ca = chromeAlpha(ac.theme)
     local font = ac.font
     local w, h, rh = self.width, self.height, self.rowHeight
-    Skin.fill(self, 0, 0, w, h, colors.surface, nil, ca)
-    Skin.border(self, 0, 0, w, h, colors.accent, nil, ca)
+    Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(ac.theme, "control"), ca)
+    Skin.border(self, 0, 0, w, h, colors.accent, Skin.shapeOf(ac.theme, "control"), ca)
     local hover = 0
     if self:isMouseOver() then hover = rowIndexAt(self, self:getMouseY()) or 0 end
     local dy = math.floor((rh - fontHeight(font)) / 2)

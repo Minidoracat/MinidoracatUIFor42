@@ -17,8 +17,11 @@
 ### 新增
 
 - **給依賴本函式庫的 MOD 用的新零件：下拉選單、十二個新圖示、彩色圖示按鈕與可換配色的標題列**：這一版本身不改變任何現有畫面，是讓之後的地圖錶面板、付款與管理員設定能全部用本函式庫的現代外觀，不再出現原版的灰色按鈕與下拉框。新零件包括可用滑鼠、鍵盤與手把操作的下拉選單（選項多時可以捲動），電池、燈泡、解鎖卡、螺絲起子、放入、取出、加號、勾、時鐘、暫停、警告、無限等圖示，按鈕與視窗標題可以直接放物品原本的彩色圖示，以及讓各 MOD 換上淺色標題列或白字主按鈕的配色選項。更新後需完整重開客戶端
+- **介面圓角可以每款不同**：依賴本函式庫的 MOD 現在可以替自己的介面選擇圓角大小——幾乎方正的 3 像素、目前的 6 像素、較圓的 10 或 20 像素，或把按鈕做成整顆膠囊；視窗、按鈕、輸入框、頁籤、下拉選單與滑條會一起跟著變。沒有選的 MOD 外觀完全不變。更新後需完整重開客戶端
 
 > 技術要點：`API_REVISION` 14（additive）。新增 `UI.Dropdown`（`CAPABILITIES.dropdown`，ARCHITECTURE §3.17）；Icons 新增 12 個幾何 key（`battery`／`lightbulb`／`card`／`screwdriver`／`insert`／`eject`／`plus`／`check`／`clock`／`pause`／`warning`／`infinity`）；theme token `onAccent`／`titleText`／`titleMuted`（預設值等於原本的繪製色，既有外觀不變）；`UI.Button`／`UI.Window` 的 `icon` 可傳 Texture（原色繪製），新增 `Button:setIcon(icon)`。
+
+> 技術要點：`API_REVISION` 15（additive）。`Theme.create` 新增 `radius`／`controlRadius`／`buttonShape`（`"pill"`）／`font`；Skin 新增半徑形狀 `round3`／`round6`／`round10`／`round20` 與 `roundTop` 同組（放不下往小一級退）、`Skin.shapeOf(theme, part)`、`Skin.slider` 選用 `shape`；新增 10 張圓角 9-slice（ARCHITECTURE §3.2、§3.3、§3.7、§6）。沒設時外觀與 rev 14 逐位相同。
 
 ## [42.21.0-0.7.1] - 2026-10-06
 

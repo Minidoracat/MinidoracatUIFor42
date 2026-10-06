@@ -571,8 +571,8 @@ function Popup:prerender()
     local colors = self.theme.colors
     local ca = chromeAlpha(self.theme)
     local w, h = self.width, self.height
-    Skin.fill(self, 0, 0, w, h, colors.surface, nil, ca)
-    Skin.border(self, 0, 0, w, h, colors.border, nil, ca)
+    Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(self.theme, "control"), ca)
+    Skin.border(self, 0, 0, w, h, colors.border, Skin.shapeOf(self.theme, "control"), ca)
     drawTextCentre(self, self.title, w / 2, self.titleY, colors.text, UIFont.Medium)
 
     local cw, ch = self.cellW, self.cellH

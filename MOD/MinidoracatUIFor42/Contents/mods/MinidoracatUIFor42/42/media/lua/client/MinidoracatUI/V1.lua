@@ -69,9 +69,43 @@ local function shapeName(shape)
     return "round"
 end
 
+-- rev 15：可選半徑的形狀 "round<r>"／"roundTop<r>"（r＝3／6／10／20）。放不下時往下一級半徑退
+-- （20→10→6→3），連 3 都放不下才直角；legacy "round"／"roundTop"／"pill" 行為不變（放不下直接直角），
+-- 所以沒指定半徑的 consumer 外觀與 rev 14 逐位相同。6 與 10 沿用既有資產（round／roundtop、pill）。
+local LADDER = {
+    round3 = { r = 3, fill = "mui_round3_fill.png", border = "mui_round3_border.png" },
+    round6 = { r = 6, fill = "mui_round_fill.png", border = "mui_round_border.png", down = "round3" },
+    round10 = { r = 10, fill = "mui_pill_fill.png", border = "mui_pill_border.png", down = "round6" },
+    round20 = { r = 20, fill = "mui_round20_fill.png", border = "mui_round20_border.png", down = "round10" },
+    roundTop3 = { r = 3, top = true, fill = "mui_roundtop3_fill.png", border = "mui_roundtop3_border.png" },
+    roundTop6 = { r = 6, top = true, fill = "mui_roundtop_fill.png", border = "mui_roundtop_border.png",
+        down = "roundTop3" },
+    roundTop10 = { r = 10, top = true, fill = "mui_roundtop10_fill.png", border = "mui_roundtop10_border.png",
+        down = "roundTop6" },
+    roundTop20 = { r = 20, top = true, fill = "mui_roundtop20_fill.png", border = "mui_roundtop20_border.png",
+        down = "roundTop10" },
+}
+
+-- 從 desc 往下找第一個放得下的半徑；都放不下回 nil（直角）
+local function ladderFit(desc, width, height)
+    while desc do
+        local r = desc.r
+        if width >= r * 2 and height >= (desc.top and r or r * 2) then
+            return desc
+        end
+        desc = LADDER[desc.down]
+    end
+    return nil
+end
+
 -- 矩形夠不夠大到能走 9-slice。太小不縮角落也不讓角落重疊（重疊帶的半透明填色會
 -- 疊成雙倍 alpha；NeatUI 式的等比縮角落則把 AA 弧線拉糊）——直角是最誠實的降級。
+-- rev 15 半徑形狀：任一級放得下就是 true。
 function Skin.fits(width, height, shape)
+    local desc = type(shape) == "string" and LADDER[shape]
+    if desc then
+        return ladderFit(desc, width, height) ~= nil
+    end
     local kind = shapeName(shape)
     if kind == "rect" then
         return false
@@ -84,6 +118,46 @@ function Skin.fits(width, height, shape)
         minimumHeight = CORNER
     end
     return width >= CORNER * 2 and height >= minimumHeight
+end
+
+-- theme 的圓角（rev 15）→ shape 字串。radius 依最近的支援值吸附（0＝直角、3、6、10、20；中點歸小）。
+local BODY_SHAPES = { [0] = "rect", [3] = "round3", [6] = "round6", [10] = "round10", [20] = "round20" }
+local TOP_SHAPES = { [0] = "rect", [3] = "roundTop3", [6] = "roundTop6", [10] = "roundTop10", [20] = "roundTop20" }
+
+local function snapRadius(r)
+    if type(r) ~= "number" or r ~= r then
+        return nil
+    end
+    if r <= 1.5 then return 0 end
+    if r <= 4.5 then return 3 end
+    if r <= 8 then return 6 end
+    if r <= 15 then return 10 end
+    return 20
+end
+
+-- part："panel"（視窗本體、彈出清單）｜"title"（標題列，上圓下直）｜"control"（輸入框、下拉、頁籤、
+-- 方框、滑桿軌道）｜"button"（Button 的 normal／primary／danger／ghost）。control／button 讀
+-- theme.controlRadius，沒有就讀 theme.radius；button 在 theme.buttonShape == "pill" 時是整顆膠囊（round20 往下退）。
+-- 半徑都沒設＝回 legacy（title＝"roundTop"，其他＝nil）：外觀與 rev 14 相同。每幀可呼叫，不配置。
+function Skin.shapeOf(theme, part)
+    if type(theme) ~= "table" then
+        return part == "title" and "roundTop" or nil
+    end
+    if part == "button" and theme.buttonShape == "pill" then
+        return "round20"
+    end
+    local r = nil
+    if part == "control" or part == "button" then
+        r = theme.controlRadius
+    end
+    if r == nil then
+        r = theme.radius
+    end
+    r = snapRadius(r)
+    if r == nil then
+        return part == "title" and "roundTop" or nil
+    end
+    return part == "title" and TOP_SHAPES[r] or BODY_SHAPES[r]
 end
 
 local function ninePatch(name)
@@ -185,14 +259,29 @@ local BORDER_TEXTURES = {
     pill = "mui_pill_border.png",
 }
 
+-- 這個尺寸該用哪張貼圖；nil＝走直角退回
+local function textureFor(width, height, shape, border)
+    local desc = type(shape) == "string" and LADDER[shape]
+    if desc then
+        desc = ladderFit(desc, width, height)
+        if not desc then
+            return nil
+        end
+        return border and desc.border or desc.fill
+    end
+    if not Skin.fits(width, height, shape) then
+        return nil
+    end
+    local kind = shapeName(shape)
+    return border and BORDER_TEXTURES[kind] or FILL_TEXTURES[kind]
+end
+
 -- 圓角填色。alphaScale 是動畫用的 alpha 乘數。
 function Skin.fill(element, x, y, width, height, color, shape, alphaScale)
     local alpha = (color.a or 1) * (alphaScale or 1)
-    if Skin.fits(width, height, shape) then
-        if drawNinePatch(element, FILL_TEXTURES[shapeName(shape)],
-                x, y, width, height, color, alpha) then
-            return
-        end
+    local file = textureFor(width, height, shape, false)
+    if file and drawNinePatch(element, file, x, y, width, height, color, alpha) then
+        return
     end
     element:drawRect(x, y, width, height, alpha, color.r, color.g, color.b)
 end
@@ -200,11 +289,9 @@ end
 -- 1px 圓角邊框。roundTop＝上圓、底邊開放的 3 邊框（頁籤形）。
 function Skin.border(element, x, y, width, height, color, shape, alphaScale)
     local alpha = (color.a or 1) * (alphaScale or 1)
-    if Skin.fits(width, height, shape) then
-        if drawNinePatch(element, BORDER_TEXTURES[shapeName(shape)],
-                x, y, width, height, color, alpha) then
-            return
-        end
+    local file = textureFor(width, height, shape, true)
+    if file and drawNinePatch(element, file, x, y, width, height, color, alpha) then
+        return
     end
     element:drawRectBorder(x, y, width, height, alpha, color.r, color.g, color.b)
 end
@@ -295,21 +382,31 @@ local SLIDER_BORDER = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
 local SLIDER_TRACK_HEIGHT = 4
 local SLIDER_KNOB_SIZE = 12
 
-local function drawSlider(element, x, y, width, height, ratio, colors, alphaScale)
+local function drawSlider(element, x, y, width, height, ratio, colors, alphaScale, shape)
     local track = resolveColor(colors, "track", SLIDER_TRACK)
     local fill = resolveColor(colors, "fill", SLIDER_FILL)
     local knob = resolveColor(colors, "knob", SLIDER_KNOB)
     local border = resolveColor(colors, "border", SLIDER_BORDER)
     local scale = alphaScale or 1
     local trackY = y + math.floor((height - SLIDER_TRACK_HEIGHT) / 2)
-    element:drawRect(x, trackY, width, SLIDER_TRACK_HEIGHT,
-        (track.a or 1) * scale, track.r, track.g, track.b)
-    element:drawRectBorder(x, trackY - 1, width, SLIDER_TRACK_HEIGHT + 2,
-        (border.a or 1) * scale, border.r, border.g, border.b)
     local fillW = math.floor(width * ratio + 0.5)
-    if fillW > 0 then
-        element:drawRect(x, trackY, fillW, SLIDER_TRACK_HEIGHT,
-            (fill.a or 1) * scale, fill.r, fill.g, fill.b)
+    if shape ~= nil then
+        -- rev 15：有形狀時軌道連外框畫成 6px 高的圓角條（round3 剛好放得下，更大的半徑往下退）
+        local ty, th = trackY - 1, SLIDER_TRACK_HEIGHT + 2
+        Skin.fill(element, x, ty, width, th, track, shape, scale)
+        if fillW > 0 then
+            Skin.fill(element, x, ty, fillW, th, fill, shape, scale)
+        end
+        Skin.border(element, x, ty, width, th, border, shape, scale)
+    else
+        element:drawRect(x, trackY, width, SLIDER_TRACK_HEIGHT,
+            (track.a or 1) * scale, track.r, track.g, track.b)
+        element:drawRectBorder(x, trackY - 1, width, SLIDER_TRACK_HEIGHT + 2,
+            (border.a or 1) * scale, border.r, border.g, border.b)
+        if fillW > 0 then
+            element:drawRect(x, trackY, fillW, SLIDER_TRACK_HEIGHT,
+                (fill.a or 1) * scale, fill.r, fill.g, fill.b)
+        end
     end
     local knobX = x + fillW - math.floor(SLIDER_KNOB_SIZE / 2)
     local knobY = y + math.floor((height - SLIDER_KNOB_SIZE) / 2)
@@ -317,7 +414,8 @@ local function drawSlider(element, x, y, width, height, ratio, colors, alphaScal
 end
 
 -- rev 3 無狀態 slider painter：只換皮、不接管原生滑條的拖曳／步進／上下限。
-function Skin.slider(element, x, y, width, height, ratio, colors, alphaScale)
+-- rev 15：選用 shape（Skin 形狀字串）＝軌道畫成圓角條；省略＝原本的直線軌道。
+function Skin.slider(element, x, y, width, height, ratio, colors, alphaScale, shape)
     if not element or type(x) ~= "number" or type(y) ~= "number"
             or type(width) ~= "number" or type(height) ~= "number"
             or type(ratio) ~= "number" or ratio ~= ratio
@@ -325,7 +423,7 @@ function Skin.slider(element, x, y, width, height, ratio, colors, alphaScale)
         return false
     end
     if ratio < 0 then ratio = 0 elseif ratio > 1 then ratio = 1 end
-    return pcall(drawSlider, element, x, y, width, height, ratio, colors, alphaScale)
+    return pcall(drawSlider, element, x, y, width, height, ratio, colors, alphaScale, shape)
 end
 
 -- ============================================================
@@ -581,7 +679,9 @@ function ThemeProto:dot(element, x, y, size, color, outline)
     Skin.dot(element, x, y, size, resolved, resolveColor(self, outline))
 end
 
--- 建立 theme：opts = { variant = "dark"|"light"（預設 dark）, colors = { token = {r,g,b,a}, ... } }
+-- 建立 theme：opts = { variant = "dark"|"light"（預設 dark）, colors = { token = {r,g,b,a}, ... },
+--   radius?, controlRadius?, buttonShape?, font? }（後四個 rev 15，見 Skin.shapeOf；font＝框架元件的預設字型，
+--   opts.font 優先、都沒有＝UIFont.Small）。四個欄位原樣放在 theme 上，consumer 也可事後直接改（同 theme.alpha）。
 -- colors 的每顆 color table 都被拷貝（consumer 事後改自己的 table 不影響 theme）；
 -- 覆蓋是整顆 token 替換，不做 r/g/b/a 欄位級合併。
 function Theme.create(opts)
@@ -601,7 +701,8 @@ function Theme.create(opts)
             colors[token] = copyColor(color)
         end
     end
-    return setmetatable({ variant = variant, colors = colors }, ThemeProto)
+    return setmetatable({ variant = variant, colors = colors, radius = opts.radius,
+        controlRadius = opts.controlRadius, buttonShape = opts.buttonShape, font = opts.font }, ThemeProto)
 end
 
 -- ============================================================
@@ -697,7 +798,10 @@ MinidoracatUI.v1 = {
     -- rev 14：12 個幾何圖示 key（battery／lightbulb／card／screwdriver／insert／eject／plus／check／
     --         clock／pause／warning／infinity）；theme token onAccent／titleText／titleMuted；Button／Window
     --         的 icon 可傳 Texture（原色）、Button:setIcon；UI.Dropdown 下拉選單（dropdown）
-    API_REVISION = 14,
+    -- rev 15：可選圓角——Skin 形狀 round3／6／10／20 與 roundTop 同組（放不下往小一級退）、Skin.shapeOf、
+    --         Theme.create 的 radius／controlRadius／buttonShape／font；Button／TextField／Checkbox／Tabs／
+    --         Slider／Window／Dialog／Dropdown 跟著 theme 的圓角與字型（沒設＝rev 14 外觀）
+    API_REVISION = 15,
     CAPABILITIES = {
         theme = true,
         skin = true,

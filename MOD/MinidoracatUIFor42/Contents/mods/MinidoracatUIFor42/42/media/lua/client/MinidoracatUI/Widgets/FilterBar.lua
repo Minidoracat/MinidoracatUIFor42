@@ -448,8 +448,8 @@ function Menu:prerender()
     local colors = bar.theme.colors
     local ca = chromeAlpha(bar.theme)
     local w, rh = self.width, self.rowH
-    Skin.fill(self, 0, 0, w, self.height, colors.surface, nil, ca)
-    Skin.border(self, 0, 0, w, self.height, colors.border, nil, ca)
+    Skin.fill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(bar.theme, "control"), ca)
+    Skin.border(self, 0, 0, w, self.height, colors.border, Skin.shapeOf(bar.theme, "control"), ca)
     local hover = self:isMouseOver() and rowAt(self, self:getMouseY()) or nil
     local chips = bar._kindChips
     local ty = math.floor((rh - bar._fontH) / 2)

@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 14,         -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）
+    API_REVISION = 15,         -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -132,6 +132,8 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   local canRev14 = ok and UI.API_REVISION >= 14
 --   local canDropdown = canRev14 and UI.CAPABILITIES.dropdown and UI.Dropdown ~= nil
 --   舊框架拿到 Texture 圖示時 Icons.get 對非字串回 nil：按鈕與視窗只畫文字，不炸（不必另寫退回）
+-- rev 15 圓角與 theme 字型以 rev 判斷（核心與元件同檔）；舊框架忽略 theme 上的 radius／font 欄位，照 6px 圓角與 opts.font：
+--   local canRadius = ok and UI.API_REVISION >= 15 and type(UI.Skin.shapeOf) == "function"
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -175,7 +177,9 @@ local theme = UI.Theme.create({
 - **token 分層**：框架 default 只放跨 MOD token，**v1 共 16 個**（`surface`／`surfaceTitle`／`well`／`border`／`text`／`textMuted`／`textFaint`／`textDisabled`（rev 12）／`accent`／`hover`／`selected`／`errorSurface`／`errorText`／`onAccent`／`titleText`／`titleMuted`（rev 14）——與 `V1.lua` 的 `DARK`/`LIGHT` 表逐字一致，該表是唯一權威）；MOD 自有 token（如 NoticeBoard 的 `unread`、MiniMap 的 `rowHover`）由 create 時自帶，框架不認識也不管。**未知 token 的 theme 便捷方法呼叫是靜默不畫**（fail-soft），拼錯 token＝元素消失無診斷——寫 consumer 時以 V1.lua 的表為準，勿憑記憶。
 - **`textDisabled`（rev 12）**：停用控制項的標籤與圖樣。深色 `#666666`（0.40），淺色 `#858585`（0.52）。WCAG 相對亮度對比（`scripts/test_rev12.lua` 斷言）：深色在黑底 3.66:1、與閒置 `textMuted`（`#9E9E9E`）差 2.15:1——原本停用用的 `textFaint`（`#8C8C8C`）與 `textMuted` 只差 1.25:1；淺色在 `surface` 上 3.09:1、與 `textMuted` 差 1.88:1。停用時**字與圖樣不乘**停用淡化（0.45 只乘 chrome），否則 `#666` 會再淡成 `#2E2E2E`。框架元件讀 `colors.textDisabled or colors.textFaint`（theme 不是 `Theme.create` 建的也不 nil 炸）。
 - **`onAccent`／`titleText`／`titleMuted`（rev 14）**：`onAccent`＝accent 底上的字與圖示（primary 按鈕；預設 `#1A1405`，即 rev 7 起的元件內常數）；`titleText`＝視窗標題列的標題、標題圖示與 hover 中的關閉鈕（預設＝`text`）；`titleMuted`＝閒置的關閉鈕（預設＝`textMuted`）。預設值與 rev 13 實際繪製色逐位相同，所以既有 consumer 外觀不變；用途是**換皮**：accent 是深色時（例：粉紅 `#B03A6A`）把 `onAccent` 設成白，標題列是淺色時（例：銀灰 `#C9CDD3`）把 `titleText`／`titleMuted` 設成深色。框架元件讀 `colors.onAccent or <常數>`、`colors.titleText or colors.text`、`colors.titleMuted or colors.textMuted`。
-- **換皮的邊界**：一款皮膚＝一個 `Theme.create{ variant, colors }`（16 個 token 全可覆寫）＋consumer 自有 token（例：警示底色、等級色）。圓角半徑固定（9-slice 6px、pill 10px，`rect` 強制直角），不隨皮膚變；字型由 `opts.font` 選 `UIFont`，框架不載自訂字型。
+- **換皮的邊界**：一款皮膚＝一個 `Theme.create{ variant, colors, radius?, controlRadius?, buttonShape?, font? }`（16 個 token 全可覆寫）＋consumer 自有 token（例：警示底色、等級色）。不做的：每款不同的字型檔（框架不載自訂字型，只選 `UIFont`）、皮膚裝飾（角框、貼紙、掃描線由 consumer 自己畫）。
+- **圓角與字型（rev 15）**：`radius`＝視窗本體、標題列、彈出清單外框以外的「面板」圓角；`controlRadius`＝Button、TextField、Checkbox 方框退回、Tabs、Dropdown 與其清單、Slider 軌道、DatePicker／FilterBar／Autocomplete 的彈出清單（省略＝跟 `radius`）；`buttonShape = "pill"`＝Button（normal／primary／danger／ghost）畫成整顆膠囊。半徑吸附到最近的支援值 0（直角）／3／6／10／20（中點歸小：1.5→0、4.5→3、8→6、15→10），轉成 Skin 形狀見 §3.3 `Skin.shapeOf`。**都沒設＝rev 14 外觀逐位相同**（`radius` 設成 6 雖然看起來一樣，但小元件會往 3 退而不是直角）。`font`＝框架元件的預設字型，優先序 `opts.font` → `theme.font` → `UIFont.Small`（Button、TextField、Checkbox、Tabs、Slider、ColorPicker、Window、Dialog、Dropdown 讀它）。四個欄位放在 theme 上，可在 create 後直接改（同 `theme.alpha`）。
+- **等寬字型（查證 42.21.0）**：`UIFont` 列舉有 `Code`／`CodeSmall`／`CodeMedium`／`CodeLarge`（`zombie/ui/UIFont.java`；`TextManager.java:274-277` 載入）。`media/fonts/EN/fonts.txt` 對應 `zomboidCode.fnt`（Courier New 14px，613 字）與 `codeSmall／codeMedium／codeLarge.fnt`（Noto Sans Mono，charset ANSI，219 字）；`CH`／`CN` 等語系的 `fonts.txt` 只重新指向同一個 `zomboidCode.fnt`，**沒有任何中日韓字形**。所以等寬字型只能用在純 ASCII 的字（數字、百分比、代號），不能當含中文標籤的 `theme.font`；CRT 類皮膚的中文標籤維持 `UIFont.Small`，數值讀數由 consumer 另以 `UIFont.Code` 畫。
 - **雙色系**：`variant` 選 default palette 起點；兩套數值都在 `V1.lua` 的 Theme section（`DARK`／`LIGHT` 表）內維護。繪製邏輯與資產完全 variant 無關（白圖×頂點染色）。深色為預設（PZ 本體與家族現有 UI 全深色）；淺色首發標 experimental。variant 由 MOD 開發者決定；玩家層級即時切換是未來項目（牽涉全 consumer token 完整性）。
 - **隔離**：`create()` 深拷貝，禁止 mutate 共享 default——現有 NBSkin↔MiniMap drift 的根源就是「共用色票、各自複製」。
 - **已知取捨（色票三份現況）**：兩個既有 adapter 刻意保留字面 `COLORS`（框架缺席時色票也要在、退回路徑不依賴框架），因此共通數值目前存在三份（NBSkin／MiniMap Skin／框架 DARK）。v0.1 接受此取捨——「消滅重複」在繪製碼與 PNG 已達成，色票的單一權威化留待既有 consumer 改用 `Theme.create`（自然時機：某 MOD 需要 light variant 或玩家換色時）。
@@ -192,7 +196,8 @@ UI.Skin.border(element, x, y, w, h, color, shape, alphaScale)
 UI.Skin.dot(element, x, y, size, color, outline)
 UI.Skin.fits(w, h, shape)
 UI.Skin.toggle(element, x, y, width, rowHeight, on, colors, alphaScale)
-UI.Skin.slider(element, x, y, width, rowHeight, ratio, colors, alphaScale)
+UI.Skin.slider(element, x, y, width, rowHeight, ratio, colors, alphaScale, shape?)   -- shape 為 rev 15 選用參數
+UI.Skin.shapeOf(theme, part)                                 -- rev 15；part＝"panel"｜"title"｜"control"｜"button"
 UI.Skin.arrow(element, x, y, up, color, alphaScale)          -- rev 11；UI.Skin.ARROW_W＝7、ARROW_H＝4
 -- 文字量測（rev 11，同在 V1.lua）：
 UI.Text.fit(str, maxW, font) -- 放得下回原字串，否則「最長前綴＋...」；font 省略＝UIFont.Small
@@ -200,14 +205,17 @@ UI.Text.fit(str, maxW, font) -- 放得下回原字串，否則「最長前綴＋
 theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 -- shape: nil/false="round"（四角圓）| true/"roundTop"（上圓下直）|
 --        "pill"（10px cap）| "rect"（強制直角）
+--        rev 15："round3"／"round6"／"round10"／"round20"、"roundTop3"／"roundTop6"／"roundTop10"／"roundTop20"
 --        boolean 形式與家族既有 topOnly 呼叫慣例逐位相容
 ```
 
 **內建規則（caller 不必知道的事）**
 - 首呼叫連呼兩次＋pcall；兩次 nil → cache `false` 永不重試 → 直角退回（`NinePatchTexture.java:42-63`）。
 - `fits` 檢查內建於 shape：`round` 最小 12×12、`roundTop` 最小 12×6、`pill` 最小 20×20；不足自動退直角（角落重疊會疊 alpha，寧可誠實直角）。pill 使用獨立 10/4/10 cap 資產；高度恰好 20px 才是精確膠囊，高於 20px 是半徑 10px 的圓角矩形。
+- **半徑形狀（rev 15）**：`round<r>` 需要寬、高都 ≥ 2r，`roundTop<r>` 需要寬 ≥ 2r、高 ≥ r；放不下時**往下一級半徑退**（20→10→6→3），連 3 都放不下才直角——例如 `round20` 畫在 22px 高的按鈕上會用半徑 10，等於整顆膠囊。legacy 的 `round`／`roundTop`／`pill` 不退級（行為與 rev 14 相同）。資產：6 用既有 `mui_round_*`／`mui_roundtop_*`，`round10` 用既有 `mui_pill_*`，其餘見 §6。某一級的貼圖缺失時該次直接直角（不再往下試）。
+- **`Skin.shapeOf(theme, part)`（rev 15）**：依 §3.2 的 `radius`／`controlRadius`／`buttonShape` 回形狀字串；兩個半徑都沒設（或 theme 不是 table）回 legacy：`"title"`＝`"roundTop"`，其他＝nil。`"button"` 在 `buttonShape == "pill"` 時回 `"round20"`。純查表與數值比較、不配置，元件每幀呼叫。
 - `toggle` 不建立 widget：它是每幀可直接呼叫的無狀態 painter。track 固定高 20px、在 `rowHeight` 內垂直置中；knob 固定 16px、左右各留 2px。`colors={off,on,knob,border}` 可省略或缺項，缺色使用框架常數；貼圖缺失沿用 Skin 的直角／方點退回。幾何契約要求 `width >= 20`、`rowHeight >= 20`；較小輸入直接回 `false` 且不繪製，由 consumer 保留原文字／狀態退回。
-- `slider` 同樣不建立 widget：只畫 4px track、比例填色與 12px 圓形 knob；`ratio` 夾在 0..1，`colors={track,fill,knob,border}`。拖曳、步進、上下限由呼叫端負責——要現成的可拖曳元件用 rev 9 的 `UI.Slider`（§3.9，內部即呼叫本 painter）。
+- `slider` 同樣不建立 widget：只畫 4px track、比例填色與 12px 圓形 knob；`ratio` 夾在 0..1，`colors={track,fill,knob,border}`。拖曳、步進、上下限由呼叫端負責——要現成的可拖曳元件用 rev 9 的 `UI.Slider`（§3.9，內部即呼叫本 painter）。rev 15 的選用 `shape`：給了就把軌道連外框畫成 6px 高的圓角條（底、填色、外框都走該形狀，`round3` 剛好放得下，更大的半徑往下退），省略＝原本的直線軌道。
 - `arrow`（rev 11）是排序方向箭頭：`ARROW_W`×`ARROW_H`（7×4）的階梯三角形，逐列 `drawRect`，`up=true` 為 ▲（升冪）。不用貼圖，所以沒有缺圖退回；Icons 沒有 `chevronUp`，這是刻意不加 icon key 的替代。移植自 Economy `drawArrow`。
 - `UI.Text.fit`（rev 11）：`maxW <= 0` 或連 `"..."` 都放不下回 `""`；二分搜尋前綴長度（長字串只量 log2(n) 次），切點不切開 UTF-16 surrogate pair（Kahlua 字串以 UTF-16 code unit 為單位，`string.char` 是 `(char)num`，`StringLib.java:760-768`）或 UTF-8 continuation byte（標準 Lua harness）。量測一律走 `MeasureStringX`，呼叫端負責快取結果（框架元件只在文字或寬度變了才重算）。移植自 Economy `U.fitText`。
 - 座標：`getAbsoluteX/Y` ＋（在 scrolling 容器內）自身 scroll offset，再 `math.floor`——MiniMap 實戰教訓直接內建，consumer 不再各自修。
@@ -355,6 +363,11 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **Texture 圖示**：Button 與 Window 的 `icon` 除了 `UI.Icons` key（字串，以字色染色）也接受 consumer 的 Texture（任何非字串、非 nil 值，例如 `getScriptManager():FindItem(t):getNormalTexture()` 或 `item:getTex()`），以**原色**（頂點色全白）畫 16px，不乘 `theme.alpha`。原色無法改成 `textDisabled`，停用的 Button 改以 `DISABLED_ALPHA`（0.45）淡化 Texture 圖示。繪製以 pcall 具名函式包住，拋錯時只少圖示、標題照畫。舊框架（rev ≤13）的 `Icons.get` 對非字串回 nil，同一份 consumer 碼在舊框架上只畫文字，不必另寫退回。
 - **`Button:setIcon(icon)`**：換 key／Texture／nil（相同值 no-op）。自動寬度的按鈕重算寬度；明示寬度的按鈕在下一幀依扣掉圖示後的可用寬重新截字與自動 tooltip（規則同 rev 11）。給重複使用的按鈕池（同一顆按鈕依狀態換標題與圖示）。
 - **標題列與 accent 字色**：primary 按鈕的字讀 `onAccent`，Window 的標題／標題圖示／關閉鈕讀 `titleText`／`titleMuted`（§3.2）；預設值等於 rev 13 的繪製色。
+
+**rev 15 擴充**（可選圓角與 theme 字型；以 `API_REVISION >= 15` 探測，沒設時外觀與 rev 14 相同）
+- **跟著 `Skin.shapeOf` 的部位**：Button 的 normal／primary／danger／ghost（`"button"`，含 hover／按下疊層與手把焦點框）；TextField、Checkbox 的 hover 底與方框退回（沒設圓角時方框維持原本的直角 `drawRectBorder`）、Tabs 外框與選中／hover 項、Slider 軌道、Dropdown 元件與清單外框、DatePicker 月曆／FilterBar 選單／Autocomplete 清單外框、Window 的關閉鈕 hover（`"control"`）；Window／Dialog 本體與外框、ItemPicker 卡片（`"panel"`）；Window 標題列（`"title"`）。
+- **不跟的**：chip 固定 `pill`（chip 的識別就是膠囊）；Checkbox 開關（`Skin.toggle`）固定膠囊；清單列反白、表格列、月曆日格維持直角；ColorPicker 色卡、Toast、Dock、FloatButton 不讀 consumer theme 的圓角（家族共用外觀）。
+- **字型**：上列元件建構時 `opts.font or theme.font or UIFont.Small`（§3.2）。
 
 ### 3.8 ColorPicker（API rev 8；rev 9 起 R/G/B 為滑桿）
 
@@ -685,12 +698,14 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | API rev 11 Economy 元件收編（**開發中**） | 共用基礎：`UI.Text.fit`、`Skin.arrow`、Button chip／active／自動截字與 tooltip、TextField 尺寸與 clearButton、`theme.alpha`（§3.3、§3.7）；DatePicker（§3.11）、Table（§3.12）、FilterBar（§3.13）、ItemPicker（§3.14）、Autocomplete（§3.15） | harness 情境十九驗證共用基礎，五個切片測試（`scripts/test_rev11_*.lua`）驗證各元件的回呼次數、邊界、零配置與焦點接線；Economy 刪除自己的日期／篩選／表格外殼並改用本期元件、實機驗證（日曆、篩選列、物品挑選、帳號候選、鍵盤與手把）後定版 |
 | API rev 12 停用對比＋精簡篩選列（**開發中**） | `textDisabled` token 與各控制元件停用標籤（§3.2、§3.7）、Tabs 停用（§3.7）、Toast 避開區（§3.4）、焦點說明位置 `captionSide`（§3.10）、TableHeader 鍵盤焦點（§3.12）、FilterBar 的 `dateToggle`／`kindsDropdown`／`sortInHeader`（§3.13） | `scripts/test_rev12.lua` 驗證兩套 palette 的對比門檻、各控制元件停用色、Tabs 停用不切換、說明四種位置與經 Focus.render 生效、滑鼠焦點的替代目標不亮框、表頭焦點（Tab 進入、左右換欄、Enter 排序一次、live=false 不可聚焦）、Toast 避開區（下方、左側、不重疊不動、nil／出錯不避、取消登記）、三種 FilterBar 模式的回呼、版面、焦點描述與選單鍵盤／滑鼠；Economy 錢包明細一列篩選＋表頭排序、通知不蓋經濟中心頂端實機驗證 |
 | API rev 14 地圖錶缺口（**開發中**） | `UI.Dropdown`（§3.17）、12 個幾何圖示（§3.6）、`onAccent`／`titleText`／`titleMuted`（§3.2）、Button／Window 的 Texture 圖示與 `Button:setIcon`（§3.7） | `scripts/test_rev14.lua` 驗證新 key 對到約定檔名、新 token 預設等於舊繪製色、primary 讀 `onAccent`、Texture 圖示原色與停用淡化、繪製拋錯不外洩、`setIcon` 的寬度與截字、Window 標題列 token 與舊 theme 退回；`scripts/test_rev14_dropdown.lua` 驗證下拉（§3.17）；ui-e2e `render-sp` 實機截圖；MiniMap Map Watch 面板改寫接用並實機驗證後定版 |
+| API rev 15 可選圓角（**開發中**） | Skin 半徑形狀與往下退、`Skin.shapeOf`、`Skin.slider` 的 shape（§3.3）；theme 的 `radius`／`controlRadius`／`buttonShape`／`font`（§3.2）；元件跟著 theme（§3.7）；10 張新 9-slice 資產（§6） | `scripts/test_rev15.lua` 驗證吸附表、title／control／button 部位、legacy 回傳、往下退與直角、legacy 形狀不退級、fits、Theme.create 欄位、各元件沒設時用 rev 14 資產／設了用對應半徑、Checkbox 方框與 Slider 軌道兩種路徑、字型優先序；`verify_mod.py` 第 12 項驗新資產；ui-e2e `radius-sp` 實機截圖（3／6／20px 與膠囊按鈕）；地圖錶七款皮膚接用後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
 ## 6. 資產管線
 
 - **幾何 UI 貼圖（9-slice 圓角、圓點、`mui_icon_*` 圖示）**：`scripts/gen_ui_textures.py` 程序化生成（移植 NoticeBoard 現有做法）——9-slice 切線像素要求位元級精確，幾何圖示要求重跑逐位元組相同，不走 AI 生圖；生成器不用 `ImageDraw`（跨 Pillow 版本柵格化會變），純浮點謂詞＋8×8 超取樣自算覆蓋率。`verify_mod.py` 第 12 項比對尺寸／IHDR／純白／切線（皮膚）與透明邊／對稱／探針像素／著墨比例（圖示）當閘門。
+- **圓角 9-slice 組（rev 15）**：`ROUNDED_PATCHES`（檔名 → 半徑、是否上圓下直）是唯一權威，`rounded_patch_alpha(radius, border, top_only)` 同時供生成與 verify 重算。內容邊長 `2r+4`、整張 `2r+5`（第 0 列／欄是 stretch 標記，位置 r+1..r+4；roundTop 的左緣標記延伸到底）；border＝外框減內縮 1px、半徑 r−1 的內框（roundTop 內框底邊開放）。半徑 6＝既有 `mui_round_*`／`mui_roundtop_*`、10＝既有 `mui_pill_*`（四角）；rev 15 新增 `mui_round3_{fill,border}`、`mui_roundtop3_{fill,border}`（11×11）、`mui_roundtop10_{fill,border}`（25×25）、`mui_round20_{fill,border}`、`mui_roundtop20_{fill,border}`（45×45），共 10 張，既有 7 張逐位元組不變。verify 先比對 committed alpha 等於重算，再獨立驗切線 (r,4,r)／(r,r+4,0)、標記、對稱、四角透明（r=3 的角落像素被弧切到一點，允許 ≤8）、中心實心或透明、有 AA。皮膚資產共 17 張（16 張圓角 9-slice＋圓點）。
 - **美術資產（poster.png、preview.png、Workshop 圖）**：AI 生成（codex／grok imagegen）到 `scripts/poster/` 再由 `finish_poster.py` 部署——首發前才做，沿用家族貓娘 mascot 流程。
 - 貼圖一律純白可染色（唯一例外：rev 13 的彩色吉祥物，見下）；新增貼圖＝同步新增生成器幾何與 `verify_mod.py` 檢查項（`OUTPUT_NAMES` 是唯一權威，目錄多一張少一張都會 assert）。
 - **art 圖示（rev 4 起，`mui_art_*.png`）**：幾何線條畫不出可辨識的動物剪影，這批改走 AI 生成——`scripts/icons/sheet.png`（codex `image_generation`，黑底純白實心剪影、4×4 等分格、無文字）→ `scripts/import_icon_sheet.py`（亮度→alpha、去雜訊、bbox 裁切、縮 28px 置中、四邊透明）→ commit PNG。`ART_ICON_NAMES` 在 `OUTPUT_NAMES` 內但生成器不產不覆寫；verify 只驗尺寸／純白／1px 透明邊／有 AA／著墨 0.10-0.70。重生單格：`import_icon_sheet.py <cell.png> --grid 1x1 --keys cow`。
@@ -727,6 +742,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - rev13_dock：缺原生 ISButton 時 `dock` 維持 false 且不註冊事件；`OnGameBoot` 的 keyBinding 區段與預設鍵；不合法 spec 回 false；order 再 id 排序、同 id 覆寫沿用同一顆按鈕；`isAvailable` 變化補位與高度重算、隱藏中仍輪詢；0／1／2+ 入口（1 個不畫把手、0 個隱藏）；`alwaysOnTop=false` 經原生 setter；預設位置對 moodle 選項 1／3／6／7（依字級）／超界；每幀 clamp；點擊與 4px 拖曳門檻（入口與把手都拖整條、放開立即存）；右鍵配對、過期與左鍵按住中不接；點把手收合並存、重開時 `TryRestore` 讀回位置與收合；收合外殼只亮一個紅點（不加總）與 warn 紅框＋「!」、無事時不加標記；入口的 active 細條、on 金框、warn 紅框＋「!」、徽章 99+／數字／紅點；回呼全部拋錯時繪製、提示、點擊照常；提示組字（快捷鍵模板、未綁不附、多行狀態與 500ms 節流、把手收合／展開與待處理行、名稱：狀態模板）；吉祥物睡臉／醒臉、缺圖退 chevron（展開翻轉）再退 `Skin.arrow`；快捷鍵工作階段（不搶 Tab、展開並聚焦第一個入口、方向鍵循環、Enter、Esc 收回且 press／release 都消耗、再按同鍵交還、別的 root 接手時結束）；手把世界選單（非手把不加、`test` 走 setTest、非玩家 0 不加、選項接手手把、方向下移、B 交還不關 Dock、A 先交還再 onClick）；Toast 避開區矩形與隱藏回 nil；無玩家自我隱藏與回來重顯；`keyboardTargets` 重用同一張表；Focus 缺席時快捷鍵只切換收合且不加手把選項。
     - rev14：12 個新 icon key 對到 `mui_icon_<key>.png` 且各不相同、既有 key 不變；`onAccent`／`titleText`／`titleMuted` 兩套 palette 的預設值等於 rev 13 的繪製色；primary 讀 `onAccent`、theme 缺 token 時退回舊常數；Button 的 Texture 圖示原色 16px、自動寬度同 Icons key、停用淡化 0.45、繪製拋錯不外洩；Icons key 照舊依樣式染色；`setIcon` 自動寬度增減、相同值 no-op、換 key、明示寬度下一幀重新截字與自動 tooltip、拿掉後恢復；未知 key 只畫文字；Window 的 Texture 標題圖示、`titleText` 標題、關閉鈕閒置 `titleMuted`／hover `titleText`、舊 theme 退回 `text`／`textMuted`、未知 key 標題不位移。
     - rev14_dropdown：缺原生 ISButton 時 `dropdown` 維持 false；預設寬高、選項複本、缺 label 用 id；明示寬度不撐寬、截字只在標籤或寬度變時重算；`setSelected` 未知 id／相同值／silent／nil；`setOptions` 保留或靜默清空選取；點擊開關、addToUIManager 後才置頂、capture、點列先關再回呼一次、點已選中列不回呼、按自己切換、外部點擊關閉；開啟游標在選取、滑鼠帶游標、選中列 accent 字＋2px 記號；`theme.alpha` 與停用色；停用時不開且關閉；鍵盤（Enter／Space 開啟、上下／Home／End／PgUp／PgDn、Enter 選取後焦點框回元件、Esc／Tab 關閉、消耗帳本、連發節奏）；`maxRows` 捲動與細捲軸；放不下翻上方與夾回螢幕；錨點失效自動關；`close(scope)` 與換擁有者；手把借還焦點、B 關、A 選；prerender＋render 50 輪零配置；Focus 缺席時只能用滑鼠。
+    - rev15：`Skin.shapeOf` 的 legacy 回傳（沒設圓角或沒有 theme）、半徑吸附表、title 形狀與 0＝直角、`controlRadius` 只影響 control／button、`buttonShape="pill"`、非數字 radius 當沒設；`round20` 依序退 10（pill 資產）→ 6 → 3 → 直角、roundTop 的寬高門檻與 border 資產、legacy round／pill 不退級、`Skin.fits`；`Theme.create` 的四個欄位與預設 nil；Button 沒設／radius 3／膠囊高 22 與 44／chip 固定 pill；Window 沒設／20／0；TextField、Tabs（controlRadius）、Dropdown；Checkbox 方框退回有圓角與沒設時直角；Slider 圓角軌道與沒設時 4px 直線；字型優先序（Button、Window、Dropdown、TextField）。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

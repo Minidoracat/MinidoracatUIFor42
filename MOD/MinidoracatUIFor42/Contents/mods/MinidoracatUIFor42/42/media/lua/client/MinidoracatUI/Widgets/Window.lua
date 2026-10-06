@@ -134,8 +134,9 @@ function Window:prerender()
     local colors = self.theme.colors
     local w, titleH = self.width, self._titleH
     local ca = chromeAlpha(self.theme)
-    Skin.fill(self, 0, 0, w, self.height, colors.surface, nil, ca)
-    Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, "roundTop", ca)
+    -- rev 15：本體與標題列跟著 theme.radius（沒設＝nil／"roundTop"，rev 14 外觀）
+    Skin.fill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(self.theme, "panel"), ca)
+    Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, Skin.shapeOf(self.theme, "title"), ca)
 
     local x = TITLE_PAD
     local textColor = colors.titleText or colors.text -- rev 14 token；theme 不是 create 建的退回 text
@@ -154,13 +155,13 @@ function Window:render()
     end
     local colors = self.theme.colors
     local ca = chromeAlpha(self.theme)
-    Skin.border(self, 0, 0, self.width, self.height, colors.border, nil, ca)
+    Skin.border(self, 0, 0, self.width, self.height, colors.border, Skin.shapeOf(self.theme, "panel"), ca)
 
     if self.closable then
         local cx, cy, cw, ch = closeRect(self)
         local hovered = self:isMouseOver() and inClose(self, self:getMouseX(), self:getMouseY())
         if hovered then
-            Skin.fill(self, cx + 3, cy + 3, cw - 6, ch - 6, colors.hover, nil, ca)
+            Skin.fill(self, cx + 3, cy + 3, cw - 6, ch - 6, colors.hover, Skin.shapeOf(self.theme, "control"), ca)
         end
         local c = hovered and (colors.titleText or colors.text) or (colors.titleMuted or colors.textMuted)
         if not Icons.draw(self, "close", cx + math.floor((cw - CLOSE_ICON) / 2),
@@ -354,7 +355,7 @@ end
 
 local function newWindow(class, opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = getTextManager():getFontHeight(font)
     local minWidth = opts.minWidth or DEFAULT_MIN_WIDTH
     local minHeight = opts.minHeight or DEFAULT_MIN_HEIGHT
@@ -555,7 +556,7 @@ function Dialog.show(opts)
         finish(current, false)
     end
     local theme = opts.theme or UI.Theme.create()
-    local font = opts.font or UIFont.Small
+    local font = opts.font or theme.font or UIFont.Small
     local fontH = getTextManager():getFontHeight(font)
     local width = opts.width or DIALOG_WIDTH
     local innerW = width - DIALOG_PAD * 2

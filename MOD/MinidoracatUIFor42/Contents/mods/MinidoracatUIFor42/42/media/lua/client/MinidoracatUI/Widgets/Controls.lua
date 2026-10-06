@@ -157,16 +157,18 @@ function Button:prerender()
     local hovered = enabled and self:isMouseOver()
     local pressed = hovered and self.pressed
     local style = self.style
-    local shape = nil
+    -- rev 15：theme 的圓角／buttonShape（沒設＝nil＝rev 14 的 6px 圓角）；chip 固定 pill
+    local base = Skin.shapeOf(self.theme, "button")
+    local shape = base
     local textColor
 
     if style == "primary" and enabled then
-        Skin.fill(self, 0, 0, w, h, colors.accent, nil, chrome)
-        Skin.border(self, 0, 0, w, h, colors.accent, nil, chrome)
+        Skin.fill(self, 0, 0, w, h, colors.accent, shape, chrome)
+        Skin.border(self, 0, 0, w, h, colors.accent, shape, chrome)
         textColor = colors.onAccent or PRIMARY_TEXT
     elseif style == "danger" then
-        Skin.fill(self, 0, 0, w, h, colors.errorSurface, nil, chrome)
-        Skin.border(self, 0, 0, w, h, colors.errorText, nil, chrome)
+        Skin.fill(self, 0, 0, w, h, colors.errorSurface, shape, chrome)
+        Skin.border(self, 0, 0, w, h, colors.errorText, shape, chrome)
         textColor = colors.errorText
     elseif style == "ghost" then
         textColor = colors.text
@@ -190,20 +192,20 @@ function Button:prerender()
             textColor = hovered and colors.text or colors.textMuted
         end
     else -- normal；停用的 primary 也畫成 normal：淡化琥珀底上的 textDisabled 對比只有 1.04:1
-        Skin.fill(self, 0, 0, w, h, colors.well, nil, chrome)
-        Skin.border(self, 0, 0, w, h, colors.border, nil, chrome)
+        Skin.fill(self, 0, 0, w, h, colors.well, shape, chrome)
+        Skin.border(self, 0, 0, w, h, colors.border, shape, chrome)
         textColor = colors.text
     end
     if pressed then
         Skin.fill(self, 0, 0, w, h, colors.selected, shape, ca)
     elseif hovered and style ~= "chip" then
-        Skin.fill(self, 0, 0, w, h, colors.hover, nil, ca)
+        Skin.fill(self, 0, 0, w, h, colors.hover, shape, ca)
     end
     if not enabled then
         textColor = disabledColor(colors)
     end
     if self.joypadFocused then
-        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, nil, ca)
+        Skin.border(self, 1, 1, w - 2, h - 2, colors.accent, base, ca)
     end
 
     local titleW = self._fitW
@@ -309,7 +311,7 @@ end
 -- 標題放不下時自動截字（見 refitTitle），self.title 仍是全標題。
 function Button.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local title = opts.title or ""
     local fontH = fontHeight(font)
     local o = ISButton.new(Button, opts.x or 0, opts.y or 0, opts.width or 1,
@@ -405,8 +407,9 @@ function TextField:prerender()
     local alpha = self._enabled and 1 or DISABLED_ALPHA
     local chrome = alpha * chromeAlpha(self.theme)
     local focused = entry:isFocused()
-    Skin.fill(self, 0, 0, self.width, self.height, colors.well, nil, chrome)
-    Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, nil, chrome)
+    local shape = Skin.shapeOf(self.theme, "control") -- rev 15；沒設圓角＝nil（rev 14 外觀）
+    Skin.fill(self, 0, 0, self.width, self.height, colors.well, shape, chrome)
+    Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, shape, chrome)
     refitPlaceholder(self)
     if text == "" and not focused and self._phFit then
         drawColorText(self, self._phFit, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
@@ -488,7 +491,7 @@ end
 -- → UITextBox2.setClearButton:918）
 function TextField.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = fontHeight(font)
     local width = opts.width or 160
     local height = opts.height or (fontH + 10)
@@ -535,10 +538,19 @@ local Checkbox = ISPanel:derive("MinidoracatUICheckbox")
 local TOGGLE_WIDTH = 36
 local LABEL_GAP = 8
 
+-- toggle 畫不下時的方框。rev 15：theme 有圓角就用 Skin 圓角框（形狀同 control）；沒設維持原本的直角方框
 local function drawFallbackBox(box, alpha, colors)
     local size = math.min(14, box.height)
     local y = math.floor((box.height - size) / 2)
     local border = colors.border
+    local shape = Skin.shapeOf(box.theme, "control")
+    if shape ~= nil then
+        Skin.border(box, 0, y, size, size, border, shape, alpha)
+        if box.checked then
+            Skin.fill(box, 3, y + 3, size - 6, size - 6, colors.accent, shape, alpha)
+        end
+        return
+    end
     box:drawRectBorder(0, y, size, size, (border.a or 1) * alpha, border.r, border.g, border.b)
     if box.checked then
         local on = colors.accent
@@ -554,7 +566,7 @@ function Checkbox:prerender()
     local alpha = self._enabled and 1 or DISABLED_ALPHA
     local ca = chromeAlpha(self.theme)
     if self._enabled and self:isMouseOver() then
-        Skin.fill(self, 0, 0, self.width, self.height, colors.hover, nil, ca)
+        Skin.fill(self, 0, 0, self.width, self.height, colors.hover, Skin.shapeOf(self.theme, "control"), ca)
     end
     -- toggle 幾何不足（height < 20）回 false：退回方框
     if not Skin.toggle(self, 0, 0, TOGGLE_WIDTH, self.height, self.checked, self._toggleColors, alpha * ca) then
@@ -620,7 +632,7 @@ end
 -- onChange(target, checked, box)
 function Checkbox.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = fontHeight(font)
     local label = opts.label or ""
     local width = opts.width or (TOGGLE_WIDTH + LABEL_GAP + measure(font, label))
@@ -702,8 +714,9 @@ function Tabs:prerender()
     local h = self.height
     local enabled = self._enabled
     local ca = chromeAlpha(self.theme) * (enabled and 1 or DISABLED_ALPHA)
-    Skin.fill(self, 0, 0, self.width, h, colors.well, nil, ca)
-    Skin.border(self, 0, 0, self.width, h, colors.border, nil, ca)
+    local shape = Skin.shapeOf(self.theme, "control") -- rev 15
+    Skin.fill(self, 0, 0, self.width, h, colors.well, shape, ca)
+    Skin.border(self, 0, 0, self.width, h, colors.border, shape, ca)
 
     local hovered = enabled and self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
     local textY = math.floor((h - self._fontH) / 2)
@@ -713,13 +726,13 @@ function Tabs:prerender()
         if item.visible then
             local textColor = colors.textMuted
             if item.id == self.selected then
-                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.selected, nil, ca)
+                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.selected, shape, ca)
                 local accent = colors.accent
                 self:drawRect(item.x + 6, h - TAB_INSET - 2, item.width - 12, 2,
                     (accent.a or 1) * ca, accent.r, accent.g, accent.b)
                 textColor = colors.text
             elseif item == hovered and item.enabled then
-                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.hover, nil, ca)
+                Skin.fill(self, item.x, TAB_INSET, item.width, h - TAB_INSET * 2, colors.hover, shape, ca)
                 textColor = colors.text
             end
             if not (enabled and item.enabled) then
@@ -828,7 +841,7 @@ end
 -- onSelect(target, id, tabs)；點已選中的不觸發
 function Tabs.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = fontHeight(font)
     local o = ISPanel.new(Tabs, opts.x or 0, opts.y or 0, opts.width or 0, opts.height or (fontH + 12))
     o.background = false
@@ -888,7 +901,8 @@ function Slider:prerender()
     colors.track = (enabled and (self._drag or self:isMouseOver())) and tc.hover or tc.well
     local range = self.max - self.min
     local ratio = range > 0 and (self._value - self.min) / range or 0
-    Skin.slider(self, SLIDER_INSET, 0, self._trackW, self.height, ratio, colors, alpha * chromeAlpha(self.theme))
+    Skin.slider(self, SLIDER_INSET, 0, self._trackW, self.height, ratio, colors, alpha * chromeAlpha(self.theme),
+        Skin.shapeOf(self.theme, "control"))
     if self._text then
         drawColorText(self, self._text, self._textX, self._textY, tc.text, alpha, self.font)
     end
@@ -997,7 +1011,7 @@ end
 -- 文字寬以 format(max) 建構時量一次並從 track 扣掉。
 function Slider.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local fontH = fontHeight(font)
     local width = opts.width or 160
     local height = opts.height or math.max(20, fontH + 4)
@@ -1248,7 +1262,7 @@ end
 -- 高度依寬度與色卡數自動計算（getHeight() 即內容高度）。
 function ColorPicker.new(opts)
     opts = opts or {}
-    local font = opts.font or UIFont.Small
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
     local theme = themeOf(opts)
     local width = opts.width or 240
 

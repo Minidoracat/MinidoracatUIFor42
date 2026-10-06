@@ -451,10 +451,10 @@ function Picker:prerender()
     local colors = self.theme.colors
     local chrome = chromeAlpha(self.theme)
     -- 不透明背板：疊層只對著自己讀，不透出底下的列（不乘 theme.alpha）
-    Skin.fill(self, 0, 0, w, h, colors.surface, nil, 1)
+    Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(self.theme, "panel"), 1)
     local cw, cardH = math.max(1, w - PAD * 2), math.max(1, h - PAD * 2)
-    Skin.fill(self, PAD, PAD, cw, cardH, colors.hover, nil, (2 / 3) * chrome)
-    Skin.border(self, PAD, PAD, cw, cardH, colors.border, nil, chrome)
+    Skin.fill(self, PAD, PAD, cw, cardH, colors.hover, Skin.shapeOf(self.theme, "panel"), (2 / 3) * chrome)
+    Skin.border(self, PAD, PAD, cw, cardH, colors.border, Skin.shapeOf(self.theme, "panel"), chrome)
     drawColorText(self, self._titleFit, PAD * 2, PAD + math.floor((CARD_TITLE_H - self._titleH) / 2),
         colors.text, UIFont.Medium)
     local border = colors.border

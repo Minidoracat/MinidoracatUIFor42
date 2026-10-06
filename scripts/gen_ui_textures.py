@@ -2,8 +2,8 @@
 檔名前綴改 mui_）。
 
 輸出到 42/media/ui/MinidoracatUI/，兩類資產：
-  皮膚（7 張）：既有 4 張 17x17 NinePatchTexture、1 張 16x16 圓點，以及 rev 3
-    專用的 2 張 25x25 pill 9-slice（10/4/10 cap，精確 20px 高）。
+  皮膚（17 張）：圓角 9-slice 16 張（ROUNDED_PATCHES：半徑 6 的 round／roundtop、半徑 10 的
+    pill（四角）／roundtop10、rev 15 的半徑 3／20 四角與上圓下直，各 fill＋border），以及 16x16 圓點。
   圖示（32 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
     外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
@@ -13,8 +13,8 @@
 生成後自檢並印統計／皮膚 alpha 表／圖示 16px ASCII 預覽／md5。
 
 用法：python -B scripts/gen_ui_textures.py [--out DIR]
-改半徑／尺寸：同步改 CONTENT_SIZE／PILL_CONTENT_SIZE／PILL_CORNER、make_nine_patch
-    與 make_pill_patch 的切線常數及對應參考表後重跑。
+改半徑／尺寸：改 ROUNDED_PATCHES（幾何全由半徑推出，rounded_patch_alpha 一處）；動到半徑 6
+    要同步改 ROUND_*_REFERENCE 參考表後重跑。
 改圖示：改 icon_shapes() 的幾何與 ICON_SPECS 的探針座標後重跑（兩者互為交叉檢查）。
 """
 from __future__ import annotations
@@ -29,23 +29,24 @@ from PIL import Image
 
 
 SUPERSAMPLE = 8
-CONTENT_SIZE = 16
+CONTENT_SIZE = 16  # 圓點邊長；也是半徑 6 皮膚的內容邊長（參考表用）
 NINE_PATCH_SIZE = 17
-PILL_CONTENT_SIZE = 24
-PILL_NINE_PATCH_SIZE = 25
-PILL_CORNER = 10
 ICON_SIZE = 32
 ICON_STROKE_HALF = 1.5  # 描邊半寬；總寬 3px＝32px 邊長的 9.4%，縮到 16px 顯示為 1.5px
 WHITE = (255, 255, 255)
-SKIN_NAMES = (
-    "mui_round_fill.png",
-    "mui_round_border.png",
-    "mui_roundtop_fill.png",
-    "mui_roundtop_border.png",
-    "mui_pill_fill.png",
-    "mui_pill_border.png",
-    "mui_dot.png",
-)
+# 圓角 9-slice：檔名 → (半徑 r, 只圓上兩角)；border 由檔名尾 _border 決定。
+# 內容邊長 2r+4、整張 2r+5（第 0 列／第 0 欄是切線標記），切線 widths＝(r,4,r)、
+# heights＝四角 (r,4,r)／上圓下直 (r,r+4,0)。四角半徑 10 就是 pill，不另做 round10。
+ROUNDED_PATCHES = {
+    f"mui_{stem}_{part}.png": (radius, top_only)
+    for stem, radius, top_only in (
+        ("round", 6, False), ("roundtop", 6, True), ("pill", 10, False),
+        ("round3", 3, False), ("roundtop3", 3, True), ("roundtop10", 10, True),
+        ("round20", 20, False), ("roundtop20", 20, True),
+    )
+    for part in ("fill", "border")
+}
+SKIN_NAMES = tuple(ROUNDED_PATCHES) + ("mui_dot.png",)
 ICON_NAMES = (
     "mui_icon_sidebar.png",
     "mui_icon_folder.png",
@@ -227,47 +228,28 @@ def image_from_alpha(alpha: list[list[int]]) -> Image.Image:
     return image
 
 
-def make_nine_patch(border: bool, top_only: bool) -> Image.Image:
-    alpha = [[0] * NINE_PATCH_SIZE for _ in range(NINE_PATCH_SIZE)]
-
-    for cy in range(CONTENT_SIZE):
-        for cx in range(CONTENT_SIZE):
-            outer = rrect_coverage(cx, cy, 0, 0, 16, 16, 6, top_only)
+def rounded_patch_alpha(radius: int, border: bool, top_only: bool) -> list[list[int]]:
+    """圓角 9-slice 的 alpha 表（含第 0 列／欄切線標記）；生成與 verify 重算共用。"""
+    content = 2 * radius + 4
+    size = content + 1
+    alpha = [[0] * size for _ in range(size)]
+    for cy in range(content):
+        for cx in range(content):
+            outer = rrect_coverage(cx, cy, 0, 0, content, content, radius, top_only)
             if border:
-                inner_y1 = 16 if top_only else 15
-                inner = rrect_coverage(cx, cy, 1, 1, 15, inner_y1, 5, top_only)
+                inner_y1 = content if top_only else content - 1  # 上圓下直：內框底邊開放
+                inner = rrect_coverage(cx, cy, 1, 1, content - 1, inner_y1, radius - 1, top_only)
                 coverage = max(0.0, outer - inner)
             else:
                 coverage = outer
             alpha[cy + 1][cx + 1] = coverage_alpha(coverage)
 
-    for x in range(7, 11):
+    for x in range(radius + 1, radius + 5):
         alpha[0][x] = 255
-    vertical_marker_end = 17 if top_only else 11
-    for y in range(7, vertical_marker_end):
+    vertical_marker_end = size if top_only else radius + 5
+    for y in range(radius + 1, vertical_marker_end):
         alpha[y][0] = 255
-
-    return image_from_alpha(alpha)
-
-
-def make_pill_patch(border: bool) -> Image.Image:
-    alpha = [[0] * PILL_NINE_PATCH_SIZE for _ in range(PILL_NINE_PATCH_SIZE)]
-    for cy in range(PILL_CONTENT_SIZE):
-        for cx in range(PILL_CONTENT_SIZE):
-            outer = rrect_coverage(cx, cy, 0, 0, PILL_CONTENT_SIZE, PILL_CONTENT_SIZE,
-                                   PILL_CORNER, False)
-            if border:
-                inner = rrect_coverage(cx, cy, 1, 1, PILL_CONTENT_SIZE - 1,
-                                       PILL_CONTENT_SIZE - 1, PILL_CORNER - 1, False)
-                coverage = max(0.0, outer - inner)
-            else:
-                coverage = outer
-            alpha[cy + 1][cx + 1] = coverage_alpha(coverage)
-
-    for position in range(PILL_CORNER + 1, PILL_CORNER + 5):
-        alpha[0][position] = 255
-        alpha[position][0] = 255
-    return image_from_alpha(alpha)
+    return alpha
 
 
 def make_dot() -> Image.Image:
@@ -766,14 +748,11 @@ def generate_images(output_dir: Path) -> None:
     if gitkeep.exists():
         gitkeep.unlink()  # scaffold 佔位檔；貼圖進駐後目錄非空，嚴格 assert 只認 OUTPUT_NAMES
     images = [
-        ("mui_round_fill.png", make_nine_patch(border=False, top_only=False)),
-        ("mui_round_border.png", make_nine_patch(border=True, top_only=False)),
-        ("mui_roundtop_fill.png", make_nine_patch(border=False, top_only=True)),
-        ("mui_roundtop_border.png", make_nine_patch(border=True, top_only=True)),
-        ("mui_pill_fill.png", make_pill_patch(border=False)),
-        ("mui_pill_border.png", make_pill_patch(border=True)),
-        ("mui_dot.png", make_dot()),
+        (filename, image_from_alpha(rounded_patch_alpha(radius, filename.endswith("_border.png"),
+                                                        top_only)))
+        for filename, (radius, top_only) in ROUNDED_PATCHES.items()
     ]
+    images.append(("mui_dot.png", make_dot()))
     shapes = icon_shapes()
     assert tuple(shapes) == ICON_NAMES, "icon_shapes() 與 ICON_NAMES 必須逐項對應"
     for filename in ICON_NAMES:
@@ -843,57 +822,51 @@ def assert_nine_patch_content(
     widths: tuple[int, int, int],
     heights: tuple[int, int, int],
 ) -> None:
-    if filename.startswith("mui_pill_"):
-        border = "border" in filename
-        assert widths == (10, 4, 10), f"Unexpected widths for {filename}: {widths}"
-        assert heights == (10, 4, 10), f"Unexpected heights for {filename}: {heights}"
-        assert alpha[0][0] == 0
-        assert all(alpha[0][x] == (255 if 11 <= x <= 14 else 0)
-                   for x in range(PILL_NINE_PATCH_SIZE))
-        assert all(alpha[y][0] == (255 if 11 <= y <= 14 else 0)
-                   for y in range(PILL_NINE_PATCH_SIZE))
-        content = [row[1:] for row in alpha[1:]]
-        assert all(row == row[::-1] for row in content)
-        assert all(content[y] == content[-1 - y] for y in range(PILL_CONTENT_SIZE))
-        assert alpha[1][1] == 0 and alpha[1][24] == 0
-        assert alpha[12][12] == (0 if border else 255)
-        assert alpha[1][11] == 255 and alpha[24][14] == 255
-        values = [value for row in content for value in row]
-        assert any(0 < value < 255 for value in values)
-        return
+    radius, top_only = ROUNDED_PATCHES[filename]
+    border = filename.endswith("_border.png")
+    expected_alpha = rounded_patch_alpha(radius, border, top_only)
+    assert alpha == expected_alpha, (
+        f"{filename}: committed PNG does not match rounded_patch_alpha geometry"
+    )
 
-    top_only = "roundtop" in filename
-    border = "border" in filename
-    expected_heights = (6, 10, 0) if top_only else (6, 4, 6)
-
-    assert widths == (6, 4, 6), f"Unexpected widths for {filename}: {widths}"
+    # 以下是幾何本身的獨立交叉檢查（改壞 rounded_patch_alpha 時上面那條會跟著改壞的生成器一起綠）
+    size = 2 * radius + 5
+    last = size - 1
+    stretch = range(radius + 1, radius + 5)  # 4px 拉伸段（貼圖座標，含標記偏移 1）
+    expected_heights = (radius, radius + 4, 0) if top_only else (radius, 4, radius)
+    assert widths == (radius, 4, radius), f"Unexpected widths for {filename}: {widths}"
     assert heights == expected_heights, f"Unexpected heights for {filename}: {heights}"
     assert alpha[0][0] == 0, f"Marker origin must be transparent: {filename}"
-    assert all(alpha[0][x] == 0 for x in (*range(1, 7), *range(11, 17)))
-    assert all(alpha[0][x] == 255 for x in range(7, 11))
+    assert all(alpha[0][x] == (255 if x in stretch else 0) for x in range(size))
+    marker_rows = range(radius + 1, size) if top_only else stretch
+    assert all(alpha[y][0] == (255 if y in marker_rows else 0) for y in range(size))
 
-    non_marker_rows = range(1, 7) if top_only else (*range(1, 7), *range(11, 17))
-    marker_rows = range(7, 17) if top_only else range(7, 11)
-    assert all(alpha[y][0] == 0 for y in non_marker_rows)
-    assert all(alpha[y][0] == 255 for y in marker_rows)
+    content = [row[1:] for row in alpha[1:]]
+    assert all(row == row[::-1] for row in content), f"{filename}: 應左右鏡射對稱"
+    if not top_only:
+        assert all(content[y] == content[-1 - y] for y in range(size - 1)), f"{filename}: 應上下鏡射對稱"
 
-    reference_column = [alpha[y][7] for y in range(1, 17)]
-    for x in range(8, 11):
-        assert [alpha[y][x] for y in range(1, 17)] == reference_column
+    reference_column = [alpha[y][radius + 1] for y in range(1, size)]
+    for x in stretch:
+        assert [alpha[y][x] for y in range(1, size)] == reference_column
+    reference_row = alpha[radius + 1][1:]
+    for y in marker_rows:
+        assert alpha[y][1:] == reference_row
 
-    stretch_rows = range(7, 17) if top_only else range(7, 11)
-    reference_row = alpha[7][1:17]
-    for y in stretch_rows:
-        assert alpha[y][1:17] == reference_row
-
-    assert alpha[8][8] == (0 if border else 255)
-    assert alpha[1][1] == 0 and alpha[1][16] == 0
+    center = radius + 2
+    assert alpha[center][center] == (0 if border else 255), f"{filename}: 中心應{'透空' if border else '實心'}"
+    # 角像素：半徑 ≤3 時圓弧會切過角像素一小角（r=3 實得 4/255），其餘半徑必須全透明
+    corner_max = 0 if radius > 3 else 8
+    assert alpha[1][1] <= corner_max and alpha[1][last] <= corner_max, f"{filename}: 上兩角未透明"
+    assert alpha[1][radius + 1] == 255, f"{filename}: 上緣直線段應實心"
     if top_only:
-        assert alpha[16][1] == 255 and alpha[16][16] == 255
-        lower_content = ([255] * 16) if not border else ([255] + [0] * 14 + [255])
-        assert all(alpha[y][1:17] == lower_content for y in range(7, 17))
+        assert alpha[last][1] == 255 and alpha[last][last] == 255
+        lower_content = ([255] * (size - 1)) if not border else ([255] + [0] * (size - 3) + [255])
+        assert all(alpha[y][1:] == lower_content for y in marker_rows)
     else:
-        assert alpha[16][1] == 0 and alpha[16][16] == 0
+        assert alpha[last][1] <= corner_max and alpha[last][last] <= corner_max, f"{filename}: 下兩角未透明"
+        assert alpha[last][radius + 4] == 255, f"{filename}: 下緣直線段應實心"
+    assert any(0 < value < 255 for row in content for value in row), f"{filename}: 邊緣沒有 AA 過渡"
 
     if filename == "mui_round_fill.png":
         assert tuple(map(tuple, alpha)) == ROUND_FILL_REFERENCE
@@ -996,12 +969,11 @@ def verify_image(path: Path) -> dict[str, object]:
         expected_size = (ICON_SIZE, ICON_SIZE)
     elif is_mascot:
         expected_size = (MASCOT_SIZE, MASCOT_SIZE)
-    elif path.name.startswith("mui_pill_"):
-        expected_size = (PILL_NINE_PATCH_SIZE, PILL_NINE_PATCH_SIZE)
     elif path.name == "mui_dot.png":
         expected_size = (CONTENT_SIZE, CONTENT_SIZE)
     else:
-        expected_size = (NINE_PATCH_SIZE, NINE_PATCH_SIZE)
+        side = 2 * ROUNDED_PATCHES[path.name][0] + 5
+        expected_size = (side, side)
 
     with Image.open(path) as verifier:
         verifier.verify()
