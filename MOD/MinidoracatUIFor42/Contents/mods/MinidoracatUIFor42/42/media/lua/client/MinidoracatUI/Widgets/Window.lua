@@ -453,30 +453,9 @@ function Body:prerender()
     end
 end
 
--- 依 "\n" 分段，每段走共用斷行 TextWrap.cut（中日文逐字斷、拉丁文不切單字、句讀禁則）；空段落是空行
+-- 依 "\n" 分段，每段走共用斷行（中日文逐字斷、拉丁文不切單字、句讀禁則）；空段落是空行
 local function wrapText(text, maxWidth, font)
-    local lines = {}
-    text = string.sub(text or "", 1, MAX_WRAP_UNITS)
-    local start = 1
-    while true do
-        local nl = string.find(text, "\n", start, true)
-        local paragraph = nl and string.sub(text, start, nl - 1) or string.sub(text, start)
-        if paragraph == "" then
-            lines[#lines + 1] = ""
-        else
-            local rest = paragraph
-            while rest ~= "" do
-                local line
-                line, rest = TextWrap.cut(rest, maxWidth, font)
-                lines[#lines + 1] = line
-            end
-        end
-        if not nl then
-            break
-        end
-        start = nl + 1
-    end
-    return lines
+    return TextWrap.lines(string.sub(text or "", 1, MAX_WRAP_UNITS), maxWidth, font)
 end
 
 -- 唯一收尾路徑：按鈕、關閉鈕、Enter/Esc、Dialog.close 全走這裡；_done 保證只回呼一次

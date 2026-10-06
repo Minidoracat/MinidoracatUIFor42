@@ -1,6 +1,7 @@
 -- MinidoracatUI Widgets/Controls — 現代控制元件（API rev 7）：Button／TextField／Checkbox／Tabs；
 -- rev 8 加 ColorPicker（CAPABILITIES.colorPicker）；rev 9 加 Slider（CAPABILITIES.slider），
--- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）。
+-- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）；
+-- rev 16 TextField 錯誤狀態 setInvalid／isInvalid（CAPABILITIES.textFieldInvalid）。
 --
 -- 外觀全由框架自繪（theme token＋Skin 圓角，貼圖缺失退直角），原生 class 只當輸入／事件基底：
 --   * Button 以 ISButton 為基底：保留原生 pressed／enable／onclick(target, button)／tooltip／
@@ -340,16 +341,27 @@ local TextField = ISPanel:derive("MinidoracatUITextField")
 
 local FIELD_PAD = 6
 local TEXTBOX_INSET = 2 -- UITextBox2.getInset() 無框時為 2（UITextBox2.java:547-550）
+local INVALID_GAP = 4 -- rev 16：錯誤記號（ICON_SIZE 的 warning 圖示）與文字之間
 
--- 內層 entry 跟著外框：x＝FIELD_PAD、寬＝外框寬減兩側內距、垂直置中
+-- 錯誤狀態時右側讓出圖示位
+local function invalidReserve(field)
+    return field._invalid and ICON_SIZE + INVALID_GAP or 0
+end
+
+-- 內層 entry 跟著外框：x＝FIELD_PAD、寬＝外框寬減兩側內距（錯誤狀態再扣圖示位）、垂直置中
 local function layoutEntry(field)
     local entry = field._entry
     if not entry then
         return -- 建構中（entry 尚未建立）
     end
     entry:setX(FIELD_PAD)
-    entry:setWidth(field.width - FIELD_PAD * 2)
+    entry:setWidth(field.width - FIELD_PAD * 2 - invalidReserve(field))
     entry:setY(math.floor((field.height - entry.height) / 2))
+end
+
+-- 原生 entry 的 tooltip：錯誤提示優先，清掉錯誤後回到手動／自動 tooltip
+local function applyTooltip(field)
+    field._entry:setTooltip(field._invalidMessage or field._tooltip)
 end
 
 -- 原生 entry 保持透明、無邊框：setEditable 會重設 borderColor（ISTextEntryBox.lua:64-71），
@@ -374,18 +386,19 @@ local function refitPlaceholder(field)
         return
     end
     field._phSrc, field._phWidth = placeholder, width
-    local fitted = placeholder and UI.Text.fit(placeholder, width - (FIELD_PAD + TEXTBOX_INSET) * 2, field.font)
+    local fitted = placeholder and UI.Text.fit(placeholder, width - (FIELD_PAD + TEXTBOX_INSET) * 2 - invalidReserve(field),
+        field.font)
     field._phFit = fitted
     if fitted and fitted ~= placeholder then
         if field._tooltip == nil or field._autoTip then
             field._autoTip = true
             field._tooltip = placeholder
-            field._entry:setTooltip(placeholder)
+            applyTooltip(field)
         end
     elseif field._autoTip then
         field._autoTip = nil
         field._tooltip = nil
-        field._entry:setTooltip(nil)
+        applyTooltip(field)
     end
 end
 
@@ -394,7 +407,8 @@ function TextField:prerender()
         return
     end
     local entry = self._entry
-    -- IME 組字送出不觸發原生 onTextChange：每幀比對（字串比較，不配置）
+    -- IME 組字送出不觸發原生 onTextChange：每幀比對（字串比較，不配置）。只在這裡比對：欄位沒被畫（隱藏分頁、
+    -- 視窗收合或關閉）時不觸發，重新顯示的第一幀才補一次（引擎只對可見元件呼叫 prerender，UIElement.java:1603-1619）
     local text = entry:getInternalText() or ""
     if text ~= self._lastText then
         self._lastText = text
@@ -408,13 +422,51 @@ function TextField:prerender()
     local chrome = alpha * chromeAlpha(self.theme)
     local focused = entry:isFocused()
     local shape = Skin.shapeOf(self.theme, "control") -- rev 15；沒設圓角＝nil（rev 14 外觀）
+    -- rev 16：錯誤狀態的框一律 errorText（聚焦也不換成 accent），右側另畫 warning 記號：不只靠顏色
+    local frame = self._invalid and colors.errorText or (focused and colors.accent or colors.border)
     Skin.fill(self, 0, 0, self.width, self.height, colors.well, shape, chrome)
-    Skin.border(self, 0, 0, self.width, self.height, focused and colors.accent or colors.border, shape, chrome)
+    Skin.border(self, 0, 0, self.width, self.height, frame, shape, chrome)
     refitPlaceholder(self)
     if text == "" and not focused and self._phFit then
         drawColorText(self, self._phFit, FIELD_PAD + TEXTBOX_INSET, entry.y + TEXTBOX_INSET,
             self._enabled and colors.textFaint or disabledColor(colors), 1, self.font)
     end
+    if self._invalid then
+        local mark = self._enabled and colors.errorText or disabledColor(colors)
+        local ix = self.width - FIELD_PAD - ICON_SIZE
+        local iy = math.floor((self.height - ICON_SIZE) / 2)
+        if not Icons.draw(self, "warning", ix, iy, ICON_SIZE, mark) then
+            drawColorText(self, "!", ix + 6, entry.y + TEXTBOX_INSET, mark, 1, self.font) -- 缺圖退回文字記號
+        end
+    end
+end
+
+-- rev 16：錯誤狀態。invalid＝框改 errorText、右側 warning 記號；message（選用）＝滑鼠停留的 tooltip 與鍵盤焦點說明，
+-- 優先於手動／自動 tooltip，清掉錯誤後恢復。相同狀態與訊息 no-op；不影響可否編輯、不觸發 onChange。
+function TextField:setInvalid(invalid, message)
+    invalid = invalid and true or false
+    if not invalid or type(message) ~= "string" or message == "" then
+        message = nil
+    end
+    if invalid == self._invalid and message == self._invalidMessage then
+        return
+    end
+    if invalid ~= self._invalid then
+        self._invalid = invalid
+        self._phSrc = nil -- placeholder 可用寬變了：下一幀重算截字
+        layoutEntry(self)
+    end
+    self._invalidMessage = message
+    applyTooltip(self)
+end
+
+function TextField:isInvalid()
+    return self._invalid
+end
+
+-- rev 16：Focus 每幀讀的焦點說明（錯誤時是錯誤訊息；nil＝照原本的說明）
+function TextField:focusLabel()
+    return self._invalidMessage
 end
 
 -- 點到 entry 外的內距也聚焦
@@ -483,7 +535,7 @@ function TextField:setTooltip(text)
         return
     end
     self._tooltip = text
-    self._entry:setTooltip(text) -- 原生 prerender 負責 hover 顯示與收掉（ISTextEntryBox.lua:205-230）
+    applyTooltip(self) -- 原生 prerender 負責 hover 顯示與收掉（ISTextEntryBox.lua:205-230）
 end
 
 -- opts: x, y, width, height?, text?, placeholder?, theme?, font?, onlyNumbers?, maxLength?, clearButton?,
@@ -502,6 +554,7 @@ function TextField.new(opts)
     o.placeholder = opts.placeholder
     o.onChange = opts.onChange
     o._enabled = true
+    o._invalid = false
     o:initialise()
     o._focusKind = "entry" -- Focus 以內層原生 entry 聚焦，焦點框畫在本元件外框
 
@@ -1351,5 +1404,6 @@ UI.CAPABILITIES.controls = true
 UI.CAPABILITIES.colorPicker = true
 UI.CAPABILITIES.slider = true
 UI.CAPABILITIES.tabsEnabled = true
+UI.CAPABILITIES.textFieldInvalid = true
 
 return Button

@@ -801,7 +801,10 @@ MinidoracatUI.v1 = {
     -- rev 15：可選圓角——Skin 形狀 round3／6／10／20 與 roundTop 同組（放不下往小一級退）、Skin.shapeOf、
     --         Theme.create 的 radius／controlRadius／buttonShape／font；Button／TextField／Checkbox／Tabs／
     --         Slider／Window／Dialog／Dropdown 跟著 theme 的圓角與字型（沒設＝rev 14 外觀）
-    API_REVISION = 15,
+    -- rev 16：UI.ScrollPanel 捲動容器（Widgets/ScrollPanel.lua，scrollPanel；Focus 自動捲到焦點、PgUp／PgDn／
+    --         右搖桿捲動）、UI.Text.wrap 公開斷行（TextWrap.lua，textWrap）、TextField:setInvalid／isInvalid
+    --         （textFieldInvalid）、控制項 focusLabel() 每幀焦點說明（Focus.lua，focusLabel）
+    API_REVISION = 16,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -830,6 +833,10 @@ MinidoracatUI.v1 = {
         toastAvoid = false,       -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua）
         dock = false,             -- rev 13：UI.Dock 家族工具列（Widgets/Dock.lua）
         dropdown = false,         -- rev 14：UI.Dropdown 下拉選單（Widgets/Dropdown.lua）
+        scrollPanel = false,      -- rev 16：UI.ScrollPanel 捲動容器（Widgets/ScrollPanel.lua）
+        textWrap = false,         -- rev 16：UI.Text.wrap 斷行（TextWrap.lua 載入成功後掛上）
+        textFieldInvalid = false, -- rev 16：TextField:setInvalid／isInvalid（Widgets/Controls.lua）
+        focusLabel = false,       -- rev 16：控制項 focusLabel() 每幀焦點說明＋捲動容器接線（Focus.lua）
     },
     Theme = Theme,
     Skin = Skin,

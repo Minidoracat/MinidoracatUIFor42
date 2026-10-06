@@ -19,6 +19,11 @@
 -- 控制項選用方法 control:onFocusKey(key) → true＝已處理（Tabs 左右換頁、Slider 調值、樹狀清單展開、表頭換欄與排序）；
 --   手把 A 以 KEY_RETURN、方向以對應方向鍵問同一個方法，順序同鍵盤（先於各種目標的預設處理）。
 --   control:focusRect() → x, y, w, h（rev 12，選用；元素座標）：焦點框與說明只標這一塊（TableHeader 的目前欄）。
+--   control:focusLabel() → string|nil（rev 16，選用；有外框時先問外框）：每幀讀的說明，優先於描述的 label
+--   （一個元件內多個停點、游標換格就換說明；TextField 錯誤時回錯誤訊息）。
+-- 捲動容器（rev 16，UI.ScrollPanel，`_scrollPanel`）：焦點框落到容器裡的控制項（或剛亮起）時請容器
+--   scrollTo(外框或控制項)，外層容器也一樣；整個捲出可視區時不畫框與說明。焦點在容器裡時 PgUp／PgDn／
+--   Home／End（控制項沒用掉的話）捲容器，手把右搖桿捲容器（kind="scroll" 的目標則捲它自己）。
 -- 清單選用回呼 list.onHighlight(list, item, index)：方向鍵移動反白時呼叫；onSelect 只給點擊／Enter／A。
 -- root 選用方法：root:onEscape() → true（root 自己的疊層關掉了）、root:isModal()、
 --   root:onFocusShoulder(delta)（手把 LB＝-1、RB＝+1）。
@@ -423,7 +428,7 @@ end
 local function forget()
     st.index, st.sub = 0, 0
     st.control, st.kind, st.label, st.focusable, st.copyAll, st.frame = nil, nil, nil, nil, nil, nil
-    st.captionSide = nil
+    st.captionSide, st.revealed = nil, nil
 end
 
 -- 引擎實際在跟哪個輸入框說話：勾子為持有文字焦點的輸入框觸發，常常不是焦點框留下的那個（玩家直接
@@ -649,10 +654,8 @@ local function copyTarget(c)
     return true
 end
 
--- 唯讀文字與捲動內容：在這裡捲動與複製，永不交給引擎文字焦點（唯讀框會拿走鍵盤卻什麼都不處理）
-local function textKey(root, key)
-    local c = st.control
-    if key == Keyboard.KEY_C and ctrlDown() then return copyTarget(c) end
+-- 捲動鍵（上下一行、PgUp／PgDn 一頁、Home／End 到兩端）捲 c；c 不能捲回 false
+local function scrollKey(c, key)
     local line = math.max(16, getTextManager():getFontHeight(UIFont.Small) + 4)
     local page = math.max(line, (c.height or 0) - line)
     local delta
@@ -664,6 +667,24 @@ local function textKey(root, key)
     elseif key == Keyboard.KEY_END then delta = "bottom"
     else return false end
     return scrollBy(c, delta)
+end
+
+-- 唯讀文字與捲動內容：在這裡捲動與複製，永不交給引擎文字焦點（唯讀框會拿走鍵盤卻什麼都不處理）
+local function textKey(root, key)
+    local c = st.control
+    if key == Keyboard.KEY_C and ctrlDown() then return copyTarget(c) end
+    return scrollKey(c, key)
+end
+
+-- rev 16：最近的捲動容器祖先（UI.ScrollPanel 標 `_scrollPanel`）
+local function scrollParent(el)
+    local p = type(el) == "table" and el.parent or nil
+    for _ = 1, 32 do
+        if type(p) ~= "table" then return nil end
+        if p._scrollPanel then return p end
+        p = p.parent
+    end
+    return nil
 end
 
 local function comboHighlight(combo)
@@ -900,6 +921,12 @@ local function handle(root, key)
     if st.kind == "combo" then taken = comboKey(root, key)
     elseif st.kind == "list" then taken = listKey(root, key)
     elseif st.kind == "scroll" or st.kind == "entry" then taken = textKey(root, key) end
+    if not taken and (key == Keyboard.KEY_PRIOR or key == Keyboard.KEY_NEXT or key == Keyboard.KEY_HOME
+        or key == Keyboard.KEY_END) then
+        -- rev 16：焦點在捲動容器裡的控制項上：翻頁鍵捲容器（焦點框不動，捲出可視區時不畫）
+        local panel = scrollParent(c)
+        taken = panel ~= nil and scrollKey(panel, key)
+    end
     if taken then return true end
     if key == Keyboard.KEY_ESCAPE then
         Focus.clear(root)
@@ -1245,6 +1272,31 @@ local function captionOf(c, label)
     return label
 end
 
+-- rev 16：控制項（有外框時先問外框）每幀回答的焦點說明，例如一個元件內多個停點、游標換格就換說明；
+-- 回 nil／空字串＝照原本的說明。pcall 傳參，不建 closure
+local function liveLabel(c, f)
+    local src = (f ~= c and type(f.focusLabel) == "function") and f or c
+    if type(src.focusLabel) ~= "function" then return nil end
+    local ok, label = pcall(src.focusLabel, src)
+    if ok and type(label) == "string" and label ~= "" then return label end
+    return nil
+end
+
+-- rev 16：手把右搖桿捲動焦點所在的捲動容器（或 scroll 目標本身）；門檻與速度同原版
+-- ISPanelJoypad:doRightJoystickScrolling（ISPanelJoypad.lua:705-729）
+local STICK_DEAD = 0.75
+local STICK_SPEED = 20 -- 每 33.3ms 的像素
+local function stick(root, target)
+    if target == nil or getJoypadAimingAxisY == nil or not Focus.holdsJoypad(root) then return end
+    local data = getJoypadData(root._focusJoyPlayer)
+    if data == nil or UIManager == nil or UIManager.getMillisSinceLastRender == nil then return end
+    local axis = getJoypadAimingAxisY(data.id)
+    if axis > STICK_DEAD or axis < -STICK_DEAD then
+        local step = STICK_SPEED * UIManager.getMillisSinceLastRender() / 33.3
+        scrollBy(target, axis > 0 and step or -step)
+    end
+end
+
 -- 由 owner 的 render 呼叫：子元件已畫完（UIElement.java:1626-1630），框畫在它標示的控制項上面。
 -- 也是不論有沒有焦點框都會跑的那一個呼叫，所以畫面上可編輯目標的掛勾在這裡做（見 observe）：
 -- 滑鼠在任何一幀都可能聚焦輸入框，之後引擎只跟那個框說話。
@@ -1282,6 +1334,21 @@ function Focus.render(el, theme)
     end
     local f = st.frame
     if not usable(f) then f = c end
+    local panel = scrollParent(f)
+    if st.revealed ~= f then
+        -- rev 16：焦點換到捲動容器裡的控制項（或焦點框剛亮起）：捲進可視區，外層容器也一樣；滑鼠滾輪之後不搶回
+        st.revealed = f
+        local p = panel
+        while p ~= nil do
+            p:scrollTo(f)
+            p = scrollParent(p)
+        end
+    end
+    stick(el, st.kind == "scroll" and c or panel)
+    if panel ~= nil then
+        local py, fy = panel:getAbsoluteY(), f:getAbsoluteY()
+        if fy + (f.height or 0) <= py or fy >= py + panel.height then return end -- 整個捲出可視區：框與說明都不畫
+    end
     local x = f:getAbsoluteX() - el:getAbsoluteX()
     local y = f:getAbsoluteY() - el:getAbsoluteY()
     local w = f.width or 0
@@ -1292,18 +1359,21 @@ function Focus.render(el, theme)
         if rx ~= nil then x, y, w, h = x + rx, y + ry, rw, rh end
     end
     Focus.drawRing(el, x, y, w, h, theme)
-    Focus.drawCaption(el, x, y, w, h, captionOf(c, st.label), theme, st.captionSide)
+    Focus.drawCaption(el, x, y, w, h, liveLabel(c, f) or captionOf(c, st.label), theme, st.captionSide)
 end
 
 -- ---------- 自動目標（框架 Window 預設的 keyboardTargets） ----------
 -- 框架控制項自帶 `_focusKind`（button／entry／list）；consumer 自繪元件也可以自己標並提供 forceClick、
 -- 選用 `_focusLabel`（說明文字）。同一個 `_focusGroup` 值、閱讀順序上連續的控制項併成一個 group
 -- （方向鍵在組內走）。閱讀順序＝由上而下、同一列由左而右（上緣差距不超過較矮者一半視為同列）。
+-- rev 16：捲動容器（`_scrollPanel`）裡的目標在閱讀順序上排成一塊、整塊以容器的位置排（捲動不改 Tab 順序）；
+-- 容器裡沒有任何目標時，容器本身是一個 kind="scroll" 目標（方向鍵捲一行、PgUp／PgDn 一頁）。
 -- Focus.render 每幀都要走一次（原生文字焦點接線），所以每個 root 重用同一組陣列與描述 table，
 -- 不配置新 table（框架熱路徑鐵則）；描述的內容在引擎讀進 st 之後才會被下一次呼叫覆寫。
 local ROW_SLOP = 6
 
-local function collect(el, raw, n)
+-- owner＝最外層的捲動容器（nil＝不在容器裡）
+local function collect(el, raw, owners, n, owner)
     local kids = el.childrenInOrder
     if type(kids) ~= "table" then return n end
     for i = 1, #kids do
@@ -1311,9 +1381,16 @@ local function collect(el, raw, n)
         if type(c) == "table" and c.javaObject ~= nil and c:getIsVisible() then
             if c._focusKind ~= nil then
                 n = n + 1
-                raw[n] = c
+                raw[n], owners[n] = c, owner
+            elseif c._scrollPanel then
+                local start = n
+                n = collect(c, raw, owners, n, owner or c)
+                if n == start then
+                    n = n + 1
+                    raw[n], owners[n] = c, owner
+                end
             else
-                n = collect(c, raw, n)
+                n = collect(c, raw, owners, n, owner)
             end
         end
     end
@@ -1327,31 +1404,49 @@ local function after(ay, ax, ah, by, bx, bh)
     return ax > bx
 end
 
+-- 穩定插入排序 [lo, hi]（家族禁用 table.sort；一個視窗的控制項只有數十個）
+local function sortRange(buf, lo, hi)
+    local raw, owners, ys, xs, hs = buf.raw, buf.owners, buf.ys, buf.xs, buf.hs
+    for i = lo + 1, hi do
+        local c, o, y, x, h = raw[i], owners[i], ys[i], xs[i], hs[i]
+        local j = i - 1
+        while j >= lo and after(ys[j], xs[j], hs[j], y, x, h) do
+            raw[j + 1], owners[j + 1], ys[j + 1], xs[j + 1], hs[j + 1] = raw[j], owners[j], ys[j], xs[j], hs[j]
+            j = j - 1
+        end
+        raw[j + 1], owners[j + 1], ys[j + 1], xs[j + 1], hs[j + 1] = c, o, y, x, h
+    end
+end
+
 function Focus.collectTargets(root)
     local buf = root._focusBuf
     if buf == nil then
-        buf = { raw = {}, ys = {}, xs = {}, hs = {}, list = {}, pool = {} }
+        buf = { raw = {}, owners = {}, ys = {}, xs = {}, hs = {}, list = {}, pool = {} }
         root._focusBuf = buf
     end
-    local raw, ys, xs, hs = buf.raw, buf.ys, buf.xs, buf.hs
-    local n = collect(root, raw, 0)
-    for i = #raw, n + 1, -1 do raw[i] = nil end
+    local raw, owners, ys, xs, hs = buf.raw, buf.owners, buf.ys, buf.xs, buf.hs
+    local n = collect(root, raw, owners, 0, nil)
+    for i = #raw, n + 1, -1 do raw[i], owners[i] = nil, nil end
     for i = 1, n do
         local c = raw[i]
         ys[i], xs[i], hs[i] = c:getAbsoluteY(), c:getAbsoluteX(), c.height or 0
     end
-    -- 插入排序（家族禁用 table.sort；一個視窗的控制項只有數十個）
-    for i = 2, n do
-        local c, y, x, h = raw[i], ys[i], xs[i], hs[i]
-        local j = i - 1
-        while j >= 1 and after(ys[j], xs[j], hs[j], y, x, h) do
-            raw[j + 1], ys[j + 1], xs[j + 1], hs[j + 1] = raw[j], ys[j], xs[j], hs[j]
-            j = j - 1
+    -- 先在每個容器的連續段內依自己的位置排，再把段內的鍵換成容器的位置整體排：段內鍵相同、排序穩定，段不會被拆開
+    local i = 1
+    while i <= n do
+        local o, j = owners[i], i
+        while j < n and o ~= nil and owners[j + 1] == o do j = j + 1 end
+        if o ~= nil then
+            sortRange(buf, i, j)
+            local oy, ox, oh = o:getAbsoluteY(), o:getAbsoluteX(), o.height or 0
+            for k = i, j do ys[k], xs[k], hs[k] = oy, ox, oh end
         end
-        raw[j + 1], ys[j + 1], xs[j + 1], hs[j + 1] = c, y, x, h
+        i = j + 1
     end
+    sortRange(buf, 1, n)
     local list, pool = buf.list, buf.pool
-    local count, i = 0, 1
+    local count
+    count, i = 0, 1
     while i <= n do
         local c = raw[i]
         count = count + 1
@@ -1374,7 +1469,7 @@ function Focus.collectTargets(root)
             if c._focusKind == "entry" and c._entry ~= nil then
                 d.kind, d.control, d.frame = "entry", c._entry, c
             else
-                d.kind, d.control, d.frame = c._focusKind, c, nil
+                d.kind, d.control, d.frame = c._focusKind or "scroll", c, nil -- 沒有 _focusKind 的只有空的捲動容器
             end
             i = i + 1
         end
@@ -1389,5 +1484,6 @@ end
 UI.Focus = Focus
 UI.CAPABILITIES.focus = true
 UI.CAPABILITIES.focusCaption = true
+UI.CAPABILITIES.focusLabel = true
 
 return Focus

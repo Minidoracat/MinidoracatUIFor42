@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 15,         -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）
+    API_REVISION = 16,         -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -75,18 +75,22 @@ MinidoracatUI.v1 = {
         toastAvoid   = false,  -- rev 12：Toast.setAvoid(owner, fn) 避開區（Widgets/Toast.lua，與 toast 同檔）
         dock         = false,  -- rev 13：UI.Dock 家族工具列（Widgets/Dock.lua；Focus 選用、Toast 避開區選用）
         dropdown     = false,  -- rev 14：UI.Dropdown 下拉選單（Widgets/Dropdown.lua，基底原生 ISButton；Focus 選用）
+        scrollPanel  = false,  -- rev 16：UI.ScrollPanel 捲動容器（Widgets/ScrollPanel.lua，基底原生 ISPanel）
+        textWrap     = false,  -- rev 16：UI.Text.wrap（TextWrap.lua 載入成功後掛上）
+        textFieldInvalid = false, -- rev 16：TextField:setInvalid／isInvalid（Widgets/Controls.lua，與 controls 同檔）
+        focusLabel   = false,  -- rev 16：control:focusLabel() 每幀說明＋捲動容器接線（Focus.lua，與 focus 同檔）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
     Icons = <module>,          -- 共用單色圖示（get/draw），rev 2 起新增（§3.6）
-    Text  = <module>,          -- 文字量測（fit：依寬度截字＋省略號），rev 11 起新增（§3.3）
+    Text  = <module>,          -- 文字量測（fit：依寬度截字＋省略號），rev 11 起新增（§3.3）；rev 16 的 wrap 由 TextWrap.lua 掛上（§3.4）
     -- 以下由 widget 檔在載入成功後掛上（對應 CAPABILITIES 旗標同時翻 true）：
     -- FloatButton／Toast／VirtualList（v0.2／v0.3）
     -- Button／TextField／Checkbox／Tabs（rev 7，controls）、Window（rev 7，window）、Dialog（rev 7，dialog）、
     -- ColorPicker（rev 8，colorPicker）、Slider（rev 9，slider）、Focus（rev 10，focus）、
     -- Date／DateField／DatePicker（rev 11，datePicker）、Table／TableHeader（rev 11，table）、
     -- FilterBar（rev 11，filterBar）、ItemPicker（rev 11，itemPicker）、Autocomplete（rev 11，autocomplete）、
-    -- Dock（rev 13，dock）、Dropdown（rev 14，dropdown）
+    -- Dock（rev 13，dock）、Dropdown（rev 14，dropdown）、ScrollPanel（rev 16，scrollPanel）
 }
 ```
 
@@ -134,6 +138,12 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   舊框架拿到 Texture 圖示時 Icons.get 對非字串回 nil：按鈕與視窗只畫文字，不炸（不必另寫退回）
 -- rev 15 圓角與 theme 字型以 rev 判斷（核心與元件同檔）；舊框架忽略 theme 上的 radius／font 欄位，照 6px 圓角與 opts.font：
 --   local canRadius = ok and UI.API_REVISION >= 15 and type(UI.Skin.shapeOf) == "function"
+-- rev 16 逐旗標探測；缺哪個就走該項的退回（自己的斷行、不捲動的長面板、只靠 tooltip 的錯誤提示、固定說明）：
+--   local canScroll = ok and UI.API_REVISION >= 16 and UI.CAPABILITIES.scrollPanel and UI.ScrollPanel ~= nil
+--   local canWrap = ok and UI.API_REVISION >= 16 and UI.CAPABILITIES.textWrap and type(UI.Text.wrap) == "function"
+--   local canInvalid = ok and UI.API_REVISION >= 16 and UI.CAPABILITIES.textFieldInvalid
+--   local canLiveLabel = ok and UI.API_REVISION >= 16 and UI.CAPABILITIES.focusLabel
+--   舊框架不呼叫 focusLabel()：同一份 consumer 碼另設 _focusLabel 當固定說明即可，不必分支
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -144,7 +154,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | 檔案 | 期 | 職責 |
 |---|---|---|
 | `V1.lua` | v0.1（rev 2／3／11 擴充） | **單檔**：Theme＋Skin＋Icons＋Text＋facade 五個 section（詳見檔頭「單檔設計」註解——分檔就得靠全域存在檢查串接，會重演 NeatUI 的隱藏載入順序依賴；單檔讓「中段 error＝facade 從未發布」自然成立） |
-| `TextWrap.lua` | rev 11 修正 | **內部**斷行模組（§3.4「斷行」）：不掛 facade、不設全域，只 `return` 一張表。Toast／Window 以 `pcall(require, "MinidoracatUI/TextWrap")` 取回傳值：`LuaManager.RunLuaInternal` 把第一次執行的回傳值存在 `loadedReturn`，之後的 require 直接回它（42.20.1 起相同；原版 `shared/Sandbox/SandboxVars.lua:1` 也這樣取值）。缺席或載入失敗時 Toast 多行退回單行截字、`dialog` 維持 false |
+| `TextWrap.lua` | rev 11 修正（rev 16 擴充） | 斷行模組（§3.4「斷行」）：不設全域，`return` 一張表（`cut`、`lines`）。Toast／Window 以 `pcall(require, "MinidoracatUI/TextWrap")` 取回傳值：`LuaManager.RunLuaInternal` 把第一次執行的回傳值存在 `loadedReturn`，之後的 require 直接回它（42.20.1 起相同；原版 `shared/Sandbox/SandboxVars.lua:1` 也這樣取值）。rev 16 起檔尾把帶快取的 `UI.Text.wrap` 掛上 facade 並翻 `CAPABILITIES.textWrap`（檔頭自行 pcall require V1，不靠檔名排序）。缺席或載入失敗時 Toast 多行退回單行截字、`dialog` 與 `textWrap` 維持 false |
 | `Widgets/FloatButton.lua` | v0.2 | 常駐浮鈕：拖曳、位移門檻點擊判定、位置持久化回調、clamp 回螢幕；獨立檔、單向依賴 V1 全域，載入失敗只影響 `CAPABILITIES.floatButton` |
 | `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop；同上 |
 | `VirtualList.lua` | v0.3 | 垂直固定列高虛擬清單（§3.5） |
@@ -158,6 +168,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/Autocomplete.lua` | rev 11 | `UI.Autocomplete`（§3.15）；自行 pcall require Controls（缺席即 return）與 Focus（選用），`CAPABILITIES.autocomplete` |
 | `Widgets/Dock.lua` | rev 13 | `UI.Dock` 家族工具列（§3.16）；需要原生 `ISPanel`／`ISButton`，自行 pcall require Focus（選用：缺席時快捷鍵只切換收合），`CAPABILITIES.dock` |
 | `Widgets/Dropdown.lua` | rev 14 | `UI.Dropdown` 下拉選單（§3.17）；基底只用原生 `ISButton`（不需要 Controls），自行 pcall require Focus（選用：缺席時只能用滑鼠），`CAPABILITIES.dropdown` |
+| `Widgets/ScrollPanel.lua` | rev 16 | `UI.ScrollPanel` 捲動容器（§3.18）；只需要原生 `ISPanel`，不 require Focus（Focus 以 `_scrollPanel` 標記認它），`CAPABILITIES.scrollPanel` |
 
 載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
 `MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
@@ -229,7 +240,8 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 - `FloatButton`：拖曳位移門檻（≦4px＝點擊）、位置持久化（回調由 consumer 接 ModOptions／ini，框架不綁存檔機制——解耦）、每幀 clamp 回螢幕、hover 提示回調。
 - `Toast`：所有 MOD 共用佇列＋堆疊上限、淡入淡出（`getTimestampMs` 計時）、alwaysOnTop；逾時自動移除，也可呼叫 `Toast.dismiss(instance)`，沒有點擊消失功能。位置累加前面每則實際高度與間距，讓單行／多行通知混用時不重疊；移除與 pending 遞補後重新計算。**只顯示、不收滑鼠**：`wantMouseEvents=false`（左鍵與移動穿透），右鍵處理明確回 false（Lua 回 nil 時引擎一律當吃掉，`UIElement.java:1513-1515,1583-1585`），蓋到的介面照常可點。**避開原版速度鈕**：單人戴錶時速度鈕移到時鐘下方、落在通知欄內（`UIManager.java:446-456`）；它在 UI 清單裡、可見且與通知欄水平重疊時，堆疊改從它下緣＋間距起算，否則從固定上緣起算。Toast 不操作 stencil，巢狀裁切的成對性由 VirtualList 驗證。
 - **Toast 避開區（rev 12，`CAPABILITIES.toastAvoid`，opt-in）**：`UI.Toast.setAvoid(owner, fn)` 登記一個要避開的矩形；`fn()` 每幀被 pcall 呼叫，回螢幕座標 `x, y, w, h`（例：consumer 的視窗，可見時），回 nil＝此刻不用避。同一個 owner 再登記會覆寫，`fn = nil` 取消登記。堆疊欄（右上、速度鈕下方）依登記順序與每個矩形比對：水平、垂直都重疊時，整疊放得下就移到矩形下方（下緣＋間距），放不下就移到矩形左側；左側也放不下就留原位（無法避開）。`fn` 出錯或回非數字＝不避。被移到左側時只短距離滑入，不從視窗上方掃過；沒有登記或都不重疊時位置與動畫和 rev 11 相同。**大視窗只登記要保護的帶狀區**：幾乎佔滿螢幕的視窗下方與左側都放不下通知，整個視窗當矩形等於沒避；Economy 經濟中心只回視窗頂端帶（標題列、餘額列、該頁第一列動作），通知改落在它下方（2026-10-05 實機）。
-- **斷行（Toast `maxLines > 1` 與 Dialog 內文共用，內部模組 `TextWrap.lua`）**：貪婪斷行，每行以 `MeasureStringX` 二分找最長放得下的前綴（量 O(log n) 次）。截點兩側任一是空白，或任一是中日韓字（CJK 表意字與符號、假名、注音、諺文音節、全形字、補充平面字），就在截點斷；否則往回找最近的斷點（空白或中日韓字交界），整段都沒有斷點（比行寬長的拉丁單字）才在截點硬切。禁則：行首不放收尾標點（UAX #14 的 CL／CP／EX／IS／NS 與 ’ ” …），行尾不放起始標點（OP 與 ‘ “），遇到就連同前一字移到下一行。截點不切開 surrogate pair（Kahlua UTF-16）或多位元組字（harness UTF-8）；行尾與下一行開頭的空白去掉；連一個字都放不下時仍放一個字。修正前一律退回前綴裡最後一個空白：中日文夾英文時在英文字後提早斷行，截點剛好在單字結尾時也多退一個單字；新規則下同一段文字的行數通常變少，禁則推字時可能多一行，Toast 與 Dialog 的高度都依實際行數計算。
+- **斷行（Toast `maxLines > 1` 與 Dialog 內文共用，模組 `TextWrap.lua`；rev 16 起以 `UI.Text.wrap` 公開）**：貪婪斷行，每行以 `MeasureStringX` 二分找最長放得下的前綴（量 O(log n) 次）。截點兩側任一是空白，或任一是中日韓字（CJK 表意字與符號、假名、注音、諺文音節、全形字、補充平面字），就在截點斷；否則往回找最近的斷點（空白或中日韓字交界），整段都沒有斷點（比行寬長的拉丁單字）才在截點硬切。禁則：行首不放收尾標點（UAX #14 的 CL／CP／EX／IS／NS 與 ’ ” …），行尾不放起始標點（OP 與 ‘ “），遇到就連同前一字移到下一行。截點不切開 surrogate pair（Kahlua UTF-16）或多位元組字（harness UTF-8）；行尾與下一行開頭的空白去掉；連一個字都放不下時仍放一個字。修正前一律退回前綴裡最後一個空白：中日文夾英文時在英文字後提早斷行，截點剛好在單字結尾時也多退一個單字；新規則下同一段文字的行數通常變少，禁則推字時可能多一行，Toast 與 Dialog 的高度都依實際行數計算。
+- **`UI.Text.wrap(text, maxWidth, font?) → { line, ... }`（rev 16，`CAPABILITIES.textWrap`）**：同上規則，依 `"\n"` 分段、空段落是空行（Dialog 走同一個 `TextWrap.lines`，不重複實作）。`font` 省略＝`UIFont.Small`；`text` 為 nil 當空字串、其他非字串 `tostring`。**快取**：以 (font, maxWidth, text) 為鍵，命中時回**同一張表**、不配置，可每幀呼叫；回傳表唯讀（改了會污染其他呼叫端）。快取超過 256 筆整個清空重來（不做 LRU）。給 consumer 面板（例：地圖錶）取代各自的斷行與快取。
 
 **置頂契約**：`FloatButton` 的 `alwaysOnTop` 預設仍為 true；框架在 `addToUIManager()` 完成實例化後呼叫原生 setter，Toast 同樣如此。只寫 Lua 欄位不會改變引擎排序（`ISUIElement.lua:993-1008,1319-1322`；`UIManager.java:545-556`）。一般入口要明確傳 `false`，讓後開視窗能蓋在入口上；MiniMap、NoticeBoard、Economy、DevProfiler 已採此設定，不改各自原有 bringToTop 與生命週期。發布置頂修正前，先交付已上線 consumer 的這項相容設定，避免仍使用舊 consumer 的玩家突然改變浮鈕層級。
 
@@ -322,7 +334,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 | `warning` | 三角形＋驚嘆號 | 電量低、警示橫幅 |
 | `infinity` | ∞（兩個 270° 圓弧＋中央 X） | 買斷、永久、不耗電 |
 
-### 3.7 現代控制元件（API rev 7；rev 11、rev 12、rev 14 擴充）
+### 3.7 現代控制元件（API rev 7；rev 11、rev 12、rev 14、rev 15、rev 16 擴充）
 
 使用者決定家族 UI 不再用 vanilla 的 `ISCollapsableWindow`／`ISButton`／`ISModalDialog`／`ISTickBox`／`ISScrollingListBox` 外觀（§0）。rev 7 提供六個元件：外觀全由 theme token＋Skin 自繪（貼圖缺失退直角、icon 缺失退文字），vanilla 只負責輸入與事件。首個 consumer：VehicleManager 車隊視窗。
 
@@ -339,7 +351,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 
 **行為契約**
 - **Button**：`ISButton:derive` 為基底，保留原生 pressed／enable／tooltip／搖桿語意（`ISButton.lua:33-64,316-346`），prerender/render 全自繪：圓角 fill＋border、hover／pressed／disabled 三態。style：`normal`（well 底＋border）、`primary`（accent 底、`onAccent` 字）、`danger`（errorSurface 底、errorText 字／框）、`ghost`（無底，hover 才有底）；未知 style 退 `normal`。寬度省略＝標題寬＋左右各 10px（有 icon 再加 16＋6），高度省略＝字高＋10；明示寬度不被原生 `ISButton:new` 撐寬（`:493-495`）。`setTitle` 只在自動寬度時重算。`icon` 畫在文字左側（16px）：字串＝`UI.Icons` key、以字色染色，Icons 失敗只畫文字；rev 14 起也可傳 Texture（見下方 rev 14 擴充）。
-- **TextField**：ISPanel 容器畫圓角 well＋border（focus 時 accent），內含透明、無邊框的原生 `ISTextEntryBox`（IME／游標／選取原生）；`setEditable` 會重設原生 borderColor（`ISTextEntryBox.lua:64-71`），元件每次改回透明。空字串且未 focus 時畫 textFaint placeholder；放不下時以 `UI.Text.fit` 截成「前綴＋...」，只在 placeholder 或寬度改變時重算。截到字且沒有手動 tooltip 時，全文自動當 tooltip，放得下時收掉；`setTooltip(s)` 手動優先，`setTooltip(nil)` 交回自動（同 Button）。原生清除鈕只在有文字時出現（`UITextBox2.java:188`），所以不扣它的寬。文字變化**每幀比對**（IME 組字送出不觸發原生 onTextChange），一次變化觸發一次。`setEnabled(false)`＝不可編輯＋失焦＋淡化。tooltip 交給原生 entry 顯示。
+- **TextField**：ISPanel 容器畫圓角 well＋border（focus 時 accent），內含透明、無邊框的原生 `ISTextEntryBox`（IME／游標／選取原生）；`setEditable` 會重設原生 borderColor（`ISTextEntryBox.lua:64-71`），元件每次改回透明。空字串且未 focus 時畫 textFaint placeholder；放不下時以 `UI.Text.fit` 截成「前綴＋...」，只在 placeholder 或寬度改變時重算。截到字且沒有手動 tooltip 時，全文自動當 tooltip，放得下時收掉；`setTooltip(s)` 手動優先，`setTooltip(nil)` 交回自動（同 Button）。原生清除鈕只在有文字時出現（`UITextBox2.java:188`），所以不扣它的寬。文字變化**每幀比對**（IME 組字送出不觸發原生 onTextChange），一次變化觸發一次。**比對只在 TextField 的 prerender 裡做**：引擎只對可見元件呼叫 prerender（`UIElement.java:1603-1619`），所以隱藏分頁、收合或關閉的視窗、`ScrollPanel` 可視區外（§3.18 開了 `renderClippedChildren=false`）的欄位，文字被程式或螢幕鍵盤改掉時**不會立刻觸發 `onChange`**，重新畫出的第一幀才補一次；要即時反應的 consumer 自己在送出前讀 `getText()`。`setEnabled(false)`＝不可編輯＋失焦＋淡化。tooltip 交給原生 entry 顯示。
 - **Checkbox**：`Skin.toggle` 畫 36px 開關（高度省略＝max(20, 字高＋4)；toggle 幾何不足時退回方框），右側 label，整列可點；disabled 不切換。
 - **Tabs**：分段式頁籤列，選中為 selected 底＋accent 下緣；寬度省略＝各頁籤（標籤寬＋24）加總。`setItemVisible` 重排並在自動寬度時更新 width；隱藏的是選中項時**不自動切換**；未知 id 的 `setSelected` 忽略。
 - **Window**：surface 圓角本體＋roundTop 標題列（surfaceTitle）＋可選 icon＋標題（`titleText`）；右上關閉鈕（Icons `close`，閒置 `titleMuted`、hover `titleText`，失敗退 `x` 文字；`closable` 預設 true，按下與放開都在鈕上才關閉）。`icon` 同 Button：Icons key 以 `titleText` 染色，或 rev 14 起的 Texture 原色。標題列拖曳走 setCapture（同 FloatButton），每幀 clamp 回螢幕；`resizable=true` 時右下角把手縮放，夾在 `minWidth`／`minHeight`（預設 240×160），尺寸有變才呼叫 `onResize`。`close()`＝`setVisible(false)` 後呼叫 `onClose(win)`，不從 UIManager 移除。標題列高＝max(24, 字高＋10)，`contentTop()` 等於它。
@@ -368,6 +380,9 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **跟著 `Skin.shapeOf` 的部位**：Button 的 normal／primary／danger／ghost（`"button"`，含 hover／按下疊層與手把焦點框）；TextField、Checkbox 的 hover 底與方框退回（沒設圓角時方框維持原本的直角 `drawRectBorder`）、Tabs 外框與選中／hover 項、Slider 軌道、Dropdown 元件與清單外框、DatePicker 月曆／FilterBar 選單／Autocomplete 清單外框、Window 的關閉鈕 hover（`"control"`）；Window／Dialog 本體與外框、ItemPicker 卡片（`"panel"`）；Window 標題列（`"title"`）。
 - **不跟的**：chip 固定 `pill`（chip 的識別就是膠囊）；Checkbox 開關（`Skin.toggle`）固定膠囊；清單列反白、表格列、月曆日格維持直角；ColorPicker 色卡、Toast、Dock、FloatButton 不讀 consumer theme 的圓角（家族共用外觀）。
 - **字型**：上列元件建構時 `opts.font or theme.font or UIFont.Small`（§3.2）。
+
+**rev 16 擴充**（TextField 錯誤狀態；`CAPABILITIES.textFieldInvalid`，與 controls 同檔）
+- **`TextField:setInvalid(invalid, message?)`／`isInvalid()`**：錯誤時框改 `errorText`（聚焦也不換成 accent），右側畫 16px `warning` 圖示（`errorText` 染色；缺圖退 `"!"`）——**不只靠顏色**；內層 entry 與 placeholder 截字讓出圖示位（16＋4px）。`message`（非空字串才算）優先於手動／自動 tooltip 成為滑鼠停留提示，同時是鍵盤焦點說明（`TextField:focusLabel()`，§3.10）；清掉錯誤或改成沒有訊息時 tooltip 回到原本的手動／自動判斷。訊息放 tooltip 而非框下小字：元件高度與版面不變，不壓到下一列。停用＋錯誤：框照樣乘停用淡化，記號改 `textDisabled`。相同狀態與訊息 no-op；不影響可否編輯、不觸發 `onChange`。驗證時機由 consumer 決定（例：`onChange` 裡驗、送出時驗）。
 
 ### 3.8 ColorPicker（API rev 8；rev 9 起 R/G/B 為滑桿）
 
@@ -413,6 +428,16 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 **控制元件接點**：Button／Checkbox／Tabs／Slider 的 `_focusKind="button"`、TextField 的 `_focusKind="entry"`（聚焦內層原生 entry，框畫在外框）、VirtualList 的 `_focusKind="list"`；`Checkbox:forceClick()`、`Tabs:selectRelative(delta)`／`onFocusKey`（左右換頁，不循環）、`Slider:onFocusKey`（左右 ±step、Home／End）、`VirtualList` 新 opts `onHighlight(list, item, index)`（方向鍵移動反白；`onSelect` 仍只給點擊、Enter、A）與 `onKey(list, key, item, index)`（先拿到焦點框上的按鍵，例如樹狀清單展開）。consumer 自繪元件標 `_focusKind`（＋`forceClick`、選用 `_focusGroup`／`_focusLabel`）即可加入自動目標。
 
 **焦點框只標一部分（rev 12）**：控制項選用方法 `control:focusRect() → x, y, w, h`（元素座標；回 nil＝整個控制項）；有 frame 的描述不問它。`Focus.render` 的焦點框與說明都改畫在這個矩形上，用於一個控制項內有多個停點、由自己的 `onFocusKey` 移動的元件（TableHeader 的目前欄，§3.12）。
+
+**每幀焦點說明（rev 16，`CAPABILITIES.focusLabel`）**：控制項選用方法 `control:focusLabel() → string|nil`，描述有 `frame` 時先問 frame（TextField 的外框）。`Focus.render` 每幀以 pcall 呼叫（傳參、不建 closure），回非空字串就當說明、優先於描述的 `label`／`_focusLabel` 與 tooltip／截短標題規則；回 nil、空字串或出錯照舊。用於一個元件內多個停點、游標換格（`onFocusKey` 移動）要同時換說明的元件（例：地圖錶的槽位區），以及 TextField 錯誤訊息。`label` 在落點時就讀進焦點狀態，之後換值不會更新——這是改用方法的原因。
+
+**捲動容器接線（rev 16，與 `focusLabel` 同旗標）**：`UI.ScrollPanel`（§3.18）帶 `_scrollPanel` 標記。
+- **閱讀順序成塊**：自動目標把容器裡的目標排成連續一塊，塊內依自己的位置排、整塊以容器的位置和其他目標比——捲動不改 Tab 順序，可視區外的目標照樣走得到。容器裡沒有任何目標（只有說明文字）時，容器本身是一個 `kind="scroll"` 目標（方向鍵捲一行、PgUp／PgDn 一頁、Home／End），說明讀容器的 `_focusLabel`。
+- **自動捲到焦點**：焦點框換到容器裡的控制項（有 frame 就用 frame），或焦點框剛亮起，`Focus.render` 先請最近的容器 `scrollTo` 它、外層容器也一樣。之後玩家用滾輪或捲軸捲走不會被搶回，換焦點才再捲。滑鼠點擊的焦點（不畫框）不捲。
+- **捲出可視區不畫框**：焦點下的控制項整個在最近容器的可視區外時，焦點框與說明都不畫（框畫在 root 上、不受容器 stencil 裁切，會蓋到容器外的東西）。部分可見照畫。
+- **翻頁鍵**：焦點在容器裡的控制項上、控制項與目標種類沒用掉 PgUp／PgDn／Home／End 時，捲最近的容器（焦點不動；捲出可視區後下一次 Tab／方向鍵換焦點會捲回來）。鍵位與 `kind="scroll"` 目標相同，沿用 rev 10 的連發節奏。
+- **手把右搖桿**：root 持有手把焦點（`holdsJoypad`）時，每幀讀 `getJoypadAimingAxisY`，超過 ±0.75 就以每 33.3ms 20px 捲（門檻與速度同原版 `ISPanelJoypad:doRightJoystickScrolling`，`ISPanelJoypad.lua:705-729`）：焦點目標是 `kind="scroll"` 時捲它自己，否則捲焦點所在的最近容器；不在容器裡的焦點不受影響。十字鍵照舊移動焦點。
+- **既有 `scrollOwner` 描述欄位不變**：consumer 自訂的 keyboardTargets 仍可用 `scrollOwner` 請自己的面板捲動；`ScrollPanel` 也有同名 `scrollTo`，兩者並用無衝突。
 
 **焦點說明位置（rev 12，`CAPABILITIES.focusCaption`）**：描述選用欄位 `captionSide = "below"`（預設，原行為：框下方，碰到 root 底邊翻到上方）｜`"above"`（框上方，碰到頂邊翻到下方）｜`"right"`（tooltip 式飛出標籤，見下）｜`"none"`（不畫說明，焦點框照畫）；說明永遠夾在 root 之內。框架 Window 的自動目標讀控制項的 `_focusCaptionSide`。`Focus.drawCaption(el, x, y, w, h, caption, theme, side?)` 多一個選用參數。**預設不自動避開其他控制項**（那會改變既有 consumer 的畫面）：直排導覽列（說明蓋住下一列圖示）用 `"right"`，說明行緊貼在控制項下方的版面（popover 內的滑桿步進鈕）用 `"none"` 或 `"above"`，由 owner 在描述指定。`"right"` 會蓋到旁邊的內容，所以畫成一眼看得出是浮動標籤、不會被讀成被切掉的字：底色不透明（`surface` 的 r/g/b、alpha 1，不乘 `theme.alpha` 也不吃 `surface.a`），連同標籤外 2px 的外圈一起填（內容和框線之間空出一條），標籤本身再疊 18% 的 accent 淡底、accent 1px 框、左右 8／上下 4 內距；標籤對焦點框**垂直置中**，與框外圈光暈隔 3px，中間是 6px 深的實心 accent 尖角指向控制項；右側放不下就整個翻到框左側、尖角朝右；碰到 root 邊緣時標籤連外圈夾回 root 內，尖角跟著夾在標籤高度內。
 
@@ -668,6 +693,28 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 
 **家族遷移**：Economy（6 個檔）與 MiniMap（1 個檔）仍用原版 `ISComboBox`，外觀與 §0 的使用者決定不一致，可在各自改版時換成 `UI.Dropdown`（需求 rev 14＋`CAPABILITIES.dropdown`，缺席時保留原版 `ISComboBox` 路徑）；本 rev 不改寫它們。FilterBar 的 `kindsDropdown`（§3.13）仍用自己的選單，行為等價、未合併。
 
+### 3.18 ScrollPanel 捲動容器（API rev 16）
+
+`Widgets/ScrollPanel.lua`，`UI.ScrollPanel`（`CAPABILITIES.scrollPanel`）。取代原版 `ISPanel:addScrollBars`／`ISScrollBar` 的外觀，遵守 §3.7「共通」契約。只需要原生 `ISPanel`；Focus 接線在 Focus 那一側（§3.10「捲動容器接線」），本檔不 require Focus。首個 consumer：地圖錶管理員視窗（第三方模組耗電清單、殭屍掉落規則）。
+
+| 面 | API | 說明 |
+|---|---|---|
+| 建構 | `UI.ScrollPanel.new{ x?, y?, width?=200, height?=200, theme?, font? }` | 回傳已 `initialise()`、透明背景的元素；consumer `parent:addChild(panel)`，子元件以**內容座標**照常 `panel:addChild(child)` |
+| 版面 | `contentWidth()` | 寬減右側捲軸槽 12px（8px 捲軸＋4px 間距）。**槽永遠保留**：捲軸出現或消失時內容寬不跳動 |
+| 捲動位置 | 原生 `getYScroll()`／`setYScroll(y)` | 0＝頂端、往下為負；原生 setter 自己夾在 `[-(內容高－可視高), 0]`（`ISUIElement.lua:1685-1699`）。換頁或重建內容時 consumer 自己 `setYScroll(0)` |
+| 捲到 | `scrollTo(el)` | `el` 是任一層子孫；已完整可見不動，在上方或比可視區高就頂端對齊、在下方就底端對齊，多留 4px 讓焦點框看得見。Focus 換焦點時自動呼叫 |
+
+**行為契約**
+- **內容高自動量**：每幀 prerender 取可見直接子元件的最大下緣（`y＋height`），變了才 `setScrollHeight`（原生會把超出的捲動位置夾回來）。consumer 不必呼叫任何 setter；要留底部空白就放一個透明子元件或把最後一列往下擺。
+- **子元件跟著捲**：`createChildren` 開原生 `setScrollChildren(true)`（`getAbsoluteX/Y` 與滑鼠派送都含父層 scroll，`UIElement.java:930-948,1832-1840`），並 `setRenderClippedChildren(false)`：整個在可視區外的直接子元件不畫、prerender 也不跑（`UIElement.java:1603-1614`；原版用例 `ISGameSounds.lua:211`），長清單只付可見列的成本。後果見 §3.7 TextField 的 `onChange`。
+- **裁切**：prerender `setStencilRect(0, 0, w, h)`（可視區；`setStencilRect` 不含自身 scroll）→ 子元件 → render `clearStencilRect`＋`repaintStencilRect` 同一 rect（rendering.md 巢狀 stencil 規則）。收合時 prerender 不 set、render 也不 clear（以旗標配對，不靠兩邊各自判斷）。
+- **捲軸**：內容高於可視區才畫，右側 8px：軌道 `well`、拇指 `textFaint`（hover 或拖曳中 `textMuted`），形狀 `Skin.shapeOf(theme, "control")`（rev 15 圓角；沒設圓角時 8px 寬放不下 legacy 6px 圓角，直角），chrome 乘 `theme.alpha`。拇指高＝可視比例、最小 20px。自身繪製吃自己的 yScroll（`UIElement.java:469-483`），所以畫在 `y－getYScroll()`。
+- **滑鼠**：滾輪一格捲 3 行（行高＝字高＋4，最少 16，同 Focus 捲動鍵），往上 `del < 0`；內容放得下時回 false 交給父層。子元件先收滾輪（例：Slider 停用時才讓出）。按拇指拖曳（`setCapture`，拖出元件外照樣跟、放開解除），按拇指外的軌道往該方向跳一頁；按內容空白處吃掉事件、不捲。引擎傳給容器自己 `onMouseDown` 的座標與 `ISUIElement:getMouseX/Y` 都已扣自身 scroll（內容座標，`UIElement.java:1113-1121`、`ISUIElement.lua:339-351`），捲軸的按下、拖曳與 hover 判定一律先加回 `getYScroll()` 換成可視區座標。
+- prerender／render 零 table／closure 配置，自行守 `isCollapsed`。
+
+**使用端契約**：子元件寬用 `contentWidth()`（捲軸槽裡不要放子元件——子元件先收滑鼠，會擋住捲軸）；內容變動後不必通知容器；需要鍵盤／手把時把容器放進框架 Window（自動目標），或在原生 root 的 `keyboardTargets` 自己列容器裡的控制項（自動捲到焦點在 `Focus.render` 裡做，與描述來源無關）；只有說明文字的容器要能用鍵盤捲，就讓它沒有任何焦點目標並設 `_focusLabel`（自動目標會把容器本身當 `kind="scroll"`），原生 root 則自己列 `{ kind = "scroll", control = panel, label = … }`。
+
+**不做的事**：不做水平捲動、平滑捲動、慣性；不做捲軸自動隱藏；不虛擬化（大清單仍用 VirtualList §3.5）；巢狀容器的閱讀順序只以最外層容器成塊排序。
 
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
@@ -699,6 +746,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | API rev 12 停用對比＋精簡篩選列（**開發中**） | `textDisabled` token 與各控制元件停用標籤（§3.2、§3.7）、Tabs 停用（§3.7）、Toast 避開區（§3.4）、焦點說明位置 `captionSide`（§3.10）、TableHeader 鍵盤焦點（§3.12）、FilterBar 的 `dateToggle`／`kindsDropdown`／`sortInHeader`（§3.13） | `scripts/test_rev12.lua` 驗證兩套 palette 的對比門檻、各控制元件停用色、Tabs 停用不切換、說明四種位置與經 Focus.render 生效、滑鼠焦點的替代目標不亮框、表頭焦點（Tab 進入、左右換欄、Enter 排序一次、live=false 不可聚焦）、Toast 避開區（下方、左側、不重疊不動、nil／出錯不避、取消登記）、三種 FilterBar 模式的回呼、版面、焦點描述與選單鍵盤／滑鼠；Economy 錢包明細一列篩選＋表頭排序、通知不蓋經濟中心頂端實機驗證 |
 | API rev 14 地圖錶缺口（**開發中**） | `UI.Dropdown`（§3.17）、12 個幾何圖示（§3.6）、`onAccent`／`titleText`／`titleMuted`（§3.2）、Button／Window 的 Texture 圖示與 `Button:setIcon`（§3.7） | `scripts/test_rev14.lua` 驗證新 key 對到約定檔名、新 token 預設等於舊繪製色、primary 讀 `onAccent`、Texture 圖示原色與停用淡化、繪製拋錯不外洩、`setIcon` 的寬度與截字、Window 標題列 token 與舊 theme 退回；`scripts/test_rev14_dropdown.lua` 驗證下拉（§3.17）；ui-e2e `render-sp` 實機截圖；MiniMap Map Watch 面板改寫接用並實機驗證後定版 |
 | API rev 15 可選圓角（**開發中**） | Skin 半徑形狀與往下退、`Skin.shapeOf`、`Skin.slider` 的 shape（§3.3）；theme 的 `radius`／`controlRadius`／`buttonShape`／`font`（§3.2）；元件跟著 theme（§3.7）；10 張新 9-slice 資產（§6） | `scripts/test_rev15.lua` 驗證吸附表、title／control／button 部位、legacy 回傳、往下退與直角、legacy 形狀不退級、fits、Theme.create 欄位、各元件沒設時用 rev 14 資產／設了用對應半徑、Checkbox 方框與 Slider 軌道兩種路徑、字型優先序；`verify_mod.py` 第 12 項驗新資產；ui-e2e `radius-sp` 實機截圖（3／6／20px 與膠囊按鈕）；地圖錶七款皮膚接用後定版 |
+| API rev 16 捲動容器與焦點說明（**開發中**） | `UI.ScrollPanel`（§3.18）、`UI.Text.wrap`（§3.4）、`TextField:setInvalid`（§3.7）、`control:focusLabel()` 與 Focus 的捲動容器接線（§3.10） | `scripts/test_rev16.lua`（見 §7）；ui-e2e `rev16-sp` 實機截圖（真 Tab 自動捲、真 PgDn、真拖曳捲軸、錯誤輸入框、每幀說明、Kahlua 斷行）；地圖錶管理員視窗接用後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -731,7 +779,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua` 與 `scripts/test_rev14_dropdown.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua` 與 `scripts/test_rev16.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -743,6 +791,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - rev14：12 個新 icon key 對到 `mui_icon_<key>.png` 且各不相同、既有 key 不變；`onAccent`／`titleText`／`titleMuted` 兩套 palette 的預設值等於 rev 13 的繪製色；primary 讀 `onAccent`、theme 缺 token 時退回舊常數；Button 的 Texture 圖示原色 16px、自動寬度同 Icons key、停用淡化 0.45、繪製拋錯不外洩；Icons key 照舊依樣式染色；`setIcon` 自動寬度增減、相同值 no-op、換 key、明示寬度下一幀重新截字與自動 tooltip、拿掉後恢復；未知 key 只畫文字；Window 的 Texture 標題圖示、`titleText` 標題、關閉鈕閒置 `titleMuted`／hover `titleText`、舊 theme 退回 `text`／`textMuted`、未知 key 標題不位移。
     - rev14_dropdown：缺原生 ISButton 時 `dropdown` 維持 false；預設寬高、選項複本、缺 label 用 id；明示寬度不撐寬、截字只在標籤或寬度變時重算；`setSelected` 未知 id／相同值／silent／nil；`setOptions` 保留或靜默清空選取；點擊開關、addToUIManager 後才置頂、capture、點列先關再回呼一次、點已選中列不回呼、按自己切換、外部點擊關閉；開啟游標在選取、滑鼠帶游標、選中列 accent 字＋2px 記號；`theme.alpha` 與停用色；停用時不開且關閉；鍵盤（Enter／Space 開啟、上下／Home／End／PgUp／PgDn、Enter 選取後焦點框回元件、Esc／Tab 關閉、消耗帳本、連發節奏）；`maxRows` 捲動與細捲軸；放不下翻上方與夾回螢幕；錨點失效自動關；`close(scope)` 與換擁有者；手把借還焦點、B 關、A 選；prerender＋render 50 輪零配置；Focus 缺席時只能用滑鼠。
     - rev15：`Skin.shapeOf` 的 legacy 回傳（沒設圓角或沒有 theme）、半徑吸附表、title 形狀與 0＝直角、`controlRadius` 只影響 control／button、`buttonShape="pill"`、非數字 radius 當沒設；`round20` 依序退 10（pill 資產）→ 6 → 3 → 直角、roundTop 的寬高門檻與 border 資產、legacy round／pill 不退級、`Skin.fits`；`Theme.create` 的四個欄位與預設 nil；Button 沒設／radius 3／膠囊高 22 與 44／chip 固定 pill；Window 沒設／20／0；TextField、Tabs（controlRadius）、Dropdown；Checkbox 方框退回有圓角與沒設時直角；Slider 圓角軌道與沒設時 4px 直線；字型優先序（Button、Window、Dropdown、TextField）。
+    - rev16：四個旗標；`Text.wrap` 分段與空行、快取命中回同一張表、鍵含寬與字型、nil／非字串、超過上限清空、Dialog 走 `TextWrap.lines`；TextField `setInvalid`（訊息蓋過手動 tooltip、內層讓出圖示位、`errorText` 框（聚焦也是）、`warning` 圖示與缺圖 `"!"`、no-op、換訊息不重排、沒訊息回手動 tooltip、清掉恢復、不觸發 onChange、placeholder 重新截字與自動 tooltip、停用＋錯誤）；ScrollPanel（標記與 contentWidth、`createChildren` 開 scrollChildren、內容高只算可見子元件且沒變不重設、stencil 成對與收合不 set／clear、捲軸位置顏色與 `theme.alpha`、拇指比例、滾輪捲與夾、自身繪製扣 yScroll、拇指拖曳 capture 成對、軌道跳頁、空白處不捲、`scrollTo` 下方／已可見／上方／頂端、放得下不畫捲軸且滾輪交父層、捲軸顯示中＋錯誤輸入框＋wrap 快取命中 50 輪零配置）；Focus（容器內目標成塊排序且捲動不改順序、滑鼠焦點不捲、Tab 自動捲到並畫框、滾輪捲走不搶回且捲出可視區不畫框、換焦點才再捲、PgDn／Home／End 捲容器且焦點不動、空容器是 `kind="scroll"` 目標（方向鍵一行、PgDn 一頁並夾底）、右搖桿門檻／速度／方向與不持有手把時不捲）；`focusLabel` 每幀換說明、出錯或回 nil 照舊、TextField 錯誤訊息當焦點說明。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

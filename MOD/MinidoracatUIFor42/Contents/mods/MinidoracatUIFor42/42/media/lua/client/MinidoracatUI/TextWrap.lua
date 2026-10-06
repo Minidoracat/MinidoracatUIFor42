@@ -1,7 +1,7 @@
--- MinidoracatUI/TextWrap — 框架內部共用的斷行：Dialog 內文與 Toast 多行訊息。
+-- MinidoracatUI/TextWrap — 框架共用的斷行：Dialog 內文、Toast 多行訊息，rev 16 起另以 UI.Text.wrap 公開。
 --
--- 內部模組：不掛在 facade、不設全域。Widgets 以 require 取回傳值（LuaManager.RunLuaInternal
--- 把第一次執行的回傳值存進 loadedReturn，之後的 require 直接回它）。
+-- 本表是內部模組：不設全域，Widgets 以 require 取回傳值（LuaManager.RunLuaInternal 把第一次執行的回傳值
+-- 存進 loadedReturn，之後的 require 直接回它）。對外只掛 UI.Text.wrap（檔尾，CAPABILITIES.textWrap）。
 --
 -- TextWrap.cut(text, maxWidth, font) → line, rest
 --   貪婪斷行：二分找最長放得下的前綴（MeasureStringX 量 O(log n) 次）。截點能斷就在截點斷，
@@ -10,10 +10,19 @@
 --   右側不是行首禁則字（，。、」）等）、左側不是行尾禁則字（「（等）。
 --   line 去掉行尾空白、rest 去掉開頭空白；text 整段放得下時回 text, ""。
 --   連一個字都放不下時照樣放一個字，呼叫端的迴圈一定會前進。
+-- TextWrap.lines(text, maxWidth, font) → { line, ... }
+--   依 "\n" 分段、每段走 cut；空段落是空行。每次呼叫都重算、回新表（Dialog 建構時用）。
+-- UI.Text.wrap(text, maxWidth, font?) → { line, ... }（rev 16）
+--   同 lines，但以 (font, maxWidth, text) 快取：同樣三者回同一張表（呼叫端只讀、不得修改），每幀呼叫不配置。
+--   font 省略＝UIFont.Small；text 非字串以 tostring 轉。快取超過 WRAP_CACHE_MAX 筆整個清掉重來。
 --
 -- 截點一律落在字元邊界：Kahlua 字串是 UTF-16 code unit（不切開 surrogate pair），harness 的
 -- 標準 Lua 是 UTF-8 位元組（不切開多位元組字）；字元模型的判斷同 V1.lua 的 Text.fit。
 -- 本檔只能寫 ASCII 字面值（Kahlua 把字串字面值逐字截成一個位元組），字一律寫碼位。
+
+if not (MinidoracatUI and MinidoracatUI.v1) then
+    pcall(require, "MinidoracatUI/V1")
+end
 
 local TextWrap = {}
 
@@ -133,6 +142,69 @@ function TextWrap.cut(text, maxWidth, font)
     local line = string.gsub(string.sub(text, 1, n), "%s+$", "")
     local rest = string.gsub(string.sub(text, n + 1), "^%s+", "")
     return line, rest
+end
+
+function TextWrap.lines(text, maxWidth, font)
+    local lines = {}
+    local start = 1
+    while true do
+        local nl = string.find(text, "\n", start, true)
+        local paragraph = nl and string.sub(text, start, nl - 1) or string.sub(text, start)
+        if paragraph == "" then
+            lines[#lines + 1] = ""
+        else
+            local rest = paragraph
+            while rest ~= "" do
+                local line
+                line, rest = TextWrap.cut(rest, maxWidth, font)
+                lines[#lines + 1] = line
+            end
+        end
+        if not nl then
+            return lines
+        end
+        start = nl + 1
+    end
+end
+
+-- ponytail: 超過上限整個清空，不做 LRU；面板文字通常只有數十段
+local WRAP_CACHE_MAX = 256
+local wrapCache, wrapCount = {}, 0
+
+local function wrap(text, maxWidth, font)
+    if type(text) ~= "string" then
+        text = text == nil and "" or tostring(text)
+    end
+    maxWidth = tonumber(maxWidth) or 0
+    font = font or UIFont.Small
+    local byFont = wrapCache[font]
+    local byWidth = byFont and byFont[maxWidth]
+    local hit = byWidth and byWidth[text]
+    if hit then
+        return hit
+    end
+    if wrapCount >= WRAP_CACHE_MAX then
+        wrapCache, wrapCount = {}, 0
+        byFont, byWidth = nil, nil
+    end
+    if not byFont then
+        byFont = {}
+        wrapCache[font] = byFont
+    end
+    if not byWidth then
+        byWidth = {}
+        byFont[maxWidth] = byWidth
+    end
+    local lines = TextWrap.lines(text, maxWidth, font)
+    byWidth[text] = lines
+    wrapCount = wrapCount + 1
+    return lines
+end
+
+local UI = MinidoracatUI and MinidoracatUI.v1
+if UI and UI.API_MAJOR == 1 and UI.Text and UI.CAPABILITIES then
+    UI.Text.wrap = wrap
+    UI.CAPABILITIES.textWrap = true
 end
 
 return TextWrap
