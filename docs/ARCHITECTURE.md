@@ -83,6 +83,7 @@ MinidoracatUI.v1 = {
         sliderRow    = false,  -- rev 17：UI.SliderRow 標籤＋滑桿＋數值列（Widgets/Controls.lua，與 controls 同檔）
         preview      = false,  -- rev 17：UI.Preview 效果預覽框（Widgets/Preview.lua，基底原生 ISPanel）
         controlTooltips = false, -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua，與 controls 同檔）
+        buttonIconColor = false, -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua，與 controls 同檔）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -155,6 +156,8 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   local canPreview = ok and UI.API_REVISION >= 17 and UI.CAPABILITIES.preview and UI.Preview ~= nil
 --   local canTips = ok and UI.API_REVISION >= 17 and UI.CAPABILITIES.controlTooltips
 --   舊框架的 Checkbox／Slider 收到 opts.tooltip 只是忽略（不炸）；setTooltip 要先探 controlTooltips
+--   local canTint = ok and UI.API_REVISION >= 17 and UI.CAPABILITIES.buttonIconColor
+--   舊框架的 Button 收到 opts.iconColor 只是忽略（Texture 原色）；setIconColor 要先探 buttonIconColor
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -169,7 +172,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/FloatButton.lua` | v0.2 | 常駐浮鈕：拖曳、位移門檻點擊判定、位置持久化回調、clamp 回螢幕；獨立檔、單向依賴 V1 全域，載入失敗只影響 `CAPABILITIES.floatButton` |
 | `Widgets/Toast.lua` | v0.2 | 通知堆疊：佇列、淡入淡出、alwaysOnTop；同上 |
 | `VirtualList.lua` | v0.3 | 垂直固定列高虛擬清單（§3.5） |
-| `Widgets/Controls.lua` | rev 7（rev 8／9／11／14／17 擴充） | Button／TextField／Checkbox／Tabs（§3.7）＋ColorPicker（§3.8）＋Slider（§3.9）＋SliderRow（§3.20）；載入失敗只影響 `CAPABILITIES.controls`／`colorPicker`／`slider`／`sliderRow`／`controlTooltips` |
+| `Widgets/Controls.lua` | rev 7（rev 8／9／11／14／17 擴充） | Button／TextField／Checkbox／Tabs（§3.7）＋ColorPicker（§3.8）＋Slider（§3.9）＋SliderRow（§3.20）；載入失敗只影響 `CAPABILITIES.controls`／`colorPicker`／`slider`／`sliderRow`／`controlTooltips`／`buttonIconColor` |
 | `Widgets/Window.lua` | rev 7（rev 10／11 擴充） | Window／Dialog（§3.7）；開頭自行 `pcall(require, …)` 取 `"MinidoracatUI/Widgets/Controls"`、`"MinidoracatUI/Focus"` 與 `"MinidoracatUI/TextWrap"`，Controls 或 TextWrap 缺席時只提供 Window、`dialog` 維持 false；Focus 缺席時沒有鍵盤導覽與手把 |
 | `Focus.lua` | rev 10 | 鍵盤＋手把焦點引擎（§3.10）；需要原生 `Keyboard`，缺席時 `CAPABILITIES.focus` 維持 false |
 | `Widgets/DatePicker.lua` | rev 11 | `UI.Date`／`UI.DateField`／`UI.DatePicker`（§3.11）；自行 pcall require Controls（缺席即 return）與 Focus（選用），`CAPABILITIES.datePicker` |
@@ -363,7 +366,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 
 | 元件 | 建構 | 公開方法 | 回呼 |
 |---|---|---|---|
-| `UI.Button` | `{ x, y, width?, height?, title, icon?, style?, active?, theme?, font?, target?, onClick?, tooltip? }` | `setTitle(s)`、`fitWidth()`、`setEnabled(b)`、`isEnabled()`、`setTooltip(s)`、`setStyle(style)`、`setActive(b)`／`isActive()`（rev 11）、`setIcon(icon)`（rev 14） | `onClick(target, button)`；disabled 不觸發 |
+| `UI.Button` | `{ x, y, width?, height?, title, icon?, iconColor?, style?, active?, theme?, font?, target?, onClick?, tooltip? }` | `setTitle(s)`、`fitWidth()`、`setEnabled(b)`、`isEnabled()`、`setTooltip(s)`、`setStyle(style)`、`setActive(b)`／`isActive()`（rev 11）、`setIcon(icon)`（rev 14）、`setIconColor(c)`（rev 17） | `onClick(target, button)`；disabled 不觸發 |
 | `UI.TextField` | `{ x, y, width, height?, text?, placeholder?, theme?, font?, onlyNumbers?, maxLength?, clearButton?, onChange? }` | `getText()`、`setText(s)`、`focus()`、`isFocused()`、`setEnabled(b)`、`setTooltip(s)`、`setWidth(w)`／`setHeight(h)`（rev 11 起重排內層） | `onChange(field, text)`；`setText` 不觸發 |
 | `UI.Checkbox` | `{ x, y, width, height?, label, checked?, theme?, font?, target?, onChange?, tooltip? }` | `getChecked()`、`setChecked(b, silent)`、`setEnabled(b)`、`setLabel(s)`；rev 17：`setTooltip(s)` | `onChange(target, checked, box)` |
 | `UI.Tabs` | `{ x, y, width?, height?, items = { {id, label}, ... }, selected?, theme?, font?, target?, onSelect? }` | `setSelected(id, silent)`、`getSelected()`、`setItemVisible(id, visible)`、`setItemLabel(id, s)`；rev 12：`setEnabled(b)`／`isEnabled()`、`setItemEnabled(id, b)`／`isItemEnabled(id)` | `onSelect(target, id, tabs)`；點已選中、停用項或整列停用時不觸發 |
@@ -405,6 +408,9 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 
 **rev 16 擴充**（TextField 錯誤狀態；`CAPABILITIES.textFieldInvalid`，與 controls 同檔）
 - **`TextField:setInvalid(invalid, message?)`／`isInvalid()`**：錯誤時框改 `errorText`（聚焦也不換成 accent），右側畫 16px `warning` 圖示（`errorText` 染色；缺圖退 `"!"`）——**不只靠顏色**；內層 entry 與 placeholder 截字讓出圖示位（16＋4px）。`message`（非空字串才算）優先於手動／自動 tooltip 成為滑鼠停留提示，同時是鍵盤焦點說明（`TextField:focusLabel()`，§3.10）；清掉錯誤或改成沒有訊息時 tooltip 回到原本的手動／自動判斷。訊息放 tooltip 而非框下小字：元件高度與版面不變，不壓到下一列。停用＋錯誤：框照樣乘停用淡化，記號改 `textDisabled`。相同狀態與訊息 no-op；不影響可否編輯、不觸發 `onChange`。驗證時機由 consumer 決定（例：`onChange` 裡驗、送出時驗）。
+
+**rev 17 擴充**（Button Texture 圖示染色；`CAPABILITIES.buttonIconColor`，與 controls 同檔）
+- **`opts.iconColor`／`Button:setIconColor(c)`**：`c = {r, g, b, a?}` 時 Texture 圖示以該色畫（頂點色＝`c`，alpha＝`(c.a or 1)`，停用再乘 `DISABLED_ALPHA`）；`nil`＝rev 14 的原色。只影響 Texture 圖示：Icons key 的圖示照舊以字色染色。元件保存 consumer 給的表（不複製），每幀零配置。用途：單色白 glyph 的物品／圖標貼圖要畫成類別色（例：MiniMap 設定視窗的資源點與動物 chip）。
 
 ### 3.8 ColorPicker（API rev 8；rev 9 起 R/G/B 為滑桿）
 
@@ -866,7 +872,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - rev14_dropdown：缺原生 ISButton 時 `dropdown` 維持 false；預設寬高、選項複本、缺 label 用 id；明示寬度不撐寬、截字只在標籤或寬度變時重算；`setSelected` 未知 id／相同值／silent／nil；`setOptions` 保留或靜默清空選取；點擊開關、addToUIManager 後才置頂、capture、點列先關再回呼一次、點已選中列不回呼、按自己切換、外部點擊關閉；開啟游標在選取、滑鼠帶游標、選中列 accent 字＋2px 記號；`theme.alpha` 與停用色；停用時不開且關閉；鍵盤（Enter／Space 開啟、上下／Home／End／PgUp／PgDn、Enter 選取後焦點框回元件、Esc／Tab 關閉、消耗帳本、連發節奏）；`maxRows` 捲動與細捲軸；放不下翻上方與夾回螢幕；錨點失效自動關；`close(scope)` 與換擁有者；手把借還焦點、B 關、A 選；prerender＋render 50 輪零配置；Focus 缺席時只能用滑鼠。
     - rev15：`Skin.shapeOf` 的 legacy 回傳（沒設圓角或沒有 theme）、半徑吸附表、title 形狀與 0＝直角、`controlRadius` 只影響 control／button、`buttonShape="pill"`、非數字 radius 當沒設；`round20` 依序退 10（pill 資產）→ 6 → 3 → 直角、roundTop 的寬高門檻與 border 資產、legacy round／pill 不退級、`Skin.fits`；`Theme.create` 的四個欄位與預設 nil；Button 沒設／radius 3／膠囊高 22 與 44／chip 固定 pill；Window 沒設／20／0；TextField、Tabs（controlRadius）、Dropdown；Checkbox 方框退回有圓角與沒設時直角；Slider 圓角軌道與沒設時 4px 直線；字型優先序（Button、Window、Dropdown、TextField）。
     - rev16：四個旗標；`Text.wrap` 分段與空行、快取命中回同一張表、鍵含寬與字型、nil／非字串、超過上限清空、Dialog 走 `TextWrap.lines`；TextField `setInvalid`（訊息蓋過手動 tooltip、內層讓出圖示位、`errorText` 框（聚焦也是）、`warning` 圖示與缺圖 `"!"`、no-op、換訊息不重排、沒訊息回手動 tooltip、清掉恢復、不觸發 onChange、placeholder 重新截字與自動 tooltip、停用＋錯誤）；ScrollPanel（標記與 contentWidth、`createChildren` 開 scrollChildren、內容高只算可見子元件且沒變不重設、stencil 成對與收合不 set／clear、捲軸位置顏色與 `theme.alpha`、拇指比例、滾輪捲與夾、自身繪製扣 yScroll、拇指拖曳 capture 成對、軌道跳頁、空白處不捲、`scrollTo` 下方／已可見／上方／頂端、放得下不畫捲軸且滾輪交父層、捲軸顯示中＋錯誤輸入框＋wrap 快取命中 50 輪零配置）；Focus（容器內目標成塊排序且捲動不改順序、滑鼠焦點不捲、Tab 自動捲到並畫框、滾輪捲走不搶回且捲出可視區不畫框、換焦點才再捲、PgDn／Home／End 捲容器且焦點不動、空容器是 `kind="scroll"` 目標（方向鍵一行、PgDn 一頁並夾底）、右搖桿門檻／速度／方向與不持有手把時不捲）；`focusLabel` 每幀換說明、出錯或回 nil 照舊、TextField 錯誤訊息當焦點說明。
-    - rev17：NavList／Preview 載入自檢（facade 未發布、缺原生 ISPanel）與四個旗標；`watch`／`zone` 對到約定檔名、缺圖回 nil／false；NavList 版面（標題列、列高、無標題群組間距、略過沒有 id 的項目）、`selected`、狀態快取（get 出錯當 false、每幀不重讀、`refresh` 下一幀重讀一次）、繪製（標題 textMuted、選中底＋2px 記號＋accent、停用 textDisabled、開關開關色與停用淡化、截字、缺圖只少圖示、Texture 原色、圖示繪製拋錯）、hover、滑鼠（選取一次、點已選不回呼、點開關 set(not get()) 不改選取、停用開關／停用列不動、按放不同列、放開在外、set／get 拋錯）、`setSelected`（未知、silent、停用、nil）與 `setGroups`（清掉選取、高度、游標）、50 輪零配置；焦點（kind=button＋右側說明、落點框住選取列、上下跳過停用列、截字全名說明、右／左進出開關、開關上 Enter／Space 切換不選取、列上 Enter 選取、Home／End、到邊鍵盤留住、手把到邊移到下一個目標、手把 A、左右離開）；ScrollPanel 裡游標移動捲到游標列、End／Home、`scrollTo` 看 focusRect、游標列捲出可視區不畫框；Checkbox／Slider tooltip（走 updateTooltip、nil 收掉、焦點說明）；SliderRow（版面、zeroLabel、format、回呼一次、no-op／silent、上限數字與函式（夾住不回呼、放寬還原、出錯當沒有、0＝沒有）、拖到最右停在上限、zeroLabel／上限、整列一個焦點目標、右鍵交給滑桿、tooltip 當說明、停用、預設 format、50 輪零配置）；Preview（well 與 theme.alpha、內框 draw 參數、stencil set／clear／repaint 成對、caption、draw 拋錯攔下且停用到 setDraw、setCaption("")、setDraw(nil)、收合、內框沒面積、50 輪零配置）。
+    - rev17：NavList／Preview 載入自檢（facade 未發布、缺原生 ISPanel）與五個旗標；`watch`／`zone` 對到約定檔名、缺圖回 nil／false；NavList 版面（標題列、列高、無標題群組間距、略過沒有 id 的項目）、`selected`、狀態快取（get 出錯當 false、每幀不重讀、`refresh` 下一幀重讀一次）、繪製（標題 textMuted、選中底＋2px 記號＋accent、停用 textDisabled、開關開關色與停用淡化、截字、缺圖只少圖示、Texture 原色、圖示繪製拋錯）、hover、滑鼠（選取一次、點已選不回呼、點開關 set(not get()) 不改選取、停用開關／停用列不動、按放不同列、放開在外、set／get 拋錯）、`setSelected`（未知、silent、停用、nil）與 `setGroups`（清掉選取、高度、游標）、50 輪零配置；焦點（kind=button＋右側說明、落點框住選取列、上下跳過停用列、截字全名說明、右／左進出開關、開關上 Enter／Space 切換不選取、列上 Enter 選取、Home／End、到邊鍵盤留住、手把到邊移到下一個目標、手把 A、左右離開）；ScrollPanel 裡游標移動捲到游標列、End／Home、`scrollTo` 看 focusRect、游標列捲出可視區不畫框；Checkbox／Slider tooltip（走 updateTooltip、nil 收掉、焦點說明）；Button `iconColor`（沒設原色、染色的頂點色與 alpha、停用再乘 0.45、`setIconColor(nil)` 回原色、Icons key 照舊用字色、50 輪零配置）；SliderRow（版面、zeroLabel、format、回呼一次、no-op／silent、上限數字與函式（夾住不回呼、放寬還原、出錯當沒有、0＝沒有）、拖到最右停在上限、zeroLabel／上限、整列一個焦點目標、右鍵交給滑桿、tooltip 當說明、停用、預設 format、50 輪零配置）；Preview（well 與 theme.alpha、內框 draw 參數、stencil set／clear／repaint 成對、caption、draw 拋錯攔下且停用到 setDraw、setCaption("")、setDraw(nil)、收合、內框沒面積、50 輪零配置）。
     - wrap（rev 17 補）：全形 ％ ～、小寫假名與長音逐一不放行首、波浪號不放行尾、片假名長字往回找斷點。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。

@@ -2,7 +2,8 @@
 -- rev 8 加 ColorPicker（CAPABILITIES.colorPicker）；rev 9 加 Slider（CAPABILITIES.slider），
 -- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）；
 -- rev 16 TextField 錯誤狀態 setInvalid／isInvalid（CAPABILITIES.textFieldInvalid）；rev 17 Checkbox／Slider 的
--- tooltip（CAPABILITIES.controlTooltips）與 SliderRow 標籤＋滑桿＋數值列（CAPABILITIES.sliderRow）。
+-- tooltip（CAPABILITIES.controlTooltips）、SliderRow 標籤＋滑桿＋數值列（CAPABILITIES.sliderRow）與 Button 的
+-- Texture 圖示染色 iconColor／setIconColor（CAPABILITIES.buttonIconColor）。
 --
 -- 外觀全由框架自繪（theme token＋Skin 圓角，貼圖缺失退直角），原生 class 只當輸入／事件基底：
 --   * Button 以 ISButton 為基底：保留原生 pressed／enable／onclick(target, button)／tooltip／
@@ -89,9 +90,9 @@ local function iconTexture(icon)
     return icon
 end
 
--- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白
-local function drawTextureIcon(el, texture, x, y, size, a)
-    el:drawTextureScaled(texture, x, y, size, size, a, 1, 1, 1)
+-- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白，rev 17 iconColor＝以該色染色
+local function drawTextureIcon(el, texture, x, y, size, a, r, g, b)
+    el:drawTextureScaled(texture, x, y, size, size, a, r, g, b)
 end
 
 -- rev 17 controlTooltips：ISPanel 基底的元件（Checkbox／Slider／SliderRow）借原版 ISButton:updateTooltip——
@@ -232,8 +233,14 @@ function Button:prerender()
         if type(self.icon) == "string" then
             Icons.draw(self, self.icon, x, iy, ICON_SIZE, textColor, textColor.a or 1)
         else
-            -- 原色貼圖無法改成 textDisabled，停用時改以 DISABLED_ALPHA 淡化
-            pcall(drawTextureIcon, self, texture, x, iy, ICON_SIZE, enabled and 1 or DISABLED_ALPHA)
+            -- 原色貼圖無法改成 textDisabled，停用時改以 DISABLED_ALPHA 淡化；rev 17 iconColor 染色時同樣淡化
+            local fade = enabled and 1 or DISABLED_ALPHA
+            local ic = self.iconColor
+            if ic then
+                pcall(drawTextureIcon, self, texture, x, iy, ICON_SIZE, (ic.a or 1) * fade, ic.r, ic.g, ic.b)
+            else
+                pcall(drawTextureIcon, self, texture, x, iy, ICON_SIZE, fade, 1, 1, 1)
+            end
         end
         x = x + ICON_SIZE + ICON_GAP
     end
@@ -317,8 +324,13 @@ function Button:setIcon(icon)
     end
 end
 
--- opts: x, y, width?, height?, title, icon?（Icons key 或 Texture，rev 14）, style?（normal／primary／danger／ghost／chip）,
--- active?, theme?, font?, target?, onClick?, tooltip?
+-- rev 17（buttonIconColor）：Texture 圖示的染色 {r, g, b, a?}；nil＝原色。Icons key 的圖示照舊用字色
+function Button:setIconColor(color)
+    self.iconColor = color
+end
+
+-- opts: x, y, width?, height?, title, icon?（Icons key 或 Texture，rev 14）, iconColor?（Texture 圖示染色，rev 17）,
+-- style?（normal／primary／danger／ghost／chip）, active?, theme?, font?, target?, onClick?, tooltip?
 -- onClick(target, button)；disabled 時原生 onMouseUp 不觸發（ISButton.lua:45）。
 -- 標題放不下時自動截字（見 refitTitle），self.title 仍是全標題。
 function Button.new(opts)
@@ -331,6 +343,7 @@ function Button.new(opts)
     o.theme = themeOf(opts)
     o.font = font
     o.icon = opts.icon
+    o.iconColor = opts.iconColor
     o._active = opts.active == true
     o.style = STYLES[opts.style] and opts.style or "normal"
     o.tooltip = opts.tooltip
@@ -1636,5 +1649,6 @@ UI.CAPABILITIES.tabsEnabled = true
 UI.CAPABILITIES.textFieldInvalid = true
 UI.CAPABILITIES.sliderRow = true
 UI.CAPABILITIES.controlTooltips = true
+UI.CAPABILITIES.buttonIconColor = true
 
 return Button

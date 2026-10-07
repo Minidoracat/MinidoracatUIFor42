@@ -102,8 +102,8 @@ dofile(ctx.MOD_LUA .. "Widgets/NavList.lua")
 dofile(ctx.MOD_LUA .. "Widgets/Preview.lua")
 local C = UI.CAPABILITIES
 check(UI.API_REVISION >= 17 and C.navList == true and C.preview == true and C.sliderRow == true and C.controlTooltips == true
-    and UI.NavList ~= nil and UI.Preview ~= nil and UI.SliderRow ~= nil,
-    "rev 17：API_REVISION >= 17，navList／sliderRow／preview／controlTooltips 四個旗標都 true 且元件掛上 facade")
+    and C.buttonIconColor == true and UI.NavList ~= nil and UI.Preview ~= nil and UI.SliderRow ~= nil,
+    "rev 17：API_REVISION >= 17，navList／sliderRow／preview／controlTooltips／buttonIconColor 五個旗標都 true 且元件掛上 facade")
 
 -- ---------- Icons：watch／zone ----------
 local keepGetTexture = getTexture
@@ -431,6 +431,56 @@ F.focusControl(sl, true)
 win3.texts = {}
 win3:render()
 check(boxCap ~= nil and findText(win3, "Other") ~= nil, "鍵盤焦點：Checkbox／Slider 的 tooltip 當焦點說明")
+
+-- ---------- Button iconColor ----------
+local btex = { name = "PoiGlyph" }
+local tint = { r = 0.9, g = 0.2, b = 0.1 }
+local function lastTex(b) return b.tex[#b.tex] end
+local ib = UI.Button.new{ x = 0, y = 0, title = "Poi", icon = btex, style = "chip" }
+reset(ib)
+ib:prerender()
+local t0 = lastTex(ib)
+check(t0 and t0.tex == btex and t0.r == 1 and t0.g == 1 and t0.b == 1 and nearly(t0.a, 1),
+    "沒設 iconColor：Texture 圖示原色（頂點色全白）")
+local tb = UI.Button.new{ x = 0, y = 0, title = "Poi", icon = btex, style = "chip", iconColor = tint }
+reset(tb)
+tb:prerender()
+local t1 = lastTex(tb)
+check(t1 and t1.r == 0.9 and t1.g == 0.2 and t1.b == 0.1 and nearly(t1.a, 1), "opts.iconColor：Texture 圖示以該色染色（沒給 a 當 1）")
+tb:setIconColor({ r = 0.2, g = 0.4, b = 0.6, a = 0.5 })
+tb:setEnabled(false)
+reset(tb)
+tb:prerender()
+local t2 = lastTex(tb)
+check(t2 and t2.r == 0.2 and t2.b == 0.6 and nearly(t2.a, 0.5 * 0.45), "停用：染色圖示 alpha＝color.a 乘停用淡化 0.45")
+tb:setIconColor(nil)
+reset(tb)
+tb:prerender()
+local t3 = lastTex(tb)
+check(t3 and t3.r == 1 and t3.g == 1 and t3.b == 1 and nearly(t3.a, 0.45), "setIconColor(nil)：回到原色（停用照樣淡化）")
+tb:setEnabled(true)
+getTexture = function(path) return { path = path } end
+UI.Skin._resetForTests()
+local kb2 = UI.Button.new{ x = 0, y = 0, title = "Key", icon = "skull", iconColor = tint }
+reset(kb2)
+kb2:prerender()
+local t4 = lastTex(kb2)
+local tc = kb2.theme.colors.text
+check(t4 and t4.r == tc.r and t4.g == tc.g and t4.b == tc.b, "Icons key 的圖示不吃 iconColor，照舊用字色")
+getTexture = nil
+UI.Skin._resetForTests()
+tb:setIconColor(tint)
+tb.drawTextureScaled, tb.drawRect, tb.drawRectBorder, tb.drawText = noop, noop, noop, noop
+getTextManager = function() return tm end
+collectgarbage("collect")
+collectgarbage("stop")
+tb:prerender()
+kb = collectgarbage("count")
+for _ = 1, 50 do tb:prerender() end
+grew = collectgarbage("count") - kb
+collectgarbage("restart")
+getTextManager = keepTM
+check(grew == 0, "Button 染色 Texture 圖示 prerender 50 輪不配置記憶體")
 
 -- ---------- SliderRow ----------
 local rowCalls, lastRow = 0, nil

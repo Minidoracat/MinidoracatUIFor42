@@ -810,7 +810,8 @@ MinidoracatUI.v1 = {
     -- rev 17：UI.NavList 分組側欄導覽（Widgets/NavList.lua，navList）、UI.SliderRow 標籤＋滑桿＋數值列
     --         （Widgets/Controls.lua，sliderRow）、UI.Preview 效果預覽框（Widgets/Preview.lua，preview）、
     --         Checkbox／Slider 的 tooltip 與 setTooltip（controlTooltips）、Text.wrap 行首禁則補全形 ％、～、
-    --         日文小寫假名與長音；Icons 新增 watch／zone；ScrollPanel:scrollTo 與焦點框可見判定改看 focusRect
+    --         日文小寫假名與長音；Icons 新增 watch／zone；ScrollPanel:scrollTo 與焦點框可見判定改看 focusRect；
+    --         Button 的 opts.iconColor／setIconColor：Texture 圖示染色（buttonIconColor）
     API_REVISION = 17,
     CAPABILITIES = {
         theme = true,
@@ -848,6 +849,7 @@ MinidoracatUI.v1 = {
         sliderRow = false,        -- rev 17：UI.SliderRow 標籤＋滑桿＋數值列（Widgets/Controls.lua）
         preview = false,          -- rev 17：UI.Preview 效果預覽框（Widgets/Preview.lua）
         controlTooltips = false,  -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua）
+        buttonIconColor = false,  -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua）
     },
     Theme = Theme,
     Skin = Skin,

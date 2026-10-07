@@ -1055,6 +1055,7 @@ do
         and UI.CAPABILITIES.textFieldInvalid == false and UI.CAPABILITIES.focusLabel == false
         and UI.CAPABILITIES.navList == false and UI.CAPABILITIES.sliderRow == false
         and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
+        and UI.CAPABILITIES.buttonIconColor == false
         and UI.CAPABILITIES.textWrap == true,
         "rev 7～17 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
@@ -1078,8 +1079,8 @@ do
         and fresh.CAPABILITIES.colorPicker == false and fresh.ColorPicker == nil
         and fresh.CAPABILITIES.slider == false and fresh.Slider == nil
         and fresh.CAPABILITIES.sliderRow == false and fresh.SliderRow == nil
-        and fresh.CAPABILITIES.controlTooltips == false,
-        "原生 ISButton 缺席時 controls／colorPicker／slider／sliderRow／controlTooltips 維持 false、不掛元件")
+        and fresh.CAPABILITIES.controlTooltips == false and fresh.CAPABILITIES.buttonIconColor == false,
+        "原生 ISButton 缺席時 controls／colorPicker／slider／sliderRow／controlTooltips／buttonIconColor 維持 false、不掛元件")
     dofile(MOD_LUA .. "Widgets/Window.lua")
     check(fresh.CAPABILITIES.window == true and fresh.Window ~= nil, "Window 不依賴 Controls，可單獨提供")
     check(fresh.CAPABILITIES.dialog == false and fresh.Dialog == nil,
