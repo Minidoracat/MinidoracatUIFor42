@@ -15,6 +15,8 @@ Minidoracat シリーズ共用の[b]前提 UI ライブラリ[/b]です。これ
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
 [/list]
 これらを使わない場合は有効にする必要はありません。Build 42.20.1 以降、シングル・マルチ両対応です。
 
