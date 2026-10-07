@@ -692,7 +692,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 
 **通知避開區**：`CAPABILITIES.toastAvoid` 時以 owner `"MinidoracatUIDock"` 登記 `UI.Toast.setAvoid`，fn 回 Dock 的螢幕矩形、隱藏時回 nil，不配置。
 
-**consumer 規則**：登記可在檔案載入時做（Dock 在 `OnGameStart` 才建立）；回呼裡用到的模組函式在呼叫時查表。`register` 回 false 或沒有 `CAPABILITIES.dock` 就維持原本的 FloatButton 路徑，行為不變；不搬舊 FloatButton 位置記錄。原本控制浮鈕顯示與否的設定改成控制 `isAvailable`，變更時呼叫 `UI.Dock.refresh()`。`label` 只放名稱，說明、快捷鍵、狀態交給 `bind` 與 `getStatus`；外框與徽章由框架畫。
+**consumer 規則**：登記可在檔案載入時做（Dock 在 `OnGameStart` 才建立）；回呼裡用到的模組函式在呼叫時查表。`register` 回 false 或沒有 `CAPABILITIES.dock` 就維持原本的 FloatButton 路徑，行為不變；不搬舊 FloatButton 位置記錄。每個入口都要有玩家端的顯示選項（遊戲「選項 → MODS」該 MOD 頁的勾選框，預設顯示；使用者 2026-10-08 裁定）：值併進 `isAvailable`（讀快取，不配置），套用時呼叫 `UI.Dock.refresh()`；退回的 FloatButton 吃同一個選項，任何事件都不得把玩家隱藏的按鈕叫回來。可見入口全部關掉時整條 Dock 跟著隱藏，所以框架不另設總開關。`label` 只放名稱，說明、快捷鍵、狀態交給 `bind` 與 `getStatus`；外框與徽章由框架畫。
 
 ### 3.17 Dropdown 通用單選下拉（API rev 14）
 
