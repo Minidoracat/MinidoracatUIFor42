@@ -1042,7 +1042,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 16, "API_REVISION 進到 16")
+    check(UI.API_REVISION == 17, "API_REVISION 進到 17")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1053,8 +1053,10 @@ do
         and UI.CAPABILITIES.tableHeaderFocus == false and UI.CAPABILITIES.dock == false
         and UI.CAPABILITIES.dropdown == false and UI.CAPABILITIES.scrollPanel == false
         and UI.CAPABILITIES.textFieldInvalid == false and UI.CAPABILITIES.focusLabel == false
+        and UI.CAPABILITIES.navList == false and UI.CAPABILITIES.sliderRow == false
+        and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
         and UI.CAPABILITIES.textWrap == true,
-        "rev 7～16 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        "rev 7～17 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -1074,8 +1076,10 @@ do
     ISButton = keepButton
     check(fresh.CAPABILITIES.controls == false and fresh.Button == nil
         and fresh.CAPABILITIES.colorPicker == false and fresh.ColorPicker == nil
-        and fresh.CAPABILITIES.slider == false and fresh.Slider == nil,
-        "原生 ISButton 缺席時 controls／colorPicker／slider 維持 false、不掛元件")
+        and fresh.CAPABILITIES.slider == false and fresh.Slider == nil
+        and fresh.CAPABILITIES.sliderRow == false and fresh.SliderRow == nil
+        and fresh.CAPABILITIES.controlTooltips == false,
+        "原生 ISButton 缺席時 controls／colorPicker／slider／sliderRow／controlTooltips 維持 false、不掛元件")
     dofile(MOD_LUA .. "Widgets/Window.lua")
     check(fresh.CAPABILITIES.window == true and fresh.Window ~= nil, "Window 不依賴 Controls，可單獨提供")
     check(fresh.CAPABILITIES.dialog == false and fresh.Dialog == nil,
@@ -2037,7 +2041,7 @@ end
 切片測試載入器（本檔之後不必為了切片再改）：
   依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua、scripts/test_rev12.lua、
   scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua、scripts/test_rev14_dropdown.lua、
-  scripts/test_rev15.lua 與 scripts/test_rev16.lua；檔案不存在記一筆失敗（十二個切片都已落地）。
+  scripts/test_rev15.lua、scripts/test_rev16.lua 與 scripts/test_rev17.lua；檔案不存在記一筆失敗（十三個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2083,7 +2087,7 @@ local sliceCtx = {
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
-    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16" }) do
+    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

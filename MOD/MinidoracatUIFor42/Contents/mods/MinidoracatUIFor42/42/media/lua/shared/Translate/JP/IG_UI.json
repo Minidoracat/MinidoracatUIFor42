@@ -44,5 +44,6 @@
     "IGUI_MinidoracatUI_Dock_Expand": "展開（%1 件）",
     "IGUI_MinidoracatUI_Dock_Collapse": "折りたたむ（%1 件）",
     "IGUI_MinidoracatUI_Dock_StatusLine": "%1：%2",
-    "IGUI_MinidoracatUI_Dock_Open": "ファミリーツールバーを開く"
+    "IGUI_MinidoracatUI_Dock_Open": "ファミリーツールバーを開く",
+    "IGUI_MinidoracatUI_Slider_ValueOfCap": "%1／%2"
 }

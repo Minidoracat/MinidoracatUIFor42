@@ -1,7 +1,8 @@
 -- MinidoracatUI Widgets/Controls — 現代控制元件（API rev 7）：Button／TextField／Checkbox／Tabs；
 -- rev 8 加 ColorPicker（CAPABILITIES.colorPicker）；rev 9 加 Slider（CAPABILITIES.slider），
 -- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）；
--- rev 16 TextField 錯誤狀態 setInvalid／isInvalid（CAPABILITIES.textFieldInvalid）。
+-- rev 16 TextField 錯誤狀態 setInvalid／isInvalid（CAPABILITIES.textFieldInvalid）；rev 17 Checkbox／Slider 的
+-- tooltip（CAPABILITIES.controlTooltips）與 SliderRow 標籤＋滑桿＋數值列（CAPABILITIES.sliderRow）。
 --
 -- 外觀全由框架自繪（theme token＋Skin 圓角，貼圖缺失退直角），原生 class 只當輸入／事件基底：
 --   * Button 以 ISButton 為基底：保留原生 pressed／enable／onclick(target, button)／tooltip／
@@ -91,6 +92,16 @@ end
 -- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白
 local function drawTextureIcon(el, texture, x, y, size, a)
     el:drawTextureScaled(texture, x, y, size, size, a, 1, 1, 1)
+end
+
+-- rev 17 controlTooltips：ISPanel 基底的元件（Checkbox／Slider／SliderRow）借原版 ISButton:updateTooltip——
+-- 它只讀 isMouseOver／joypadFocused／tooltip／tooltipUI 與自身位置（ISButton.lua:316-346），hover 時建 ISToolTip、
+-- 離開或 tooltip 變 nil 時收掉，和 Button 同一條路徑。只在有 tooltip 或還掛著 ISToolTip 時呼叫。
+-- 鍵盤焦點的說明是 Focus 的 captionOf：沒有 title 的控制項以 tooltip 當說明（Focus.lua）。
+local function updateTooltip(el)
+    if el.tooltip or el.tooltipUI then
+        ISButton.updateTooltip(el)
+    end
 end
 
 -- ============================================================
@@ -615,6 +626,7 @@ function Checkbox:prerender()
     if self.isCollapsed then
         return
     end
+    updateTooltip(self)
     local colors = self.theme.colors
     local alpha = self._enabled and 1 or DISABLED_ALPHA
     local ca = chromeAlpha(self.theme)
@@ -681,7 +693,12 @@ function Checkbox:setLabel(label)
     self.label = label or ""
 end
 
--- opts: x, y, width, height?, label, checked?, theme?, font?, target?, onChange?
+-- rev 17：tooltip（nil＝收掉）。hover 顯示原生 ISToolTip，鍵盤焦點時當焦點說明
+function Checkbox:setTooltip(text)
+    self.tooltip = text
+end
+
+-- opts: x, y, width, height?, label, checked?, theme?, font?, target?, onChange?, tooltip?（rev 17）
 -- onChange(target, checked, box)
 function Checkbox.new(opts)
     opts = opts or {}
@@ -696,6 +713,7 @@ function Checkbox.new(opts)
     o.label = label
     o.checked = opts.checked == true
     o.target = opts.target
+    o.tooltip = opts.tooltip
     o.onChange = opts.onChange
     o._enabled = true
     o._focusKind = "button"
@@ -947,6 +965,7 @@ function Slider:prerender()
     if self.isCollapsed then
         return
     end
+    updateTooltip(self)
     local enabled = self._enabled
     local alpha = enabled and 1 or DISABLED_ALPHA
     local tc = self.theme.colors
@@ -1040,6 +1059,11 @@ function Slider:isEnabled()
     return self._enabled
 end
 
+-- rev 17：tooltip（nil＝收掉）。hover 顯示原生 ISToolTip，鍵盤焦點時當焦點說明
+function Slider:setTooltip(text)
+    self.tooltip = text
+end
+
 -- 焦點框上的左右鍵（手把方向同）±step、Home／End 到兩端；disabled 不吃，讓焦點移開
 function Slider:onFocusKey(key)
     if not self._enabled then
@@ -1059,7 +1083,7 @@ function Slider:onFocusKey(key)
     return true
 end
 
--- opts: x, y, width, height?, min, max, step?, value?, theme?, font?, target?, onChange?, format?
+-- opts: x, y, width, height?, min, max, step?, value?, theme?, font?, target?, onChange?, format?, tooltip?（rev 17）
 -- onChange(target, value, slider)：值實際改變才呼叫。format(value) → string：有給就在右側畫值，
 -- 文字寬以 format(max) 建構時量一次並從 track 扣掉。
 function Slider.new(opts)
@@ -1088,6 +1112,7 @@ function Slider.new(opts)
     o.target = opts.target
     o.onChange = opts.onChange
     o.format = opts.format
+    o.tooltip = opts.tooltip
     o._focusKind = "button"
     o._enabled = true
     local textW = 0
@@ -1101,6 +1126,209 @@ function Slider.new(opts)
     o._colors = { track = colors.well, fill = colors.accent, knob = colors.text, border = colors.border }
     o:setValue(opts.value or min, true)
     o:initialise()
+    return o
+end
+
+-- ============================================================
+-- SliderRow（rev 17）：標籤＋Slider＋數值文字一列
+-- ============================================================
+
+local SliderRow = ISPanel:derive("MinidoracatUISliderRow")
+
+local SROW_GAP = 8 -- 標籤與滑桿、滑桿與數值之間
+
+-- 沒給 format：整數步進顯示整數，其餘四捨五入到小數兩位
+local function formatRowValue(row, v)
+    if row.format then
+        return row.format(v)
+    end
+    if row._slider.step == math.floor(row._slider.step) then
+        return tostring(math.floor(v + 0.5))
+    end
+    return tostring(math.floor(v * 100 + 0.5) / 100)
+end
+
+-- 數值文字：0 且有 zeroLabel 時顯示它；伺服器上限生效時寫成「值／上限」（翻譯檔的分隔）
+local function rowText(row, v, cap)
+    local text = (v == 0 and row.zeroLabel) or formatRowValue(row, v)
+    if cap then
+        return getText("IGUI_MinidoracatUI_Slider_ValueOfCap", text, formatRowValue(row, cap))
+    end
+    return text
+end
+
+local function refreshRowText(row)
+    local text = rowText(row, row._slider:getValue(), row._capNow)
+    if text ~= row._text then
+        row._text = text
+        row._textW = measure(row.font, text)
+    end
+end
+
+-- 數值欄寬：兩端與 zeroLabel 三種文字取最寬（上限改變時重量）
+local function valueColumn(row, cap)
+    local top = cap and math.max(row.min, math.min(row.max, cap)) or row.max
+    local w = math.max(measure(row.font, rowText(row, top, cap)), measure(row.font, rowText(row, row.min, cap)))
+    if row.zeroLabel and row.min <= 0 then
+        w = math.max(w, measure(row.font, rowText(row, 0, cap)))
+    end
+    return w
+end
+
+-- 滑桿夾在標籤欄與數值欄之間；Slider 的 track 寬只在建構時算，這裡同步（滑桿沒有自己的 format 欄）
+local function layoutRow(row)
+    local slider = row._slider
+    local x = row._labelW > 0 and row._labelW + SROW_GAP or 0
+    local w = math.max(SLIDER_KNOB + 1, row.width - x - SROW_GAP - row._valueW)
+    slider:setX(x)
+    slider:setWidth(w)
+    slider._trackW = math.max(1, w - SLIDER_KNOB)
+end
+
+-- 上限：數字或回傳數字的函式；nil／0／負數／非數字＝沒有上限
+local function rowCap(row)
+    local c = row._cap
+    if type(c) == "function" then
+        local ok, v = pcall(c)
+        c = ok and v or nil
+    end
+    if type(c) ~= "number" or c ~= c or c <= 0 then
+        return nil
+    end
+    return c
+end
+
+-- 上限生效：滑桿最大值夾到上限（不低於 min），顯示值靜默夾住（不回呼）；放寬時還原到最後設定的值
+local function applyCap(row, cap)
+    row._capNow = cap
+    local slider = row._slider
+    slider.max = cap and math.max(row.min, math.min(row.max, cap)) or row.max
+    local valueW = valueColumn(row, cap)
+    if valueW ~= row._valueW then
+        row._valueW = valueW
+        layoutRow(row)
+    end
+    slider:setValue(row._want, true)
+    refreshRowText(row)
+end
+
+-- 滑桿的 onChange(target＝row, value)：玩家拖曳、點擊、滾輪、方向鍵
+local function onRowSlide(row, value)
+    row._want = value
+    refreshRowText(row)
+    if row.onChange then
+        row.onChange(row.target, value, row)
+    end
+end
+
+function SliderRow:prerender()
+    if self.isCollapsed then
+        return
+    end
+    if type(self._cap) == "function" then
+        local cap = rowCap(self) -- 每幀問一次 consumer 的上限函式；變了才重排
+        if cap ~= self._capNow then
+            applyCap(self, cap)
+        end
+    end
+    updateTooltip(self)
+    local colors = self.theme.colors
+    local color = self._enabled and colors.text or disabledColor(colors)
+    if self._labelW > 0 then
+        drawColorText(self, self._labelFit, 0, self._textY, color, 1, self.font)
+    end
+    drawColorText(self, self._text, self.width - self._textW, self._textY, color, 1, self.font)
+end
+
+function SliderRow:getValue()
+    return self._slider:getValue()
+end
+
+-- 夾在 min..max（上限生效時再夾到上限）並量化；顯示值沒變 no-op；silent 不回呼
+function SliderRow:setValue(value, silent)
+    value = tonumber(value)
+    if not value or value ~= value then
+        return
+    end
+    local slider = self._slider
+    local before = slider:getValue()
+    self._want = math.max(self.min, math.min(self.max, value))
+    slider:setValue(value, true)
+    local now = slider:getValue()
+    if now ~= before then
+        refreshRowText(self)
+        if not silent and self.onChange then
+            self.onChange(self.target, now, self)
+        end
+    end
+end
+
+-- 上限：數字或函式（函式每幀問一次）；nil／0＝取消上限
+function SliderRow:setCap(cap)
+    self._cap = cap
+    applyCap(self, rowCap(self))
+end
+
+function SliderRow:setEnabled(enabled)
+    enabled = enabled ~= false
+    if enabled == self._enabled then
+        return
+    end
+    self._enabled = enabled
+    self._slider:setEnabled(enabled)
+end
+
+function SliderRow:isEnabled()
+    return self._enabled
+end
+
+function SliderRow:setTooltip(text)
+    self.tooltip = text
+end
+
+-- 整列是一個焦點目標（框框住標籤到數值）；左右／Home／End 交給滑桿，停用時不吃
+function SliderRow:onFocusKey(key)
+    return self._slider:onFocusKey(key)
+end
+
+-- opts: x, y, width?=240, height?, label, labelWidth?, min, max, step?, value?, format?, zeroLabel?, cap?, tooltip?,
+-- theme?, font?, target?, onChange?
+-- onChange(target, value, row)：值實際改變才呼叫（同 Slider）；上限夾住顯示值不回呼。
+-- labelWidth 省略＝標籤寬（最多一半寬）；放不下截字。數值欄寬依兩端／zeroLabel／上限的文字建構時量。
+function SliderRow.new(opts)
+    opts = opts or {}
+    local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
+    local fontH = fontHeight(font)
+    local width = opts.width or 240
+    local height = opts.height or math.max(20, fontH + 4)
+    local theme = themeOf(opts)
+    local label = opts.label or ""
+    local o = ISPanel.new(SliderRow, opts.x or 0, opts.y or 0, width, height)
+    o.background = false
+    o.theme = theme
+    o.font = font
+    o.label = label
+    o.target = opts.target
+    o.onChange = opts.onChange
+    o.format = opts.format
+    o.zeroLabel = opts.zeroLabel
+    o.tooltip = opts.tooltip
+    o._enabled = true
+    o._focusKind = "button"
+    o._textY = math.floor((height - fontH) / 2)
+    local labelW = tonumber(opts.labelWidth) or math.min(measure(font, label), math.floor(width / 2))
+    o._labelW = math.max(0, labelW)
+    o._labelFit = UI.Text.fit(label, o._labelW, font)
+    o:initialise()
+    local slider = Slider.new{ x = 0, y = 0, width = width, height = height, min = opts.min, max = opts.max,
+        step = opts.step, value = opts.value, theme = theme, font = font, target = o, onChange = onRowSlide }
+    o._slider = slider
+    o.min, o.max = slider.min, slider.max
+    o._want = slider:getValue()
+    o._cap = opts.cap
+    o._valueW = -1 -- 讓首次 applyCap 必定排版
+    o:addChild(slider)
+    applyCap(o, rowCap(o))
     return o
 end
 
@@ -1399,11 +1627,14 @@ UI.TextField = TextField
 UI.Checkbox = Checkbox
 UI.Tabs = Tabs
 UI.Slider = Slider
+UI.SliderRow = SliderRow
 UI.ColorPicker = ColorPicker
 UI.CAPABILITIES.controls = true
 UI.CAPABILITIES.colorPicker = true
 UI.CAPABILITIES.slider = true
 UI.CAPABILITIES.tabsEnabled = true
 UI.CAPABILITIES.textFieldInvalid = true
+UI.CAPABILITIES.sliderRow = true
+UI.CAPABILITIES.controlTooltips = true
 
 return Button

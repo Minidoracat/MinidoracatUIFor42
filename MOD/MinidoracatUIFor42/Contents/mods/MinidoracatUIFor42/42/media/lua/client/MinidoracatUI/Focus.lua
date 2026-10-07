@@ -1345,10 +1345,6 @@ function Focus.render(el, theme)
         end
     end
     stick(el, st.kind == "scroll" and c or panel)
-    if panel ~= nil then
-        local py, fy = panel:getAbsoluteY(), f:getAbsoluteY()
-        if fy + (f.height or 0) <= py or fy >= py + panel.height then return end -- 整個捲出可視區：框與說明都不畫
-    end
     local x = f:getAbsoluteX() - el:getAbsoluteX()
     local y = f:getAbsoluteY() - el:getAbsoluteY()
     local w = f.width or 0
@@ -1357,6 +1353,11 @@ function Focus.render(el, theme)
         -- rev 12：控制項只標一部分（表頭的目前欄）：矩形是控制項的元素座標
         local rx, ry, rw, rh = c:focusRect()
         if rx ~= nil then x, y, w, h = x + rx, y + ry, rw, rh end
+    end
+    if panel ~= nil then
+        -- 整個捲出可視區：框與說明都不畫（rev 17：有 focusRect 時看那一塊，例如 NavList 的游標列）
+        local top = panel:getAbsoluteY() - el:getAbsoluteY()
+        if y + h <= top or y >= top + panel.height then return end
     end
     Focus.drawRing(el, x, y, w, h, theme)
     Focus.drawCaption(el, x, y, w, h, liveLabel(c, f) or captionOf(c, st.label), theme, st.captionSide)

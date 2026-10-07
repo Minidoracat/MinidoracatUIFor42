@@ -472,6 +472,9 @@ local ICON_FILES = {
     pause        = "mui_icon_pause.png",
     warning      = "mui_icon_warning.png",
     infinity     = "mui_icon_infinity.png",
+    -- rev 17：設定視窗的分類圖示（同一套程序化描邊）
+    watch        = "mui_icon_watch.png",
+    zone         = "mui_icon_zone.png",
     -- rev 4：art 圖示（AI 生成剪影、scripts/import_icon_sheet.py 轉 32×32 白 glyph；
     -- 非幾何確定性生成，verify 只驗尺寸／純白／透明邊／著墨比例）。地圖符號類
     -- 供 consumer 畫在地圖上與設定視窗同用，同一 key 同一張
@@ -804,7 +807,11 @@ MinidoracatUI.v1 = {
     -- rev 16：UI.ScrollPanel 捲動容器（Widgets/ScrollPanel.lua，scrollPanel；Focus 自動捲到焦點、PgUp／PgDn／
     --         右搖桿捲動）、UI.Text.wrap 公開斷行（TextWrap.lua，textWrap）、TextField:setInvalid／isInvalid
     --         （textFieldInvalid）、控制項 focusLabel() 每幀焦點說明（Focus.lua，focusLabel）
-    API_REVISION = 16,
+    -- rev 17：UI.NavList 分組側欄導覽（Widgets/NavList.lua，navList）、UI.SliderRow 標籤＋滑桿＋數值列
+    --         （Widgets/Controls.lua，sliderRow）、UI.Preview 效果預覽框（Widgets/Preview.lua，preview）、
+    --         Checkbox／Slider 的 tooltip 與 setTooltip（controlTooltips）、Text.wrap 行首禁則補全形 ％、～、
+    --         日文小寫假名與長音；Icons 新增 watch／zone；ScrollPanel:scrollTo 與焦點框可見判定改看 focusRect
+    API_REVISION = 17,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -837,6 +844,10 @@ MinidoracatUI.v1 = {
         textWrap = false,         -- rev 16：UI.Text.wrap 斷行（TextWrap.lua 載入成功後掛上）
         textFieldInvalid = false, -- rev 16：TextField:setInvalid／isInvalid（Widgets/Controls.lua）
         focusLabel = false,       -- rev 16：控制項 focusLabel() 每幀焦點說明＋捲動容器接線（Focus.lua）
+        navList = false,          -- rev 17：UI.NavList 分組側欄導覽（Widgets/NavList.lua）
+        sliderRow = false,        -- rev 17：UI.SliderRow 標籤＋滑桿＋數值列（Widgets/Controls.lua）
+        preview = false,          -- rev 17：UI.Preview 效果預覽框（Widgets/Preview.lua）
+        controlTooltips = false,  -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua）
     },
     Theme = Theme,
     Skin = Skin,

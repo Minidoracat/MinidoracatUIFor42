@@ -44,5 +44,6 @@
     "IGUI_MinidoracatUI_Dock_Expand": "展开（%1 个入口）",
     "IGUI_MinidoracatUI_Dock_Collapse": "收起（%1 个入口）",
     "IGUI_MinidoracatUI_Dock_StatusLine": "%1：%2",
-    "IGUI_MinidoracatUI_Dock_Open": "打开家族工具栏"
+    "IGUI_MinidoracatUI_Dock_Open": "打开家族工具栏",
+    "IGUI_MinidoracatUI_Slider_ValueOfCap": "%1／%2"
 }

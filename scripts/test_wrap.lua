@@ -85,8 +85,29 @@ local kichi = "\240\160\174\183" -- 𠮷
 check(same(toastLines("Owner " .. string.rep(kichi, 25)), { "Owner " .. string.rep(kichi, 17), string.rep(kichi, 8) }),
     "補充平面字：字與字之間可斷、不切開同一個字，也不退回前面的空白")
 
+-- rev 17：小地圖設定視窗私有斷行的禁則併進框架（全形 ％、～、日文小寫假名與長音不放行首；波浪號也不放行尾）
+local wrap = UI.Text.wrap
+local NEW_NO_START = { 0xFF05, 0xFF5E, 0x3041, 0x3043, 0x3045, 0x3047, 0x3049, 0x3063, 0x3083, 0x3085, 0x3087, 0x308E,
+    0x3095, 0x3096, 0x30A1, 0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30C3, 0x30E3, 0x30E5, 0x30E7, 0x30EE, 0x30F5, 0x30F6, 0x30FC }
+local bad = {}
+for _, cp in ipairs(NEW_NO_START) do
+    local c = utf8.char(cp)
+    local got = wrap("一二三" .. c, 42) -- 三個字寬：截點正好落在 c 前面
+    if not same(got, { "一二", "三" .. c }) then bad[#bad + 1] = string.format("U+%04X", cp) end
+end
+check(#bad == 0, "全形 ％ ～、小寫假名ぁぃぅぇぉっゃゅょゎゕゖ／ァィゥェォッャュョヮヵヶ、長音ー不放行首，連同前一字換行"
+    .. (#bad > 0 and ("（失敗：" .. table.concat(bad, " ") .. "）") or ""))
+local tildeOK = true
+for _, cp in ipairs({ 0x301C, 0xFF5E }) do
+    local c = utf8.char(cp)
+    if not same(wrap("一二" .. c .. "三四", 42), { "一", "二" .. c .. "三", "四" }) then tildeOK = false end
+end
+check(tildeOK, "波浪號〜～也不放行尾：「10～20」這種範圍兩側都不斷開")
+check(same(wrap("コンピューター", 56), { "コン", "ピュー", "ター" }),
+    "片假名：ュ、ー都不放行首，往回找到能斷的位置（不是「コンピュ／ーター」）")
+
 UI.Dialog.close(last)
 UI.Toast._resetForTests()
 getTextManager = keepTextManager
 
-return 9
+return 12

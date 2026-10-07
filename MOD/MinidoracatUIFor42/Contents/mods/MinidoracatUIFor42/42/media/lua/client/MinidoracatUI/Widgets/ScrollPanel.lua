@@ -75,7 +75,8 @@ function ScrollPanel:contentWidth()
     return math.max(0, self.width - GUTTER)
 end
 
--- 把子孫 el 捲進可視區（已完整可見不動；比可視區高或在上方就對齊頂端，在下方就對齊底端）
+-- 把子孫 el 捲進可視區（已完整可見不動；比可視區高或在上方就對齊頂端，在下方就對齊底端）。
+-- rev 17：el 有 focusRect()（一個元件內多個停點，例如 NavList 的游標列）時只捲到那一塊
 function ScrollPanel:scrollTo(el)
     if type(el) ~= "table" or el.getAbsoluteY == nil then
         return
@@ -84,6 +85,10 @@ function ScrollPanel:scrollTo(el)
     local view = -scroll
     local top = el:getAbsoluteY() - self:getAbsoluteY() - scroll -- el 在內容座標的上緣
     local h = el.height or 0
+    if el.focusRect then
+        local _, ry, _, rh = el:focusRect()
+        if ry ~= nil then top, h = top + ry, rh end
+    end
     local y = view
     if top - REVEAL_MARGIN < view or h + REVEAL_MARGIN * 2 > self.height then
         y = top - REVEAL_MARGIN

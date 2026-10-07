@@ -44,5 +44,6 @@
     "IGUI_MinidoracatUI_Dock_Expand": "Expand (%1 entries)",
     "IGUI_MinidoracatUI_Dock_Collapse": "Collapse (%1 entries)",
     "IGUI_MinidoracatUI_Dock_StatusLine": "%1: %2",
-    "IGUI_MinidoracatUI_Dock_Open": "Open family toolbar"
+    "IGUI_MinidoracatUI_Dock_Open": "Open family toolbar",
+    "IGUI_MinidoracatUI_Slider_ValueOfCap": "%1 / %2"
 }
