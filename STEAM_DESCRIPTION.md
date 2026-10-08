@@ -21,7 +21,7 @@ Minidoracat 系列 MOD 共用的[b]前置介面函式庫[/b]。本身[b]不新�
 沒有用到這些 MOD 時不需要啟用。支援 Build 42.20.1 以上，單機與多人皆可。
 [list]
 [*] [b]中途加入／移除：[/b]都可以；移除時，需要本 MOD 的其他 MOD 也要一起移除
-[*] [b]介面語言：[/b]繁體中文、简体中文、English、日本語、한국어、Русский、Español、Português、Türkçe、Français、Polski、Deutsch（中英日以外為 AI 翻譯，歡迎回報）
+[*] [b]介面語言：[/b]繁體中文、简体中文、English、日本語、한국어、Русский、Español、Português、Türkçe、Français、Polski、Deutsch（翻譯有問題請回報）
 [/list]
 
 [h2]🖥️ 載入順序與多人設定[/h2]
