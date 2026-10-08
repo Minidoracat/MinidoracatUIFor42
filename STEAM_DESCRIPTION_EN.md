@@ -21,7 +21,7 @@ These mods list it under Required Items — subscribe if you use any of them:
 If you use none of them, you don't need to enable it. Supports Build 42.20.1 or later, singleplayer and multiplayer.
 [list]
 [*] [b]Add/remove mid-save:[/b] safe either way; when removing it, also remove every mod that requires it
-[*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語
+[*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語, 한국어, Русский, Español, Português, Türkçe, Français, Polski, Deutsch (languages other than Chinese, English and Japanese are AI-translated; corrections welcome)
 [/list]
 
 [h2]🖥️ Load order & multiplayer[/h2]
