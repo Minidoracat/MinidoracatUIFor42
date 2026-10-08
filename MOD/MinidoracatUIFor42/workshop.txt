@@ -22,6 +22,10 @@ description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812
 description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
 description=[/list]
 description=If you use none of them, you don't need to enable it. Supports Build 42.20.1 or later, singleplayer and multiplayer.
+description=[list]
+description=[*] [b]Add/remove mid-save:[/b] safe either way; when removing it, also remove every mod that requires it
+description=[*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語
+description=[/list]
 description=
 description=[h2]🖥️ Load order & multiplayer[/h2]
 description=Place it [b]above every mod that depends on it[/b] in your mod list. On multiplayer, both server and clients need it: add [b]Mods=[/b]MinidoracatUIFor42 and [b]WorkshopItems=[/b]3789836701 to the server ini.

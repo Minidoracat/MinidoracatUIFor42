@@ -19,6 +19,10 @@ Minidoracat シリーズ共用の[b]前提 UI ライブラリ[/b]です。これ
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
 [/list]
 これらを使わない場合は有効にする必要はありません。Build 42.20.1 以降、シングル・マルチ両対応です。
+[list]
+[*] [b]途中追加・削除：[/b]どちらも可能。削除するときは、本 MOD を必要とする MOD も一緒に外してください
+[*] [b]対応言語：[/b]繁體中文、简体中文、English、日本語
+[/list]
 
 [h2]🖥️ ロード順とマルチプレイ設定[/h2]
 MOD リストでは[b]依存するすべての MOD より前[/b]に配置してください。マルチではサーバーとクライアント両方に導入し、サーバー ini に [b]Mods=[/b]MinidoracatUIFor42 と [b]WorkshopItems=[/b]3789836701 を追加します。

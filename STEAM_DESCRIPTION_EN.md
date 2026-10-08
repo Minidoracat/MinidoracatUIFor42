@@ -19,6 +19,10 @@ These mods list it under Required Items — subscribe if you use any of them:
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
 [/list]
 If you use none of them, you don't need to enable it. Supports Build 42.20.1 or later, singleplayer and multiplayer.
+[list]
+[*] [b]Add/remove mid-save:[/b] safe either way; when removing it, also remove every mod that requires it
+[*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語
+[/list]
 
 [h2]🖥️ Load order & multiplayer[/h2]
 Place it [b]above every mod that depends on it[/b] in your mod list. On multiplayer, both server and clients need it: add [b]Mods=[/b]MinidoracatUIFor42 and [b]WorkshopItems=[/b]3789836701 to the server ini.

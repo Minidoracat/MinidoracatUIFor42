@@ -19,6 +19,10 @@ Minidoracat 系列 MOD 共用的[b]前置介面函式庫[/b]。本身[b]不新�
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
 [/list]
 沒有用到這些 MOD 時不需要啟用。支援 Build 42.20.1 以上，單機與多人皆可。
+[list]
+[*] [b]中途加入／移除：[/b]都可以；移除時，需要本 MOD 的其他 MOD 也要一起移除
+[*] [b]介面語言：[/b]繁體中文、简体中文、English、日本語
+[/list]
 
 [h2]🖥️ 載入順序與多人設定[/h2]
 MOD 清單中排在[b]所有依賴它的 MOD 之前[/b]。多人伺服器與客戶端都要安裝，伺服器 ini 加上 [b]Mods=[/b]MinidoracatUIFor42 與 [b]WorkshopItems=[/b]3789836701。
