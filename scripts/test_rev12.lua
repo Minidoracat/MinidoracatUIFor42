@@ -138,6 +138,29 @@ local above = captionBox("above")
 ok(above.y == 100 - 4 - 2 - 18, "above：框上方")
 local _, noneEl = captionBox("none")
 ok(#noneEl.rects == 0 and #noneEl.texts == 0, "none：不畫")
+-- 說明比 el 寬（長譯文）：以共用斷行換成多行，框（right 連外圈）夾在 el 內、每行往下一個字高；
+-- 放得下的照舊單行（上面的位置斷言）；斷行缺席時退回原本的單行
+local LONG = "Tip tip tip tip tip"
+local function longBox(side)
+    local el = ISPanel.new(ISPanel, 0, 0, 120, 300)
+    el.rects, el.borders, el.texts = {}, {}, {}
+    F.drawCaption(el, 50, 100, 20, 20, LONG, nil, side)
+    return el
+end
+local wb = longBox(nil)
+local wbox = wb.rects[1]
+ok(#wb.texts == 2 and wbox.x >= 0 and wbox.x + wbox.w <= 120 and wbox.h == 12 * 2 + 6
+    and wb.texts[1].text .. " " .. wb.texts[2].text == LONG and wb.texts[2].y == wb.texts[1].y + 12,
+    "below：比 el 寬就換行，框夾在 el 內、第二行往下一個字高")
+local wr = longBox("right")
+local rbox = wr.borders[1]
+ok(#wr.texts >= 2 and wr.rects[1].x >= 0 and wr.rects[1].x + wr.rects[1].w <= 120 and rbox.h == 12 * #wr.texts + 8,
+    "right：比 el 寬就換行，標籤連外圈夾在 el 內")
+local savedWrap = UI.Text.wrap
+UI.Text.wrap = nil
+local nw = longBox(nil)
+UI.Text.wrap = savedWrap
+ok(#nw.texts == 1 and nw.texts[1].text == LONG, "斷行缺席：照舊單行")
 
 -- 描述的 captionSide 經 Focus.render 生效；自動目標讀 _focusCaptionSide
 local win = UI.Window.new{ x = 0, y = 0, width = 400, height = 300, title = "T" }
@@ -473,4 +496,4 @@ do
     Toast._resetForTests()
 end
 
-return 79
+return 82

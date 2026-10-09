@@ -294,7 +294,8 @@ nav._mouseOver = false
 check(grew == 0, "NavList prerender（hover、開關、截字、缺圖）＋refresh 重讀 50 輪不配置記憶體")
 
 -- ---------- NavList 焦點 ----------
-local win = UI.Window.new{ x = 0, y = 0, width = 400, height = 400, title = "T" }
+-- 寬 600：harness 每字 10px，39 字的全名（390px）在 400 寬的視窗會被焦點說明換行（換行另見 test_rev12）
+local win = UI.Window.new{ x = 0, y = 0, width = 600, height = 400, title = "T" }
 selects = 0
 zOn = true
 local fnav = UI.NavList.new{ x = 10, y = 30, width = 160, groups = groups(), selected = "zombie", target = T, onSelect = onSelect }

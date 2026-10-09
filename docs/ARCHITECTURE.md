@@ -469,6 +469,8 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 
 **焦點說明位置（rev 12，`CAPABILITIES.focusCaption`）**：描述選用欄位 `captionSide = "below"`（預設，原行為：框下方，碰到 root 底邊翻到上方）｜`"above"`（框上方，碰到頂邊翻到下方）｜`"right"`（tooltip 式飛出標籤，見下）｜`"none"`（不畫說明，焦點框照畫）；說明永遠夾在 root 之內。框架 Window 的自動目標讀控制項的 `_focusCaptionSide`。`Focus.drawCaption(el, x, y, w, h, caption, theme, side?)` 多一個選用參數。**預設不自動避開其他控制項**（那會改變既有 consumer 的畫面）：直排導覽列（說明蓋住下一列圖示）用 `"right"`，說明行緊貼在控制項下方的版面（popover 內的滑桿步進鈕）用 `"none"` 或 `"above"`，由 owner 在描述指定。`"right"` 會蓋到旁邊的內容，所以畫成一眼看得出是浮動標籤、不會被讀成被切掉的字：底色不透明（`surface` 的 r/g/b、alpha 1，不乘 `theme.alpha` 也不吃 `surface.a`），連同標籤外 2px 的外圈一起填（內容和框線之間空出一條），標籤本身再疊 18% 的 accent 淡底、accent 1px 框、左右 8／上下 4 內距；標籤對焦點框**垂直置中**，與框外圈光暈隔 3px，中間是 6px 深的實心 accent 尖角指向控制項；右側放不下就整個翻到框左側、尖角朝右；碰到 root 邊緣時標籤連外圈夾回 root 內，尖角跟著夾在標籤高度內。
 
+**焦點說明換行**：整句比 root 寬時（長譯文），`below`／`above` 以 root 寬減 10、`right` 以 root 寬減 20（內距＋外圈）為行寬，交給共用斷行 `UI.Text.wrap`（§3.4，快取、每幀不配置）換成多行，每行往下一個字高、框高跟著加，之後照上面的規則翻邊與夾邊；放得下的照舊單行、畫面不變。`UI.Text.wrap` 缺席時照舊單行。原本單行時整句比 root 寬會畫出 root，面板靠螢幕邊時連螢幕都超出（2026-10-09 地圖手錶德文音量列）。
+
 **輸入框交接的漏鍵**：輸入框的 Tab／Enter 由引擎在幀尾交給 `onOtherKey`／`onCommandEntered`（`GameWindow.java:702-709`、`Core.java:2044-2053`），`GameKeyboard` 下一幀才以取樣狀態派同一次按住（`GameWindow.java:310`）。輸入框在回呼裡放開鍵盤後，那次按住就變成新的 press 到 root：Tab 多走一格、Enter 把剛放手的輸入框又聚焦回去，視窗已關時（Dialog 輸入框按 Enter 確認）漏給後面的視窗與遊戲。勾子在放手後對仍按著的鍵呼叫 `GameKeyboard.eatKeyPress`（同引擎對 Escape 的 `Core.java:2049-2050` 與原版 `MapSpawnSelect.lua:950`），press 與 release 一起吞；引擎沒取樣到的極短點按不吞，否則記號沒有 release 可清，會改吞玩家的下一次按鍵。
 
 **目標驗證**：每次按鍵與每幀 render 都核對焦點下的控制項仍在 `keyboardTargets()` 裡而且可用；不在（疊層、權限、頁面切換把它排除，即使它還看得見）就用 `invalidate` 搬到同位置的替補，那一次的 Enter／Space／手把 A 只讓玩家看到新位置，不按替補的控制項。

@@ -1198,8 +1198,9 @@ end
 -- 框旁的說明：自己畫不出完整標籤的控制項（純圖示、被截短的標題）在這裡給鍵盤玩家讀全文。
 -- side（rev 12）："below"（預設：框下方，碰到 el 底邊翻到上方）｜"above"（框上方，碰到頂邊翻到下方）｜
 -- "right"（tooltip 式飛出標籤：框右側 FLY_GAP 外、對框垂直置中，尖角指向控制項，碰到右緣翻到左側）｜
--- "none"（不畫）。永遠夾在 el 之內。預設不自動避開別的控制項（會改變既有 consumer 的畫面）：
--- 直排導覽列、說明行緊貼控制項的版面由 owner 在描述指定 side。
+-- "none"（不畫）。永遠夾在 el 之內：整句比 el 寬時以共用斷行 UI.Text.wrap 換成多行（長譯文的說明原本
+-- 單行畫出 el、面板靠螢幕邊時連螢幕都超出）；斷行缺席時照舊單行。預設不自動避開別的控制項（會改變既有
+-- consumer 的畫面）：直排導覽列、說明行緊貼控制項的版面由 owner 在描述指定 side。
 -- 底色一律不透明（不乘 theme alpha、不吃 surface 自己的 a）。right 會蓋到旁邊的內容，所以要讀得出是
 -- 浮動標籤、不是被切掉的字：外圈 FLY_HALO 的不透明 surface 讓內容和框線之間空出一條，底色再疊一層
 -- accent（FLY_TINT），和頁面的黑底分得開。
@@ -1207,15 +1208,34 @@ local FLY_GAP = 3    -- right：焦點框外緣（含 surface 光暈）到尖角
 local NOTCH = 6      -- right：尖角深度（半高同值）
 local FLY_HALO = 2   -- right：標籤外圈的不透明 surface
 local FLY_TINT = 0.18 -- right：疊在底色上的 accent
+-- 回 lines, 最寬一行的寬度。放得下 maxW（或斷行缺席）就是原本的單行；UI.Text.wrap 依 (字型, 寬, 文字)
+-- 快取、回同一張表，每幀呼叫不配置
+local ONE_LINE = {}
+local function captionLines(tm, caption, maxW)
+    local tw = tm:MeasureStringX(UIFont.Small, caption)
+    local wrap = UI.Text and UI.Text.wrap
+    if tw <= maxW or not wrap then
+        ONE_LINE[1] = caption
+        return ONE_LINE, tw
+    end
+    local lines = wrap(caption, math.max(1, maxW), UIFont.Small)
+    tw = 0
+    for i = 1, #lines do
+        tw = math.max(tw, tm:MeasureStringX(UIFont.Small, lines[i]))
+    end
+    return lines, tw
+end
 function Focus.drawCaption(el, x, y, w, h, caption, theme, side)
     if type(caption) ~= "string" or caption == "" or side == "none" then return end
     local colors = themeOf(el, theme).colors
     local tm = getTextManager()
     local o = RING_GAP + RING_W
     local bg, bd, tc = colors.surface, colors.accent, colors.text
+    local fh = tm:getFontHeight(UIFont.Small)
     if side == "right" then
-        local bw = tm:MeasureStringX(UIFont.Small, caption) + 16
-        local bh = tm:getFontHeight(UIFont.Small) + 8
+        local lines, tw = captionLines(tm, caption, el.width - 16 - FLY_HALO * 2)
+        local bw = tw + 16
+        local bh = fh * #lines + 8
         -- 光暈外緣最後一個像素在 x+w+o+RING_W-1（左側 x-o-RING_W）：兩側都留 FLY_GAP 像素再接尖端
         local edge = o + RING_W + FLY_GAP
         local tip = x + w + edge
@@ -1239,11 +1259,14 @@ function Focus.drawCaption(el, x, y, w, h, caption, theme, side)
         for i = 0, NOTCH - 1 do
             el:drawRect(tip + dir * i, ny - i, 1, i * 2 + 1, 1, bd.r, bd.g, bd.b)
         end
-        el:drawText(caption, bx + 8, by + 4, tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
+        for i = 1, #lines do
+            el:drawText(lines[i], bx + 8, by + 4 + fh * (i - 1), tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
+        end
         return
     end
-    local bw = tm:MeasureStringX(UIFont.Small, caption) + 10
-    local bh = tm:getFontHeight(UIFont.Small) + 6
+    local lines, tw = captionLines(tm, caption, el.width - 10)
+    local bw = tw + 10
+    local bh = fh * #lines + 6
     local bx = x + math.floor((w - bw) / 2)
     local by
     if side == "above" then
@@ -1259,7 +1282,9 @@ function Focus.drawCaption(el, x, y, w, h, caption, theme, side)
     if bx < 0 then bx = 0 end
     el:drawRect(bx, by, bw, bh, 1, bg.r, bg.g, bg.b)
     el:drawRectBorder(bx, by, bw, bh, bd.a or 1, bd.r, bd.g, bd.b)
-    el:drawText(caption, bx + 5, by + 3, tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
+    for i = 1, #lines do
+        el:drawText(lines[i], bx + 5, by + 3 + fh * (i - 1), tc.r, tc.g, tc.b, tc.a or 1, UIFont.Small)
+    end
 end
 
 -- 自己把完整標籤畫出來的控制項不需要說明；什麼都不畫（圖示 chip）或標題被 owner 截短的，全文只能在這裡讀
