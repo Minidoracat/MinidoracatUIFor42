@@ -329,7 +329,8 @@ local function onButtonClick(field)
     end
 end
 
--- opts: x?, y?, width?, height?, text?, placeholder?, theme?, font?, target?, onChange?
+-- opts: x?, y?, width?, height?, text?, placeholder?, theme?, font?, target?, onChange?, opaque?
+-- （rev 18：月曆不透明；省略＝看欄位所在頂層視窗的 opaque）
 -- onChange(target, text, field)。height 預設字高＋10；width 預設容得下 "0000-00-00" 與 placeholder
 -- 的輸入框＋4px 間距＋正方形日曆按鈕。
 function DateField.new(opts)
@@ -346,6 +347,7 @@ function DateField.new(opts)
     o.background = false
     o.theme, o.font = theme, font
     o.target, o.onChange = opts.target, opts.onChange
+    o._popupOpaque = opts.opaque == true
     o._enabled = true
     o:initialise()
 
@@ -571,7 +573,11 @@ function Popup:prerender()
     local colors = self.theme.colors
     local ca = chromeAlpha(self.theme)
     local w, h = self.width, self.height
-    Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(self.theme, "control"), ca)
+    if self.opaque then -- rev 18：開啟時決定（欄位所在視窗不透明或 opts.opaque）
+        Skin.solidFill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(self.theme, "control"))
+    else
+        Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(self.theme, "control"), ca)
+    end
     Skin.border(self, 0, 0, w, h, colors.border, Skin.shapeOf(self.theme, "control"), ca)
     drawTextCentre(self, self.title, w / 2, self.titleY, colors.text, UIFont.Medium)
 
@@ -775,6 +781,8 @@ openPicker = function(field)
     local p = ensurePopup()
     p.field = field
     p.theme = field.theme
+    -- rev 18：欄位所在頂層視窗不透明或 opts.opaque＝月曆也不透明（只在開啟時沿 parent 找一次）
+    p.opaque = field._popupOpaque or rootOf(field).opaque == true
     for _, b in ipairs(p.navButtons) do b.theme = field.theme end
     for _, b in ipairs(p.footButtons) do b.theme = field.theme end
     field._button:setActive(true)
@@ -825,5 +833,6 @@ UI.Date = Date
 UI.DateField = DateField
 UI.DatePicker = DatePicker
 UI.CAPABILITIES.datePicker = true
+UI.CAPABILITIES.opaquePopup = true -- rev 18：月曆跟著不透明視窗或 opts.opaque
 
 return DatePicker

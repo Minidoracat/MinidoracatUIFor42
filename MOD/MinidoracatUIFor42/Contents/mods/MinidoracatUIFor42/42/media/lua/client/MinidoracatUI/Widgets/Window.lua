@@ -22,6 +22,7 @@
 -- rev 18：opts.opaque＝true 時本體（含內容區與標題列底）用 theme 的 surface 色、alpha 改成 1，不乘
 -- theme.alpha——視窗疊在別的視窗上時底下的字完全看不到（CAPABILITIES.opaqueWindow）。標題列的
 -- surfaceTitle 疊層、邊框照舊。子元件畫在不透明本體上，不必各自改；Dialog.show 同樣收 opaque。
+-- 視窗裡控制項開出的彈出清單（Dropdown 等）開啟時看所在頂層視窗的 opaque，跟著不透明（opaquePopup）。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
     pcall(require, "MinidoracatUI/V1")
@@ -138,19 +139,12 @@ function Window:prerender()
     local colors = self.theme.colors
     local w, titleH = self.width, self._titleH
     local ca = chromeAlpha(self.theme)
-    local surface, bodyAlpha = colors.surface, ca
-    if self.opaque == true and surface then
-        -- rev 18：每幀從 theme 抄 rgb（consumer 事後換色也跟上），表只在第一次配置
-        local solid = self._opaqueSurface
-        if not solid then
-            solid = { r = 0, g = 0, b = 0, a = 1 }
-            self._opaqueSurface = solid
-        end
-        solid.r, solid.g, solid.b = surface.r, surface.g, surface.b
-        surface, bodyAlpha = solid, 1
+    local shape = Skin.shapeOf(self.theme, "panel") -- rev 15：本體與標題列跟著 theme.radius（沒設＝rev 14 外觀）
+    if self.opaque == true and colors.surface then
+        Skin.solidFill(self, 0, 0, w, self.height, colors.surface, shape) -- rev 18：alpha 1，每幀讀 theme 色
+    else
+        Skin.fill(self, 0, 0, w, self.height, colors.surface, shape, ca)
     end
-    -- rev 15：本體與標題列跟著 theme.radius（沒設＝nil／"roundTop"，rev 14 外觀）
-    Skin.fill(self, 0, 0, w, self.height, surface, Skin.shapeOf(self.theme, "panel"), bodyAlpha)
     Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, Skin.shapeOf(self.theme, "title"), ca)
 
     local x = TITLE_PAD

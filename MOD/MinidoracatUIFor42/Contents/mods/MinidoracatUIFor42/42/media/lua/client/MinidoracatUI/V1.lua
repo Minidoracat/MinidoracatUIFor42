@@ -286,6 +286,16 @@ function Skin.fill(element, x, y, width, height, color, shape, alphaScale)
     element:drawRect(x, y, width, height, alpha, color.r, color.g, color.b)
 end
 
+-- rev 18：不透明填色——color 的 rgb、alpha 固定 1（不看 color.a、不乘任何淡化）。不透明視窗本體與
+-- 彈出清單用：每幀直接讀 theme 的色（consumer 換色下一幀跟上），不配置。
+function Skin.solidFill(element, x, y, width, height, color, shape)
+    local file = textureFor(width, height, shape, false)
+    if file and drawNinePatch(element, file, x, y, width, height, color, 1) then
+        return
+    end
+    element:drawRect(x, y, width, height, 1, color.r, color.g, color.b)
+end
+
 -- 1px 圓角邊框。roundTop＝上圓、底邊開放的 3 邊框（頁籤形）。
 function Skin.border(element, x, y, width, height, color, shape, alphaScale)
     local alpha = (color.a or 1) * (alphaScale or 1)
@@ -819,7 +829,9 @@ MinidoracatUI.v1 = {
     -- rev 18：theme token warning（警示字與圖示；框架元件不讀，外觀不變）；Text.wrap 不在法文標點
     --         （: ; ! ? 右書名號）前、左書名號後的空白斷行；Window.new／Dialog.show 的 opts.opaque
     --         本體不透明（opaqueWindow，2026-10-11 併入未發版的 rev 18）；Text.wrap 不在數字與後面的中日韓單位
-    --         之間的空白斷行（「1 件」「1,000 倖存幣」，2026-10-11 併入）
+    --         之間的空白斷行（「1 件」「1,000 倖存幣」，2026-10-11 併入）；Skin.solidFill 不透明填色；
+    --         Dropdown／DateField／FilterBar／Autocomplete 的彈出清單在不透明視窗裡（或帶 opts.opaque）
+    --         也不透明（opaquePopup，2026-10-11 併入）
     API_REVISION = 18,
     CAPABILITIES = {
         theme = true,
@@ -859,6 +871,7 @@ MinidoracatUI.v1 = {
         controlTooltips = false,  -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua）
         buttonIconColor = false,  -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua）
         opaqueWindow = false,     -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua）
+        opaquePopup = false,      -- rev 18：彈出清單跟著不透明視窗或 opts.opaque（Dropdown／DatePicker／FilterBar／Autocomplete）
     },
     Theme = Theme,
     Skin = Skin,

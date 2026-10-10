@@ -448,7 +448,11 @@ function Menu:prerender()
     local colors = bar.theme.colors
     local ca = chromeAlpha(bar.theme)
     local w, rh = self.width, self.rowH
-    Skin.fill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(bar.theme, "control"), ca)
+    if self.opaque then -- rev 18：開啟時決定（下拉鈕所在視窗不透明或 opts.opaque）
+        Skin.solidFill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(bar.theme, "control"))
+    else
+        Skin.fill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(bar.theme, "control"), ca)
+    end
     Skin.border(self, 0, 0, w, self.height, colors.border, Skin.shapeOf(bar.theme, "control"), ca)
     local hover = self:isMouseOver() and rowAt(self, self:getMouseY()) or nil
     local chips = bar._kindChips
@@ -569,6 +573,8 @@ local function openMenu(bar)
     end
     local fit = math.floor((getCore():getScreenHeight() - MENU_PAD * 2) / rh)
     m.bar, m.rowH, m.first = bar, rh, 1
+    -- rev 18：下拉鈕所在頂層視窗不透明或 opts.opaque＝選單也不透明（只在開啟時沿 parent 找一次）
+    m.opaque = bar._popupOpaque or rootOf(b).opaque == true
     m.rows = math.max(1, math.min(#chips, MENU_ROWS, fit))
     moveCursor(m, cursor)
     -- 記住是不是鍵盤開的：只有那樣關閉時才把焦點框還給下拉鈕
@@ -613,7 +619,8 @@ end
 
 -- opts 見 docs/ARCHITECTURE.md §3.13：parent（必填）、theme?、font?、height?、target?、onChange、
 -- onLayout?、kinds?、search?、dates?、sorts?、perPage?=25、pager?="strip"|"inline"；
--- rev 12：dateToggle?、kindsDropdown?、sortInHeader?
+-- rev 12：dateToggle?、kindsDropdown?、sortInHeader?；rev 18：opaque?（類型選單與兩個月曆不透明，
+-- 省略＝看 parent 所在頂層視窗的 opaque）
 function FilterBar.new(opts)
     local parent = opts.parent
     local font = opts.font or UIFont.Small
@@ -624,6 +631,7 @@ function FilterBar.new(opts)
         height = opts.height or (fontH + 10),
         target = opts.target or parent,
         onChange = opts.onChange, onLayout = opts.onLayout,
+        _popupOpaque = opts.opaque == true,
         perPage = math.max(1, math.floor(tonumber(opts.perPage) or 25)),
         inline = opts.pager == "inline",
         page = 1, pages = 1, total = 0, pagerY = 0,
@@ -702,8 +710,10 @@ function FilterBar.new(opts)
         bar.dateField = dates.field
         bar._fromLabel = dates.fromLabel or tr("Filter_From")
         bar._toLabel = dates.toLabel or tr("Filter_To")
-        bar._from = DateField.new{ height = bar.height, theme = theme, font = font, target = bar, onChange = onDateText }
-        bar._to = DateField.new{ height = bar.height, theme = theme, font = font, target = bar, onChange = onDateText }
+        bar._from = DateField.new{ height = bar.height, theme = theme, font = font, target = bar, onChange = onDateText,
+            opaque = opts.opaque }
+        bar._to = DateField.new{ height = bar.height, theme = theme, font = font, target = bar, onChange = onDateText,
+            opaque = opts.opaque }
         parent:addChild(bar._from)
         parent:addChild(bar._to)
         -- 框架 Window 的自動目標讀 _focusLabel：日期輸入框的說明用起訖標籤
@@ -1609,5 +1619,6 @@ end
 UI.FilterBar = FilterBar
 UI.CAPABILITIES.filterBar = true
 UI.CAPABILITIES.filterBarModes = true
+UI.CAPABILITIES.opaquePopup = true -- rev 18：類型選單跟著不透明視窗或 opts.opaque
 
 return FilterBar

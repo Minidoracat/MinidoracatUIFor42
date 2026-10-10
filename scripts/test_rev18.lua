@@ -209,4 +209,141 @@ getCore = keepCore
 solid.drawRect, solid.drawRectBorder, solid.drawText = nil, nil, nil
 check(grew == 0, "opaque 視窗 prerender 50 輪不配置記憶體")
 
+-- ---------- 彈出清單跟著不透明視窗（opaquePopup） ----------
+-- 量測 stub 每次回新表：整段固定成同一張（零配置量測才準），結束還原
+local keepTM, keepCore2 = getTextManager, getCore
+local tm0, core0 = keepTM(), keepCore2()
+getTextManager = function() return tm0 end
+getCore = function() return core0 end
+dofile(ctx.MOD_LUA .. "Widgets/Dropdown.lua")
+dofile(ctx.MOD_LUA .. "Widgets/DatePicker.lua")
+dofile(ctx.MOD_LUA .. "Widgets/FilterBar.lua")
+dofile(ctx.MOD_LUA .. "Widgets/Autocomplete.lua")
+local DD, DP, FB, AC = UI.Dropdown, UI.DatePicker, UI.FilterBar, UI.Autocomplete
+
+-- 彈出面板本體＝prerender 的第一筆填色（E0 環境走 drawRect）
+local function body(panel)
+    panel.rects, panel.borders, panel.texts = {}, {}, {}
+    panel:prerender()
+    return panel.rects[1] or { a = -1 }
+end
+local function newWin(isOpaque)
+    local win = UI.Window.new{ x = 0, y = 0, width = 600, height = 400, title = "W", opaque = isOpaque }
+    win:addToUIManager()
+    return win
+end
+local opaqueWin, semiWin = newWin(true), newWin(false)
+local host = ISPanel.new(ISPanel, 0, 0, 600, 400) -- 不在視窗裡的容器
+local OPTS = { { id = 1, label = "One" }, { id = 2, label = "Two" } }
+
+-- Dropdown
+local function ddBody(parent, explicit)
+    local dd = DD.new{ x = 10, y = 40, options = OPTS, opaque = explicit }
+    if parent then parent:addChild(dd) end
+    dd:open()
+    local a = body(DD._popupForTests()).a
+    DD.close()
+    return a
+end
+local ddOpaque, ddSemi, ddExplicit, ddLoose = ddBody(opaqueWin), ddBody(semiWin), ddBody(nil, true), ddBody(host)
+check(UI.CAPABILITIES.opaquePopup == true and nearly(ddOpaque, 1) and nearly(ddSemi, 0.8) and nearly(ddExplicit, 1)
+    and nearly(ddLoose, 0.8),
+    "Dropdown 清單：不透明視窗裡 alpha 1、半透明視窗裡照舊 0.8、opts.opaque 單獨用 1、一般容器照舊")
+
+-- DateField 的月曆
+local function dateBody(parent, explicit)
+    local f = UI.DateField.new{ x = 10, y = 40, text = "2026-09-07", opaque = explicit }
+    if parent then parent:addChild(f) end
+    f._button:forceClick()
+    local a = body(DP._popupForTests()).a
+    DP.close()
+    return a
+end
+local dOpaque, dSemi, dExplicit = dateBody(opaqueWin), dateBody(semiWin), dateBody(host, true)
+check(nearly(dOpaque, 1) and nearly(dSemi, 0.8) and nearly(dExplicit, 1),
+    "月曆：不透明視窗裡 alpha 1、半透明視窗裡照舊 0.8、opts.opaque 在一般容器裡也是 1")
+
+-- FilterBar 的類型選單與日期欄的月曆（opts.opaque 連月曆一起）
+local KIND_ROWS = { { kind = "a" }, { kind = "b" } }
+local function newBar(parent, explicit)
+    local bar = FB.new{ parent = parent, onChange = function() end, kindsDropdown = true, opaque = explicit,
+        kinds = { field = "kind", label = string.upper, multi = true }, dates = { field = "ts" },
+        sorts = { { id = "time", field = "ts" } } }
+    bar:syncKinds(KIND_ROWS)
+    bar:layout(0, 30, 1000, true)
+    return bar
+end
+local function menuBody(bar)
+    bar._ddButton:forceClick()
+    local m = FB._menuForTests()
+    local a = m and m:getIsVisible() and body(m).a or -1
+    bar._ddButton:forceClick() -- 同一顆再按＝關閉
+    return a
+end
+local function barDateBody(bar)
+    bar._from._button:forceClick()
+    local a = body(DP._popupForTests()).a
+    DP.close()
+    return a
+end
+local barOpaque, barSemi, barExplicit = newBar(opaqueWin), newBar(semiWin), newBar(host, true)
+check(nearly(menuBody(barOpaque), 1) and nearly(menuBody(barSemi), 0.8) and nearly(menuBody(barExplicit), 1),
+    "FilterBar 類型選單：不透明視窗裡 alpha 1、半透明視窗裡照舊 0.8、opts.opaque 在一般容器裡也是 1")
+check(nearly(barDateBody(barOpaque), 1) and nearly(barDateBody(barSemi), 0.8) and nearly(barDateBody(barExplicit), 1),
+    "FilterBar 的日期月曆同一規則（opts.opaque 也作用在兩個日期欄）")
+
+-- Autocomplete 的下拉（掛在容器裡的子元件，顯示時判斷）
+local function newAc(parent, explicit)
+    local ac = AC.new{ width = 200, opaque = explicit, onQuery = function() return true end, onPick = function() end }
+    ac:addTo(parent)
+    ac:layout(10, 40, 200, 300)
+    ac.field._entry:focus()
+    ac.field:prerender() -- 第一次聚焦立刻查
+    ac:setResults(ac:getText(), { { name = "alice" }, { name = "bob" } })
+    ac.field:prerender()
+    return ac
+end
+local acOpaque, acSemi, acExplicit = newAc(opaqueWin), newAc(semiWin), newAc(host, true)
+check(acOpaque.list:getIsVisible() and nearly(body(acOpaque.list).a, 1) and nearly(body(acSemi.list).a, 0.8)
+    and nearly(body(acExplicit.list).a, 1),
+    "Autocomplete 下拉：不透明視窗裡 alpha 1、半透明視窗裡照舊 0.8、opts.opaque 在一般容器裡也是 1")
+
+-- 開啟時決定一次；換 theme 色下一幀跟上
+local late = DD.new{ x = 10, y = 40, options = OPTS, theme = UI.Theme.create() }
+semiWin:addChild(late)
+late:open()
+local lp = DD._popupForTests()
+semiWin.opaque = true
+local stillSemi = body(lp).a
+DD.close()
+late:open()
+local reopened = body(lp).a
+late.theme.colors.surface = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 }
+local recolored = body(lp)
+semiWin.opaque = false
+check(nearly(stillSemi, 0.8) and nearly(reopened, 1),
+    "開啟時才沿 parent 找視窗：開著時把視窗改成不透明不影響這次清單，重開才跟上")
+check(nearly(recolored.r, 0.2) and nearly(recolored.g, 0.3) and nearly(recolored.b, 0.4) and nearly(recolored.a, 1),
+    "不透明清單每幀讀 theme 的 surface：consumer 換色下一幀跟上，alpha 仍是 1")
+
+-- 零配置：開著的不透明 Dropdown 清單與 Autocomplete 下拉各 50 幀
+local function noAlloc(panel)
+    local noop2 = function() end
+    panel.drawRect, panel.drawRectBorder, panel.drawText = noop2, noop2, noop2
+    collectgarbage("collect")
+    collectgarbage("stop")
+    panel:prerender()
+    local before = collectgarbage("count")
+    for _ = 1, 50 do panel:prerender() end
+    local grown = collectgarbage("count") - before
+    collectgarbage("restart")
+    panel.drawRect, panel.drawRectBorder, panel.drawText = nil, nil, nil
+    return grown
+end
+local grewDD = noAlloc(lp)
+DD.close()
+local grewAC = noAlloc(acOpaque.list)
+check(grewDD == 0 and grewAC == 0, "不透明的 Dropdown 清單與 Autocomplete 下拉 prerender 50 幀不配置記憶體")
+getTextManager, getCore = keepTM, keepCore2
+
 return n

@@ -49,7 +49,7 @@ MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
     API_REVISION = 18,         -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -85,6 +85,7 @@ MinidoracatUI.v1 = {
         controlTooltips = false, -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua，與 controls 同檔）
         buttonIconColor = false, -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua，與 controls 同檔）
         opaqueWindow = false,  -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua，與 window 同檔）
+        opaquePopup  = false,  -- rev 18：Dropdown／DatePicker／FilterBar／Autocomplete 的彈出清單跟著不透明視窗或 opts.opaque（四個元件檔任一載入即 true）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -165,6 +166,8 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   local theme = UI.Theme.create({ colors = (not hasWarning) and { warning = { r = 1, g = 0.55, b = 0.2, a = 1 } } or nil })
 -- rev 18 不透明視窗逐旗標探測；舊框架收到 opts.opaque 只是忽略（照舊半透明，不炸）：
 --   local win = UI.Window.new({ …, opaque = ok and UI.API_REVISION >= 18 and UI.CAPABILITIES.opaqueWindow == true })
+--   視窗裡的 Dropdown／DateField／FilterBar／Autocomplete 開出的清單自動跟著不透明（opaquePopup），不必另帶參數；
+--   清單的控制項不在 Window 裡時才帶它們自己的 opts.opaque（舊框架忽略）
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -234,6 +237,7 @@ UI.Skin.toggle(element, x, y, width, rowHeight, on, colors, alphaScale)
 UI.Skin.slider(element, x, y, width, rowHeight, ratio, colors, alphaScale, shape?)   -- shape 為 rev 15 選用參數
 UI.Skin.shapeOf(theme, part)                                 -- rev 15；part＝"panel"｜"title"｜"control"｜"button"
 UI.Skin.arrow(element, x, y, up, color, alphaScale)          -- rev 11；UI.Skin.ARROW_W＝7、ARROW_H＝4
+UI.Skin.solidFill(element, x, y, w, h, color, shape)          -- rev 18；同 fill 但 alpha 固定 1（不看 color.a、不乘淡化）
 -- 文字量測（rev 11，同在 V1.lua）：
 UI.Text.fit(str, maxW, font) -- 放得下回原字串，否則「最長前綴＋...」；font 省略＝UIFont.Small
 -- theme 便捷層（新 MOD 用法；color 可為 token 字串或 table）：
@@ -390,7 +394,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **Checkbox／Slider tooltip（rev 17，`CAPABILITIES.controlTooltips`）**：`opts.tooltip`／`setTooltip(s)`（nil＝收掉）。prerender 在有 tooltip 或還掛著 ISToolTip 時呼叫原版 `ISButton.updateTooltip(self)`（只讀 `isMouseOver`／`joypadFocused`／`tooltip`／`tooltipUI` 與位置，`ISButton.lua:316-346`；不改原版原型），hover 顯示、離開或設成 nil 時收掉——與 Button 同一條路徑。鍵盤焦點：Focus 的說明對沒有 `title` 的控制項讀 `tooltip`，所以焦點框下方就是同一段說明。舊框架收到 `opts.tooltip` 只是忽略。
 - **Tabs**：分段式頁籤列，選中為 selected 底＋accent 下緣；寬度省略＝各頁籤（標籤寬＋24）加總。`setItemVisible` 重排並在自動寬度時更新 width；隱藏的是選中項時**不自動切換**；未知 id 的 `setSelected` 忽略。
 - **Window**：surface 圓角本體＋roundTop 標題列（surfaceTitle）＋可選 icon＋標題（`titleText`）；右上關閉鈕（Icons `close`，閒置 `titleMuted`、hover `titleText`，失敗退 `x` 文字；`closable` 預設 true，按下與放開都在鈕上才關閉）。`icon` 同 Button：Icons key 以 `titleText` 染色，或 rev 14 起的 Texture 原色。標題列拖曳走 setCapture（同 FloatButton），每幀 clamp 回螢幕；`resizable=true` 時右下角把手縮放，夾在 `minWidth`／`minHeight`（預設 240×160），尺寸有變才呼叫 `onResize`。`close()`＝`setVisible(false)` 後呼叫 `onClose(win)`，不從 UIManager 移除。標題列高＝max(24, 字高＋10)，`contentTop()` 等於它。
-- **不透明本體（rev 18，`CAPABILITIES.opaqueWindow`）**：`opts.opaque = true`（Window.new 與 Dialog.show）時本體（含內容區與標題列底）用 theme 的 `surface` 色、alpha 1，**不乘 `theme.alpha`**；標題列的 `surfaceTitle` 疊層、邊框、文字照舊。用途：視窗疊在別的視窗上時，底下的字完全看不到（預設 `surface` 深色 a＝0.8、淺色 0.92，會透字）。rgb 每幀從 `theme.colors.surface` 抄進視窗自己的一張表（只在第一次配置），consumer 事後換色下一幀跟上；建構後直接把 `win.opaque` 設成 true 也有效。子元件畫在不透明本體上，不必各自改（ScrollPanel 不畫底、Button 等的 `well` 疊在本體上）；Dropdown／DatePicker／FilterBar／Autocomplete 的彈出清單是獨立的頂層面板，仍是半透明 `surface`，不跟視窗的 opaque 走。沒帶＝預設外觀逐位不變。
+- **不透明本體（rev 18，`CAPABILITIES.opaqueWindow`）**：`opts.opaque = true`（Window.new 與 Dialog.show）時本體（含內容區與標題列底）用 theme 的 `surface` 色、alpha 1，**不乘 `theme.alpha`**；標題列的 `surfaceTitle` 疊層、邊框、文字照舊。用途：視窗疊在別的視窗上時，底下的字完全看不到（預設 `surface` 深色 a＝0.8、淺色 0.92，會透字）。以 `Skin.solidFill` 每幀直接讀 `theme.colors.surface`（不配置），consumer 事後換色下一幀跟上；建構後直接把 `win.opaque` 設成 true 也有效。子元件畫在不透明本體上，不必各自改（ScrollPanel 不畫底、Button 等的 `well` 疊在本體上）；**彈出清單跟著視窗（rev 18，`CAPABILITIES.opaquePopup`）**：Dropdown 清單、DateField 月曆、FilterBar 類型選單、Autocomplete 下拉在**開啟（顯示）時**沿 `parent` 找一次頂層 root，root 的 `opaque == true` 或控制項自己帶了 `opts.opaque = true`（Dropdown.new／DateField.new／FilterBar.new／Autocomplete.new；FilterBar 會轉給它的兩個日期欄）就整次開啟用不透明本體（`Skin.solidFill`），邊框、hover、選取色照舊；prerender 每幀只看開啟時記下的結果，不沿 parent 走、不配置。開著時才把視窗改成不透明，要下一次開啟才生效。ItemPicker 本來就畫不透明背板；Focus 的說明標籤畫在 root 上，不是另一塊面板。沒帶＝預設外觀逐位不變。
 - **Window × ISLayoutManager**：`ISLayoutManager.RegisterWindow(name, UI.Window, win)`——存讀回呼取自第二參數、以 `funcs.RestoreLayout(target, name, layout)` 呼叫（`ISLayoutManager.lua:6-13,99-113`），故直接傳 `UI.Window`。存 x／y，`resizable` 時另存寬高；讀回後夾最小值、尺寸有變時呼叫 `onResize`，最後 clamp；不讀寫 `visible`。
 - **Dialog**：先加全螢幕 guard（吃掉所有滑鼠事件、半透明黑底）再加置中視窗，兩者都在 `addToUIManager()` 後設原生 alwaysOnTop（加入順序決定視窗在 guard 之上，`UIManager.java:544-556`）。內文依寬度換行（支援 `\n`，斷行規則見 §3.4），高度依行數自動；`input={text?,placeholder?,onlyNumbers?}` 時在內文下放 TextField 並自動 focus。按鈕靠右：confirm（`danger` 則 danger，否則 primary）＋cancel（normal；省略 `cancelText`＝單鈕提示框）。按鈕、關閉鈕、Enter／Esc、`UI.Dialog.close` 全走同一收尾：只回呼一次、移除 guard 與視窗（`removeFromUIManager`）。同時只允許一個，新開先以 cancel 關舊的。
 - **Enter／Esc（不 monkeypatch）**：視窗 `setWantKeyEvents(true)`，以 `onKeyPress`／`onKeyRelease`／`isKeyConsumed` 接原生 key 派送（`UIElement.java:2174-2217`，同原版 `ISBuildWindow.lua:16-21,355`）。放開必須配對到同一 dialog 收過的按下，避免「按 Enter 開窗、放開就確認」；關閉後 `isKeyConsumed` 仍回 true，同一個 Esc 不漏給後面的視窗。輸入框有焦點時 key 事件不進 UIManager（`GameKeyboard.java:32-43`），Enter 改由原生 `onCommandEntered`（`UITextBox2.java:841-845`）確認；此時 Esc 由原生輸入框處理、不經 dialog（實機行為待下游聯測確認），輸入框失焦後 Esc 才取消。
@@ -501,7 +505,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 | 面 | API | 說明 |
 |---|---|---|
 | 曆法 | `UI.Date.daysInMonth(y, m)`、`parse(text) → y, m, d`｜`nil`、`format(y, m, d) → "YYYY-MM-DD"`、`dayStart(text, offsetMin) → ms`｜`nil`、`fromMs(ms, offsetMin) → y, m, d`、`localOffsetMinutes() → 分鐘` | 純函式。`parse` 接受 `YYYY-MM-DD` 或 `YYYY/M/D`（前後空白可），年 1..9999、月日要合法，否則 `nil`。`dayStart`＝「比 UTC 快 `offsetMin` 分鐘的時鐘上，該日 00:00」對應的 UTC 毫秒 |
-| 日期欄 | `UI.DateField.new{ x?, y?, width?, height?, text?, placeholder?, theme?, font?, target?, onChange? }` | `getText()`、`setText(s)`（靜默）、`getDate() → y, m, d`、`dayStart(offsetMin?)`（省略＝本地時差）、`setWidth`／`setHeight`（重排內部）、`setEnabled(b)`／`isEnabled()`、`focus()`、`blur()`、`appendTargets(out, label) → out` |
+| 日期欄 | `UI.DateField.new{ x?, y?, width?, height?, text?, placeholder?, theme?, font?, target?, onChange?, opaque? }` | `getText()`、`setText(s)`（靜默）、`getDate() → y, m, d`、`dayStart(offsetMin?)`（省略＝本地時差）、`setWidth`／`setHeight`（重排內部）、`setEnabled(b)`／`isEnabled()`、`focus()`、`blur()`、`appendTargets(out, label) → out` |
 | 回呼 | `onChange(target, text, field)` | 文字**實際改變**時一次：打字（TextField 每幀比對，涵蓋 IME）、月曆選日／今天／清除、失焦正規化 |
 | 月曆 | `UI.DatePicker.close(scope?)` | `scope` 省略＝關掉開著的；否則只在月曆所屬欄位是 `scope` 本身或其子孫（沿 `parent` 最多 32 層）時才關 |
 
@@ -570,6 +574,7 @@ local bar = UI.FilterBar.new{
     dateToggle? = false,    -- 需要 dates：起訖欄收在「自訂日期...」chip 後面
     kindsDropdown? = false, -- 需要 kinds：類型 chip 改成一顆單選下拉（kinds.multi 被忽略）
     sortInHeader? = false,  -- 需要 sorts：不畫排序 chip，由 UI.TableHeader 驅動
+    opaque? = false,        -- rev 18：類型選單與兩個日期月曆不透明（省略＝看 parent 所在頂層視窗的 opaque，§3.7）
 }
 ```
 
@@ -633,7 +638,7 @@ local bar = UI.FilterBar.new{
 
 ```lua
 local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, maxLength?=64,
-    clearButton?=true, debounceMs?=250, rows?=8, minListWidth?=260, target?,
+    clearButton?=true, debounceMs?=250, rows?=8, minListWidth?=260, target?, opaque?（rev 18，§3.7）,
     onQuery,   -- 必填 function(target, text, ac) -> bool；false＝現在送不出，下一幀再試
     labelOf?,  -- function(row) -> string；預設 tostring(row.label or row.name)
     tagOf?,    -- function(row) -> string|nil；右側 accent 標籤（空間不夠時不畫）
@@ -715,7 +720,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 
 | 面 | API | 說明 |
 |---|---|---|
-| 建構 | `UI.Dropdown.new{ x?, y?, width?, height?, options = { {id, label?}, ... }, selected?, placeholder?, maxRows?=8, theme?, font?, target?, onChange?, tooltip? }` | 寬度省略＝最長標籤（含 placeholder）＋左右內距 10＋間距 6＋`Skin.ARROW_W`；高度省略＝字高＋10（同 Button）。`maxRows` 非數字或 <1 時為 8 |
+| 建構 | `UI.Dropdown.new{ x?, y?, width?, height?, options = { {id, label?}, ... }, selected?, placeholder?, maxRows?=8, theme?, font?, target?, onChange?, tooltip?, opaque?（rev 18，§3.7） }` | 寬度省略＝最長標籤（含 placeholder）＋左右內距 10＋間距 6＋`Skin.ARROW_W`；高度省略＝字高＋10（同 Button）。`maxRows` 非數字或 <1 時為 8 |
 | 選項 | `setOptions(options)` | 複製（consumer 事後改表不影響）；缺 `label` 用 `tostring(id)`，`id` 為 nil 的項略過。目前選取仍在就保留，否則**靜默**清成 nil；自動寬度時重算寬度；開著的清單原地重排，選項清空就關 |
 | 選取 | `setSelected(id, silent)`、`getSelected()` | 未知 id 忽略；nil＝清空；相同值 no-op；`silent` 不回呼；不受停用限制 |
 | 開關 | `open()`、`close()`、`isOpen()`、`UI.Dropdown.close(scope?)` | `scope` 省略＝關掉開著的；否則只在擁有者是 `scope` 本身或其子孫（沿 `parent` 最多 32 層）時才關；`dd:close()` 即 scope＝自己。停用或沒有選項時 `open()` 不開 |
@@ -842,7 +847,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | API rev 15 可選圓角（**開發中**） | Skin 半徑形狀與往下退、`Skin.shapeOf`、`Skin.slider` 的 shape（§3.3）；theme 的 `radius`／`controlRadius`／`buttonShape`／`font`（§3.2）；元件跟著 theme（§3.7）；10 張新 9-slice 資產（§6） | `scripts/test_rev15.lua` 驗證吸附表、title／control／button 部位、legacy 回傳、往下退與直角、legacy 形狀不退級、fits、Theme.create 欄位、各元件沒設時用 rev 14 資產／設了用對應半徑、Checkbox 方框與 Slider 軌道兩種路徑、字型優先序；`verify_mod.py` 第 12 項驗新資產；ui-e2e `radius-sp` 實機截圖（3／6／20px 與膠囊按鈕）；地圖錶七款皮膚接用後定版 |
 | API rev 16 捲動容器與焦點說明（**開發中**） | `UI.ScrollPanel`（§3.18）、`UI.Text.wrap`（§3.4）、`TextField:setInvalid`（§3.7）、`control:focusLabel()` 與 Focus 的捲動容器接線（§3.10） | `scripts/test_rev16.lua`（見 §7）；ui-e2e `rev16-sp` 實機截圖（真 Tab 自動捲、真 PgDn、真拖曳捲軸、錯誤輸入框、每幀說明、Kahlua 斷行）；地圖錶管理員視窗接用後定版 |
 | API rev 17 設定視窗元件（**開發中**） | `UI.NavList`（§3.19）、`UI.SliderRow`（§3.20）、`UI.Preview`（§3.21）、Checkbox／Slider tooltip（§3.7）、斷行禁則擴充（§3.4）、`watch`／`zone`（§3.6）、`focusRect` 的捲動與可見判定（§3.10、§3.18） | `scripts/test_rev17.lua` 與 `scripts/test_wrap.lua`（見 §7）；`verify_mod.py` 第 12 項驗兩張新圖示；MiniMap 設定視窗改寫接用並實機驗證（鍵盤、手把、預覽）後定版 |
-| API rev 18 警示色（**開發中**） | `warning` token（§3.2）、法文標點空白與數字單位空白的斷行禁則（§3.4）、Window／Dialog 的 `opaque`（§3.7） | `scripts/test_rev18.lua` 驗證兩套 palette 的值與 token 名單、在 `surface` 上的對比、與 `accent`／`errorText` 的色相距離、`Theme.create` 拷貝與覆寫，法文句子多行寬掃描的斷行禁則，以及不透明視窗；`scripts/test_wrap.lua` 驗證數字與單位不拆開；Safehouse 接用後定版 |
+| API rev 18 警示色（**開發中**） | `warning` token（§3.2）、法文標點空白與數字單位空白的斷行禁則（§3.4）、Window／Dialog 的 `opaque` 與跟著它的彈出清單（§3.7）、`Skin.solidFill`（§3.3） | `scripts/test_rev18.lua` 驗證兩套 palette 的值與 token 名單、在 `surface` 上的對比、與 `accent`／`errorText` 的色相距離、`Theme.create` 拷貝與覆寫，法文句子多行寬掃描的斷行禁則，以及不透明視窗與彈出清單；`scripts/test_wrap.lua` 驗證數字與單位不拆開；Safehouse 接用後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -891,7 +896,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - rev17：NavList／Preview 載入自檢（facade 未發布、缺原生 ISPanel）與五個旗標；`watch`／`zone` 對到約定檔名、缺圖回 nil／false；NavList 版面（標題列、列高、無標題群組間距、略過沒有 id 的項目）、`selected`、狀態快取（get 出錯當 false、每幀不重讀、`refresh` 下一幀重讀一次）、繪製（標題 textMuted、選中底＋2px 記號＋accent、停用 textDisabled、開關開關色與停用淡化、截字、缺圖只少圖示、Texture 原色、圖示繪製拋錯）、hover、滑鼠（選取一次、點已選不回呼、點開關 set(not get()) 不改選取、停用開關／停用列不動、按放不同列、放開在外、set／get 拋錯）、`setSelected`（未知、silent、停用、nil）與 `setGroups`（清掉選取、高度、游標）、50 輪零配置；焦點（kind=button＋右側說明、落點框住選取列、上下跳過停用列、截字全名說明、右／左進出開關、開關上 Enter／Space 切換不選取、列上 Enter 選取、Home／End、到邊鍵盤留住、手把到邊移到下一個目標、手把 A、左右離開）；ScrollPanel 裡游標移動捲到游標列、End／Home、`scrollTo` 看 focusRect、游標列捲出可視區不畫框；Checkbox／Slider tooltip（走 updateTooltip、nil 收掉、焦點說明）；Button `iconColor`（沒設原色、染色的頂點色與 alpha、停用再乘 0.45、`setIconColor(nil)` 回原色、Icons key 照舊用字色、50 輪零配置）；SliderRow（版面、zeroLabel、format、回呼一次、no-op／silent、上限數字與函式（夾住不回呼、放寬還原、出錯當沒有、0＝沒有）、拖到最右停在上限、zeroLabel／上限、整列一個焦點目標、右鍵交給滑桿、tooltip 當說明、停用、預設 format、50 輪零配置）；Preview（well 與 theme.alpha、內框 draw 參數、stencil set／clear／repaint 成對、caption、draw 拋錯攔下且停用到 setDraw、setCaption("")、setDraw(nil)、收合、內框沒面積、50 輪零配置）。
     - wrap（rev 17 補）：全形 ％ ～、小寫假名與長音逐一不放行首、波浪號不放行尾、片假名長字往回找斷點。
     - wrap（rev 18 補）：Toast 與 Dialog 的「1 件」「30 個」「1,000 倖存幣」整組換行（修正前會拆開）、「80% 成功率」、數字加單位比行寬長時照舊在空白斷、英文數字後的空白照常斷。
-    - rev18：`warning` 兩套 palette 的值、token 名單恰為 17 個、在 `surface` 上 ≥ 4.5:1、色相離 `accent` 與 `errorText` 各 ≥ 15°、`Theme.create` 拷貝（改實例不污染 default）與 consumer 整顆覆寫；法文斷行：兩段實際句子在多個行寬掃描（沒有一行以 `:` `;` `!` `?` `»` 開頭、沒有一行以 `«` 結尾、每行放得下、沒吃字）、截點落在黏住的空白時往回找、冒號後的空白照常斷、U+00A0、英文照常斷、只剩黏住空白時硬切；不透明視窗：旗標、沒帶時本體照舊 0.8、opaque 本體 surface 色 alpha 1 且 theme 不被改、不乘 `theme.alpha`（標題列疊層照乘）、事後換色與事後設 opaque、Dialog 預設與 opaque、prerender 50 輪零配置。
+    - rev18：`warning` 兩套 palette 的值、token 名單恰為 17 個、在 `surface` 上 ≥ 4.5:1、色相離 `accent` 與 `errorText` 各 ≥ 15°、`Theme.create` 拷貝（改實例不污染 default）與 consumer 整顆覆寫；法文斷行：兩段實際句子在多個行寬掃描（沒有一行以 `:` `;` `!` `?` `»` 開頭、沒有一行以 `«` 結尾、每行放得下、沒吃字）、截點落在黏住的空白時往回找、冒號後的空白照常斷、U+00A0、英文照常斷、只剩黏住空白時硬切；不透明視窗：旗標、沒帶時本體照舊 0.8、opaque 本體 surface 色 alpha 1 且 theme 不被改、不乘 `theme.alpha`（標題列疊層照乘）、事後換色與事後設 opaque、Dialog 預設與 opaque、prerender 50 輪零配置；彈出清單：Dropdown／月曆／FilterBar 類型選單與日期月曆／Autocomplete 在不透明視窗裡 alpha 1、半透明視窗裡照舊、`opts.opaque` 在一般容器裡 1、開啟時才判斷（開著改視窗不影響、重開才跟上）、換 theme 色下一幀跟上、Dropdown 清單與 Autocomplete 下拉 50 幀零配置。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

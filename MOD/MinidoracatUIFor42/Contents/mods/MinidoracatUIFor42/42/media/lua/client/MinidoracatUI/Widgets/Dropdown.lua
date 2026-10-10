@@ -243,7 +243,11 @@ function Popup:prerender()
     local ca = chromeAlpha(dd.theme)
     local w, h, rh = self.width, self.height, self.rowH
     local shape = Skin.shapeOf(dd.theme, "control") -- rev 15：清單與元件同一個圓角（沒設＝rev 14 外觀）
-    Skin.fill(self, 0, 0, w, h, colors.surface, shape, ca)
+    if self.opaque then -- rev 18：開啟時決定（所在視窗不透明或 opts.opaque）
+        Skin.solidFill(self, 0, 0, w, h, colors.surface, shape)
+    else
+        Skin.fill(self, 0, 0, w, h, colors.surface, shape, ca)
+    end
     Skin.border(self, 0, 0, w, h, colors.border, shape, ca)
     local opts = dd._options
     local n = #opts
@@ -433,6 +437,8 @@ function Dropdown:open()
     end
     local p = popup
     p.owner = self
+    -- rev 18：所在頂層視窗不透明或 opts.opaque＝清單也不透明（只在開啟時沿 parent 找一次）
+    p.opaque = self._popupOpaque or rootOf(self).opaque == true
     -- 記住是不是鍵盤開的：只有那樣關閉時才把焦點框還給元件
     p.kbReturn = Focus ~= nil and Focus.focused() == self
     p.first = 1
@@ -521,6 +527,7 @@ function Dropdown.new(opts)
     local rows = tonumber(opts.maxRows)
     o.maxRows = (rows and rows >= 1) and math.floor(rows) or DEFAULT_ROWS
     o.onChange = opts.onChange
+    o._popupOpaque = opts.opaque == true
     o.tooltip = opts.tooltip
     o._focusKind = "button"
     o._autoWidth = opts.width == nil
@@ -542,5 +549,6 @@ end
 
 UI.Dropdown = Dropdown
 UI.CAPABILITIES.dropdown = true
+UI.CAPABILITIES.opaquePopup = true -- rev 18：清單跟著不透明視窗或 opts.opaque
 
 return Dropdown

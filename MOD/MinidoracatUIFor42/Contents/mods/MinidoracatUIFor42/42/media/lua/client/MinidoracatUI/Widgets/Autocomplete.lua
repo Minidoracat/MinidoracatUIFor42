@@ -78,6 +78,15 @@ local function chromeAlpha(theme)
     return type(a) == "number" and a or 1
 end
 
+-- 元素掛在哪個頂層 root 下（rev 18：看它是不是不透明視窗）
+local function rootOf(el)
+    for _ = 1, 32 do
+        if type(el) ~= "table" or el.parent == nil then break end
+        el = el.parent
+    end
+    return el
+end
+
 local function fontHeight(font)
     return getTextManager():getFontHeight(font)
 end
@@ -130,7 +139,11 @@ function List:prerender()
     local ca = chromeAlpha(ac.theme)
     local font = ac.font
     local w, h, rh = self.width, self.height, self.rowHeight
-    Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(ac.theme, "control"), ca)
+    if self.opaque then -- rev 18：顯示時決定（所在視窗不透明或 opts.opaque）
+        Skin.solidFill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(ac.theme, "control"))
+    else
+        Skin.fill(self, 0, 0, w, h, colors.surface, Skin.shapeOf(ac.theme, "control"), ca)
+    end
     Skin.border(self, 0, 0, w, h, colors.accent, Skin.shapeOf(ac.theme, "control"), ca)
     local hover = 0
     if self:isMouseOver() then hover = rowIndexAt(self, self:getMouseY()) or 0 end
@@ -247,7 +260,13 @@ local function refresh(ac)
     local Focus = UI.Focus
     local visible = lines > 0 and ac.open and ac.visible
         and (ac.focused or list:isMouseOver() == true or (Focus ~= nil and Focus.isKeyboardFocused(list)))
-    if visible ~= (list:getIsVisible() == true) then list:setVisible(visible) end
+    if visible ~= (list:getIsVisible() == true) then
+        if visible then
+            -- rev 18：所在頂層視窗不透明或 opts.opaque＝下拉也不透明（只在顯示時沿 parent 找一次）
+            list.opaque = ac._popupOpaque or rootOf(list).opaque == true
+        end
+        list:setVisible(visible)
+    end
     if visible and list.height ~= lines * rh + 2 then list:setHeight(lines * rh + 2) end
 end
 
@@ -458,6 +477,7 @@ function Autocomplete.new(opts)
     o.debounceMs = opts.debounceMs or 250
     o.rowsMax = math.max(1, math.floor(opts.rows or 8))
     o.minListWidth = opts.minListWidth or 260
+    o._popupOpaque = opts.opaque == true
     o.listMaxH = UNBOUNDED
     o.visible, o.enabled, o.open, o.focused = true, true, false, false
     o.query = "" -- 去空白後的目前文字快取（輸入框初始為空）
@@ -502,5 +522,6 @@ end
 
 UI.Autocomplete = Autocomplete
 UI.CAPABILITIES.autocomplete = true
+UI.CAPABILITIES.opaquePopup = true -- rev 18：下拉跟著不透明視窗或 opts.opaque
 
 return Autocomplete
