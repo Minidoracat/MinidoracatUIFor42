@@ -676,6 +676,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | NoticeBoard | `noticeboard` | 20 |
 | Economy | `economy` | 30 |
 | VehicleManager | `vehiclemanager` | 40 |
+| VehicleCapsule | `vehiclecapsule` | 50 |
 | DevProfiler | `devprofiler` | 90 |
 
 **版面**：一個 ISPanel（玩家 0），入口是子 `ISButton`（`forceClick` 是 Focus 的啟動基底）。可見入口 0 個：隱藏；1 個：不畫把手，面板就是那顆 40×40 按鈕；2 個以上：內距 4、上方 40×40 把手、下方直排入口（間距 4）。收合時只剩把手（48×48 外殼）。第一次預設展開。
