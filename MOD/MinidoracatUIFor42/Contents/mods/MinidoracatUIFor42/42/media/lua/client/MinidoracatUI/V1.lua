@@ -818,7 +818,8 @@ MinidoracatUI.v1 = {
     --         Button 的 opts.iconColor／setIconColor：Texture 圖示染色（buttonIconColor）
     -- rev 18：theme token warning（警示字與圖示；框架元件不讀，外觀不變）；Text.wrap 不在法文標點
     --         （: ; ! ? 右書名號）前、左書名號後的空白斷行；Window.new／Dialog.show 的 opts.opaque
-    --         本體不透明（opaqueWindow，2026-10-11 併入未發版的 rev 18）
+    --         本體不透明（opaqueWindow，2026-10-11 併入未發版的 rev 18）；Text.wrap 不在數字與後面的中日韓單位
+    --         之間的空白斷行（「1 件」「1,000 倖存幣」，2026-10-11 併入）
     API_REVISION = 18,
     CAPABILITIES = {
         theme = true,

@@ -10,6 +10,9 @@
 --   右側不是行首禁則字（，。、」）等）、左側不是行尾禁則字（「（等）。
 --   法文標點的空白（rev 18）不是斷點：空白後面緊接 : ; ! ? 右書名號，或前面緊接左書名號（U+00BB／U+00AB），
 --   否則「Interferences : 0」會把「: 0」斷到下一行行首。不換行空白 U+00A0 本來就不是斷點。
+--   數字與中日韓單位之間的空白（rev 18）也不是斷點：空白前面是 ASCII 數字（「1,000」「3.5」的最後一位，或「80%」），
+--   後面是中日韓字，否則「已領取 1 件」會斷成行尾「1」、行首「件」。
+--   截點落在這兩種空白上就往回找上一個斷點，整段都沒有就照舊硬切（數字加單位本身比行寬長時照舊在空白斷）。
 --   line 去掉行尾空白、rest 去掉開頭空白；text 整段放得下時回 text, ""。
 --   連一個字都放不下時照樣放一個字，呼叫端的迴圈一定會前進。
 -- TextWrap.lines(text, maxWidth, font) → { line, ... }
@@ -31,6 +34,7 @@ local TextWrap = {}
 local charOK, char256 = pcall(string.char, 256)
 local UTF16 = charOK and string.byte(char256) == 256
 local SPACE = 32
+local PERCENT = 37
 local ASTRAL = 0x10000 -- 補充平面字（surrogate pair／4 位元組 UTF-8）一律當表意字
 
 local function set(codes)
@@ -109,9 +113,11 @@ local function codeAt(s, i)
     return (unit - 0xE0) * 4096 + (b2 - 0x80) * 64 + (b3 - 0x80)
 end
 
--- 第 n 個 unit 前後的那段空白是不是法文標點的空白：往前跳過空白看是不是左書名號、往後跳過空白看是不是
--- : ; ! ? 右書名號
-local function frenchSpace(s, n)
+-- 第 n 個 unit 前後的那段空白黏住兩側、不是斷點：
+--   法文標點（rev 18）：往前跳過空白是左書名號，或往後跳過空白是 : ; ! ? 右書名號
+--   數字與單位（rev 18）：往前跳過空白是 ASCII 數字（或數字後的 %），往後跳過空白是中日韓字（「1 件」「80% 機率」）。
+--   前一字只看最後一個 unit：多位元組字的最後一個 unit 不會落在 ASCII 範圍
+local function gluedSpace(s, n)
     local i = n
     while i > 0 and string.byte(s, i) == SPACE do
         i = i - 1
@@ -123,7 +129,18 @@ local function frenchSpace(s, n)
     while j <= len and string.byte(s, j) == SPACE do
         j = j + 1
     end
-    return j <= len and FRENCH_SPACE_BEFORE[codeAt(s, j)] == true
+    if i == 0 or j > len then
+        return false
+    end
+    local right = codeAt(s, j)
+    if FRENCH_SPACE_BEFORE[right] then
+        return true
+    end
+    local left = string.byte(s, i)
+    if left == PERCENT and i > 1 then
+        left = string.byte(s, i - 1)
+    end
+    return left >= 0x30 and left <= 0x39 and ideographic(right)
 end
 
 -- 能不能在第 n 個 unit 之後斷行（n 是字元邊界，後面還有字）
@@ -131,7 +148,7 @@ local function breakable(s, n)
     local left = codeAt(s, boundary(s, n - 1) + 1)
     local right = codeAt(s, n + 1)
     if left == SPACE or right == SPACE then
-        return not frenchSpace(s, n)
+        return not gluedSpace(s, n)
     end
     return (ideographic(left) or ideographic(right)) and not NO_START[right] and not NO_END[left]
 end
