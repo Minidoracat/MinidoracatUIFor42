@@ -8,6 +8,8 @@
 --   不能斷才往回找最近的斷點；整段都沒有斷點（比行寬長的拉丁單字）就在截點硬切。
 --   能斷＝截點任一側是空白，或任一側是中日韓字（含全形標點與補充平面字），而且
 --   右側不是行首禁則字（，。、」）等）、左側不是行尾禁則字（「（等）。
+--   法文標點的空白（rev 18）不是斷點：空白後面緊接 : ; ! ? 右書名號，或前面緊接左書名號（U+00BB／U+00AB），
+--   否則「Interferences : 0」會把「: 0」斷到下一行行首。不換行空白 U+00A0 本來就不是斷點。
 --   line 去掉行尾空白、rest 去掉開頭空白；text 整段放得下時回 text, ""。
 --   連一個字都放不下時照樣放一個字，呼叫端的迴圈一定會前進。
 -- TextWrap.lines(text, maxWidth, font) → { line, ... }
@@ -56,6 +58,9 @@ local NO_END = set({
     0x3008, 0x300A, 0x300C, 0x300E, 0x3010, 0x3014, 0x3016, 0x3018, 0x301A, 0x301C, 0x301D,
     0xFF08, 0xFF3B, 0xFF5B, 0xFF5E, 0xFF62,
 })
+-- 法文排版（rev 18）：這些標點前面的空白、左書名號後面的空白黏住兩側
+local FRENCH_SPACE_BEFORE = set({ 0x21, 0x3A, 0x3B, 0x3F, 0xBB }) -- ! : ; ? 右書名號
+local FRENCH_SPACE_AFTER = 0xAB -- 左書名號
 
 -- 中日韓表意字與符號、假名、注音、諺文音節、全形字、補充平面字：兩側都可以斷
 local function ideographic(c)
@@ -82,8 +87,7 @@ local function boundary(s, n)
     return n
 end
 
--- 從第 i 個 unit 開始的那個字的碼位。2 位元組 UTF-8 回首位元組：只需要知道它不是空白、
--- 不是表意字、不在禁則表
+-- 從第 i 個 unit 開始的那個字的碼位。補充平面字回 ASTRAL（只需要知道它是表意字）
 local function codeAt(s, i)
     local unit = string.byte(s, i)
     if UTF16 then
@@ -92,8 +96,11 @@ local function codeAt(s, i)
         end
         return unit
     end
-    if unit < 0xE0 then
+    if unit < 0xC0 then
         return unit
+    end
+    if unit < 0xE0 then -- 2 位元組 UTF-8（法文書名號 U+00AB／U+00BB 要認得出來）
+        return (unit - 0xC0) * 64 + ((string.byte(s, i + 1) or 0x80) - 0x80)
     end
     if unit >= 0xF0 then
         return ASTRAL
@@ -102,12 +109,29 @@ local function codeAt(s, i)
     return (unit - 0xE0) * 4096 + (b2 - 0x80) * 64 + (b3 - 0x80)
 end
 
+-- 第 n 個 unit 前後的那段空白是不是法文標點的空白：往前跳過空白看是不是左書名號、往後跳過空白看是不是
+-- : ; ! ? 右書名號
+local function frenchSpace(s, n)
+    local i = n
+    while i > 0 and string.byte(s, i) == SPACE do
+        i = i - 1
+    end
+    if i > 0 and codeAt(s, boundary(s, i - 1) + 1) == FRENCH_SPACE_AFTER then
+        return true
+    end
+    local j, len = n + 1, string.len(s)
+    while j <= len and string.byte(s, j) == SPACE do
+        j = j + 1
+    end
+    return j <= len and FRENCH_SPACE_BEFORE[codeAt(s, j)] == true
+end
+
 -- 能不能在第 n 個 unit 之後斷行（n 是字元邊界，後面還有字）
 local function breakable(s, n)
     local left = codeAt(s, boundary(s, n - 1) + 1)
     local right = codeAt(s, n + 1)
     if left == SPACE or right == SPACE then
-        return true
+        return not frenchSpace(s, n)
     end
     return (ideographic(left) or ideographic(right)) and not NO_START[right] and not NO_END[left]
 end

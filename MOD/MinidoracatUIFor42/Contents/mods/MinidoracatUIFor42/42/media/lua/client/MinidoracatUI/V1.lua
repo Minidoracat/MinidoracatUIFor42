@@ -568,12 +568,14 @@ end
 -- ============================================================
 -- 跨 MOD token（framework default 只認這些；名單見 docs/ARCHITECTURE.md §3.2）：
 --   surface / surfaceTitle / well / border / text / textMuted / textFaint / textDisabled /
---   accent / hover / selected / errorSurface / errorText / onAccent / titleText / titleMuted
+--   accent / hover / selected / errorSurface / errorText / onAccent / titleText / titleMuted / warning
 -- textDisabled（rev 12）：停用控制項的標籤與圖樣，字不乘停用淡化（chrome 才乘 0.45）——深色 #666666
 -- 在黑底 3.66:1、與閒置 textMuted 差 2.15:1（textFaint 只差 1.25:1，分不出停用）。
 -- onAccent／titleText／titleMuted（rev 14）：accent 底上的字（primary 按鈕）、標題列上的標題與關閉鈕。
 -- 預設值等於 rev 13 的實際繪製色（元件內常數／text／textMuted），外觀不變；給標題列或 accent 換成
 -- 淺色／深色的 consumer 皮膚用。框架元件讀 `colors.onAccent or <舊來源>`（theme 不是 create 建的也不炸）。
+-- warning（rev 18）：警示字與圖示（「快到期」「容量將滿」這類非錯誤提醒）。橘色，色相離 accent ≥ 15 度、
+-- 在 surface 上 ≥ 4.5:1（數值見 ARCHITECTURE §3.2）。框架元件不讀它（既有外觀不變），給 consumer 用。
 -- MOD 自有 token（unread、rowHover…）由 create 的 colors 自帶，框架原樣收下。
 -- create() 逐 token 深拷貝——共享 default 永不被 mutate（NBSkin↔MiniMap 色票
 -- 複製分岔的根源就是「共用色票、各自持有可變引用」）。
@@ -603,6 +605,7 @@ local DARK = {
     onAccent     = { r = 0.1,  g = 0.08, b = 0.02, a = 1.0 },
     titleText    = { r = 1,    g = 1,    b = 1,    a = 1.0 },
     titleMuted   = { r = 0.62, g = 0.62, b = 0.62, a = 1.0 },
+    warning      = { r = 1,    g = 0.55, b = 0.2,  a = 1.0 },
 }
 
 -- 淺色（experimental，v0.1 首發後依實測調值）：白色疊層族改黑色疊層、
@@ -624,6 +627,7 @@ local LIGHT = {
     onAccent     = { r = 0.1,  g = 0.08, b = 0.02, a = 1.0 },
     titleText    = { r = 0.08, g = 0.08, b = 0.08, a = 1.0 },
     titleMuted   = { r = 0.35, g = 0.35, b = 0.35, a = 1.0 },
+    warning      = { r = 0.70, g = 0.27, b = 0,    a = 1.0 },
 }
 
 local PALETTES = { dark = DARK, light = LIGHT }
@@ -812,7 +816,9 @@ MinidoracatUI.v1 = {
     --         Checkbox／Slider 的 tooltip 與 setTooltip（controlTooltips）、Text.wrap 行首禁則補全形 ％、～、
     --         日文小寫假名與長音；Icons 新增 watch／zone；ScrollPanel:scrollTo 與焦點框可見判定改看 focusRect；
     --         Button 的 opts.iconColor／setIconColor：Texture 圖示染色（buttonIconColor）
-    API_REVISION = 17,
+    -- rev 18：theme token warning（警示字與圖示；框架元件不讀，外觀不變）；Text.wrap 不在法文標點
+    --         （: ; ! ? 右書名號）前、左書名號後的空白斷行
+    API_REVISION = 18,
     CAPABILITIES = {
         theme = true,
         skin = true,
