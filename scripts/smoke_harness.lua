@@ -1055,9 +1055,9 @@ do
         and UI.CAPABILITIES.textFieldInvalid == false and UI.CAPABILITIES.focusLabel == false
         and UI.CAPABILITIES.navList == false and UI.CAPABILITIES.sliderRow == false
         and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
-        and UI.CAPABILITIES.buttonIconColor == false
+        and UI.CAPABILITIES.buttonIconColor == false and UI.CAPABILITIES.opaqueWindow == false
         and UI.CAPABILITIES.textWrap == true,
-        "rev 7～17 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        "rev 7～18 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil

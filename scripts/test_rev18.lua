@@ -150,4 +150,63 @@ check(#en == 2 and en[1] == "Go home" and en[2] == "now" and hardOk,
 
 getTextManager = keepTextManager
 
+-- ---------- 不透明視窗（opts.opaque，CAPABILITIES.opaqueWindow） ----------
+local function frame(win)
+    win.rects, win.borders, win.texts = {}, {}, {}
+    win:prerender()
+    return win.rects
+end
+local darkTheme = UI.Theme.create()
+local plain = UI.Window.new{ width = 300, height = 200, title = "W", theme = darkTheme }
+local solid = UI.Window.new{ width = 300, height = 200, title = "W", theme = darkTheme, opaque = true }
+local pr, sr = frame(plain), frame(solid)
+check(UI.CAPABILITIES.opaqueWindow == true and plain.opaque == false and nearly(pr[1].a, 0.8)
+    and nearly(pr[2].a, darkTheme.colors.surfaceTitle.a),
+    "opaqueWindow 旗標 true；沒帶 opaque 的視窗本體照舊 surface 的 0.8（外觀不變）")
+check(nearly(sr[1].a, 1) and nearly(sr[1].r, 0) and nearly(sr[1].g, 0) and nearly(sr[1].b, 0)
+    and sr[1].w == 300 and sr[1].h == 200 and nearly(sr[2].a, darkTheme.colors.surfaceTitle.a)
+    and nearly(darkTheme.colors.surface.a, 0.8),
+    "opaque：本體整塊 surface 色、alpha 1，標題列疊層照舊；theme 的 surface 本身不被改")
+
+local faded = UI.Theme.create({ variant = "light" })
+faded.alpha = 0.5
+local fsolid = UI.Window.new{ width = 300, height = 200, title = "W", theme = faded, opaque = true }
+local fr = frame(fsolid)
+local ls = faded.colors.surface
+check(nearly(fr[1].a, 1) and nearly(fr[1].r, ls.r) and nearly(fr[1].g, ls.g) and nearly(fr[1].b, ls.b)
+    and nearly(fr[2].a, faded.colors.surfaceTitle.a * 0.5),
+    "opaque 不乘 theme.alpha（淺色 surface 色、alpha 1）；標題列疊層照樣乘 theme.alpha")
+
+faded.colors.surface = { r = 0.2, g = 0.3, b = 0.4, a = 0.6 }
+local late = UI.Window.new{ width = 300, height = 200, title = "W", theme = faded }
+late.opaque = true
+local lr, fr2 = frame(late), frame(fsolid)
+check(nearly(fr2[1].r, 0.2) and nearly(fr2[1].b, 0.4) and nearly(fr2[1].a, 1)
+    and nearly(lr[1].g, 0.3) and nearly(lr[1].a, 1),
+    "consumer 事後換 surface 色下一幀跟上；建構後才把 opaque 設成 true 也照樣不透明")
+
+local d1 = UI.Dialog.show{ title = "T", text = "a", confirmText = "OK" }
+local d1a = frame(d1)[1].a
+UI.Dialog.close(d1, false)
+local d2 = UI.Dialog.show{ title = "T", text = "a", confirmText = "OK", opaque = true }
+local d2a = frame(d2)[1].a
+UI.Dialog.close(d2, false)
+check(nearly(d1a, 0.8) and nearly(d2a, 1), "Dialog.show：預設照舊 0.8，帶 opaque 本體 alpha 1")
+
+local noop = function() end
+solid.drawRect, solid.drawRectBorder, solid.drawText = noop, noop, noop
+local keepCore = getCore -- stub 每次回新表：量測期間固定成同一張
+local core = keepCore()
+getCore = function() return core end
+collectgarbage("collect")
+collectgarbage("stop")
+solid:prerender()
+local kb = collectgarbage("count")
+for _ = 1, 50 do solid:prerender() end
+local grew = collectgarbage("count") - kb
+collectgarbage("restart")
+getCore = keepCore
+solid.drawRect, solid.drawRectBorder, solid.drawText = nil, nil, nil
+check(grew == 0, "opaque 視窗 prerender 50 輪不配置記憶體")
+
 return n

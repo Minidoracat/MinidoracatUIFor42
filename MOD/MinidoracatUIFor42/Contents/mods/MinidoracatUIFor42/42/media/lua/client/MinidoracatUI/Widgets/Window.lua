@@ -18,6 +18,10 @@
 -- 載入順序：Dialog 依賴 Controls 的 Button／TextField 與共用斷行 TextWrap——本檔開頭自行 pcall
 -- require，不靠檔名排序。兩者任一缺席時 Window 照常提供，只有 CAPABILITIES.dialog 維持 false；
 -- Focus 缺席時 Window／Dialog 照常，只是沒有鍵盤導覽與手把。
+--
+-- rev 18：opts.opaque＝true 時本體（含內容區與標題列底）用 theme 的 surface 色、alpha 改成 1，不乘
+-- theme.alpha——視窗疊在別的視窗上時底下的字完全看不到（CAPABILITIES.opaqueWindow）。標題列的
+-- surfaceTitle 疊層、邊框照舊。子元件畫在不透明本體上，不必各自改；Dialog.show 同樣收 opaque。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
     pcall(require, "MinidoracatUI/V1")
@@ -134,8 +138,19 @@ function Window:prerender()
     local colors = self.theme.colors
     local w, titleH = self.width, self._titleH
     local ca = chromeAlpha(self.theme)
+    local surface, bodyAlpha = colors.surface, ca
+    if self.opaque == true and surface then
+        -- rev 18：每幀從 theme 抄 rgb（consumer 事後換色也跟上），表只在第一次配置
+        local solid = self._opaqueSurface
+        if not solid then
+            solid = { r = 0, g = 0, b = 0, a = 1 }
+            self._opaqueSurface = solid
+        end
+        solid.r, solid.g, solid.b = surface.r, surface.g, surface.b
+        surface, bodyAlpha = solid, 1
+    end
     -- rev 15：本體與標題列跟著 theme.radius（沒設＝nil／"roundTop"，rev 14 外觀）
-    Skin.fill(self, 0, 0, w, self.height, colors.surface, Skin.shapeOf(self.theme, "panel"), ca)
+    Skin.fill(self, 0, 0, w, self.height, surface, Skin.shapeOf(self.theme, "panel"), bodyAlpha)
     Skin.fill(self, 0, 0, w, titleH, colors.surfaceTitle, Skin.shapeOf(self.theme, "title"), ca)
 
     local x = TITLE_PAD
@@ -377,6 +392,7 @@ local function newWindow(class, opts)
     o.closable = opts.closable ~= false
     o.onClose = opts.onClose
     o.onResize = opts.onResize
+    o.opaque = opts.opaque == true
     o._fontH = fontH
     o._titleH = math.max(24, fontH + 10)
     if Focus then
@@ -387,7 +403,7 @@ local function newWindow(class, opts)
 end
 
 -- opts: x, y, width, height, title, icon?（Icons key 或 Texture，rev 14）, theme?, font?, resizable?, minWidth?, minHeight?,
---       closable?（預設 true）, onClose(win)?, onResize(win, w, h)?
+--       closable?（預設 true）, onClose(win)?, onResize(win, w, h)?, opaque?（rev 18：本體不透明，預設 false）
 -- 回傳已 initialise 的實例；consumer 自行 addToUIManager。
 function Window.new(opts)
     return newWindow(Window, opts)
@@ -395,6 +411,7 @@ end
 
 UI.Window = Window
 UI.CAPABILITIES.window = true
+UI.CAPABILITIES.opaqueWindow = true -- rev 18：Window.new／Dialog.show 的 opts.opaque
 
 -- ============================================================
 -- Dialog
@@ -527,7 +544,7 @@ function Dialog.close(dialog, ok)
 end
 
 -- opts: title, text, confirmText, cancelText?, danger?, input={text?,placeholder?,onlyNumbers?}?,
---       width?, theme?, font?, onResult(ok, inputText)?
+--       width?, theme?, font?, onResult(ok, inputText)?, opaque?（rev 18，同 Window.new）
 -- 回傳 dialog（Window 實例，已 addToUIManager）。同時只允許一個：新開先以 cancel 關掉舊的。
 function Dialog.show(opts)
     opts = opts or {}
@@ -554,7 +571,7 @@ function Dialog.show(opts)
     dialog = newWindow(DialogWindow, {
         x = math.floor((sw - width) / 2), y = math.floor((sh - height) / 2),
         width = width, height = height,
-        title = opts.title, theme = theme, font = font, closable = true,
+        title = opts.title, theme = theme, font = font, closable = true, opaque = opts.opaque,
         onClose = function() finish(dialog, false) end,
     })
     dialog._onResult = opts.onResult

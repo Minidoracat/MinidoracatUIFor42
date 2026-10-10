@@ -817,7 +817,8 @@ MinidoracatUI.v1 = {
     --         日文小寫假名與長音；Icons 新增 watch／zone；ScrollPanel:scrollTo 與焦點框可見判定改看 focusRect；
     --         Button 的 opts.iconColor／setIconColor：Texture 圖示染色（buttonIconColor）
     -- rev 18：theme token warning（警示字與圖示；框架元件不讀，外觀不變）；Text.wrap 不在法文標點
-    --         （: ; ! ? 右書名號）前、左書名號後的空白斷行
+    --         （: ; ! ? 右書名號）前、左書名號後的空白斷行；Window.new／Dialog.show 的 opts.opaque
+    --         本體不透明（opaqueWindow，2026-10-11 併入未發版的 rev 18）
     API_REVISION = 18,
     CAPABILITIES = {
         theme = true,
@@ -856,6 +857,7 @@ MinidoracatUI.v1 = {
         preview = false,          -- rev 17：UI.Preview 效果預覽框（Widgets/Preview.lua）
         controlTooltips = false,  -- rev 17：Checkbox／Slider 的 opts.tooltip 與 setTooltip（Widgets/Controls.lua）
         buttonIconColor = false,  -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua）
+        opaqueWindow = false,     -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua）
     },
     Theme = Theme,
     Skin = Skin,
