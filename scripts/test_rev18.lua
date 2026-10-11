@@ -346,4 +346,63 @@ local grewAC = noAlloc(acOpaque.list)
 check(grewDD == 0 and grewAC == 0, "不透明的 Dropdown 清單與 Autocomplete 下拉 prerender 50 幀不配置記憶體")
 getTextManager, getCore = keepTM, keepCore2
 
+-- ---------- 縮放把手被子元件蓋住（Window:onMouseDownOutside） ----------
+-- 照引擎派送順序模擬左鍵按下（UIElement.java:1069-1112）：子元件由上往下問，游標在子元件內就呼叫它的
+-- onMouseDown，回 true 後本視窗只收到 onMouseDownOutside，否則收到 onMouseDown。座標都是視窗內座標。
+local function pressAt(win, x, y)
+    ctx.setMouse(win.x + x, win.y + y)
+    local consumed = false
+    for i = #win.children, 1, -1 do
+        local c = win.children[i]
+        if not consumed and x > c.x and y > c.y and x < c.x + c.width and y < c.y + c.height then
+            if c:onMouseDown(x - c.x, y - c.y) then consumed = true end
+        end
+    end
+    if consumed then
+        if win.onMouseDownOutside then win:onMouseDownOutside(x, y) end
+    else
+        win:onMouseDown(x, y)
+    end
+end
+local function dragTo(win, sx, sy)
+    ctx.setMouse(sx, sy)
+    win:onMouseMoveOutside(0, 0)
+    win:onMouseUpOutside(0, 0)
+end
+local function gripWindow(cover, resizable)
+    local sizes = {}
+    local win = UI.Window.new{ x = 100, y = 100, width = 300, height = 200, title = "G", resizable = resizable ~= false,
+        onResize = function(_, w, h) sizes[#sizes + 1] = { w, h } end }
+    if cover then
+        local body = ISPanel.new(ISPanel, 0, win:contentTop(), 300, 200 - win:contentTop())
+        body.onMouseDown = function() return true end -- 同原版 ISPanel：wantMouseEvents 時回 true
+        win:addChild(body)
+    end
+    return win, sizes
+end
+
+local covered, coveredSizes = gripWindow(true)
+pressAt(covered, 295, 195)
+local grabbed = covered._drag == "resize" and covered.captured == true
+dragTo(covered, 100 + 295 + 60, 100 + 195 + 40)
+check(grabbed and covered.width == 360 and covered.height == 240 and #coveredSizes == 1
+    and coveredSizes[1][1] == 360 and coveredSizes[1][2] == 240 and covered.captured == false,
+    "子元件蓋住右下角：按下把手照樣開始縮放，拖曳改變寬高、onResize 一次、放開解除 capture")
+
+local outside = gripWindow(true)
+local okOutside = outside.onMouseDownOutside == nil or outside:onMouseDownOutside(310, 210) == false
+local okBody = true
+pressAt(outside, 150, 100) -- 蓋在內容區中間：不是把手
+if outside._drag ~= nil or outside.captured then okBody = false end
+local fixed = gripWindow(true, false)
+pressAt(fixed, 295, 195)
+check(okOutside and outside._drag == nil and not outside.captured and okBody and fixed._drag == nil,
+    "視窗外右下方的點（310,210）、內容區中間、不可縮放的視窗：都不開始縮放")
+
+local bare, bareSizes = gripWindow(false)
+pressAt(bare, 295, 195)
+dragTo(bare, 100 + 295 - 100, 100 + 195 + 30)
+check(bare.width == 240 and bare.height == 230 and #bareSizes == 1,
+    "沒有子元件蓋住：照舊由 onMouseDown 縮放（寬夾在 minWidth 240）")
+
 return n

@@ -197,6 +197,14 @@ end
 
 -- ===== 拖曳／縮放（setCapture 五件套：拖出視窗外仍收 Move/Up）=====
 
+local function beginDrag(win, mode)
+    win._drag = mode
+    win._downX, win._downY = getMouseX(), getMouseY()
+    win._origX, win._origY = win:getX(), win:getY()
+    win._origW, win._origH = win.width, win.height
+    win:setCapture(true)
+end
+
 function Window:onMouseDown(x, y)
     if not self:getIsVisible() then
         return false
@@ -206,19 +214,26 @@ function Window:onMouseDown(x, y)
         self._closeDown = true
         return true
     end
-    local mode = nil
     if inGrip(self, x, y) then
-        mode = "resize"
+        beginDrag(self, "resize")
     elseif y < self._titleH then
-        mode = "move"
+        beginDrag(self, "move")
     end
-    if mode then
-        self._drag = mode
-        self._downX, self._downY = getMouseX(), getMouseY()
-        self._origX, self._origY = self:getX(), self:getY()
-        self._origW, self._origH = self.width, self.height
-        self:setCapture(true)
+    return true
+end
+
+-- rev 18：子元件蓋住右下角時，引擎先把按下派給子元件；子元件回 true 就不呼叫本視窗的 onMouseDown、
+-- 只呼叫 onMouseDownOutside（UIElement.java:1069-1112）。把手在這裡也接得到。視窗外的點（例如右下方）
+-- 也會讓 inGrip 成立，所以先確認座標在視窗內；其他情況回 false（引擎在這條路徑上照樣當作已處理）。
+function Window:onMouseDownOutside(x, y)
+    if self._drag or not self:getIsVisible() or self.isCollapsed then
+        return false
     end
+    if x < 0 or y < 0 or x >= self.width or y >= self.height or not inGrip(self, x, y) then
+        return false
+    end
+    self:bringToTop()
+    beginDrag(self, "resize")
     return true
 end
 
