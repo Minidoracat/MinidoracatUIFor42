@@ -1,4 +1,4 @@
-[h1]🎨 Minidoracat UI Library for B42[/h1]
+[h1]🎨 Minidoracat UI Library[/h1]
 [h3]By Minidoracat[/h3]
 
 [hr][/hr]
@@ -10,13 +10,13 @@ Minidoracat シリーズ共用の[b]前提 UI ライブラリ[/b]です。これ
 [h2]📦 必要な人[/h2]
 次の MOD が本 MOD を必須アイテム（Required Items）に指定しています。どれかを使うならサブスクライブしてください：
 [list]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]（MOD Maps、Zones、MOD Compatibility などミニマップのアドオンは MiniMap を通じて間接的に必要）
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]（MOD Maps、Zones、MOD Compatibility などミニマップのアドオンは MiniMap を通じて間接的に必要）
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]
 [/list]
 これらを使わない場合は有効にする必要はありません。Build 42.20.1 以降、シングル・マルチ両対応です。
 [list]

@@ -1,4 +1,4 @@
-[h1]🎨 Minidoracat UI Library for B42[/h1]
+[h1]🎨 Minidoracat UI Library[/h1]
 [h3]By Minidoracat[/h3]
 
 [hr][/hr]
@@ -10,13 +10,13 @@ A [b]required UI library[/b] shared by Minidoracat mods. It [b]adds no gameplay 
 [h2]📦 Who needs it[/h2]
 These mods list it under Required Items — subscribe if you use any of them:
 [list]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url] (its add-ons such as MOD Maps, Zones and MOD Compatibility need it indirectly through MiniMap)
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url] (its add-ons such as MOD Maps, Zones and MOD Compatibility need it indirectly through MiniMap)
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]
 [/list]
 If you use none of them, you don't need to enable it. Supports Build 42.20.1 or later, singleplayer and multiplayer.
 [list]

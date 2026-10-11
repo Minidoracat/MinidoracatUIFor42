@@ -1,7 +1,7 @@
 version=1
 id=3789836701
 title=[B42] Minidoracat UI Library
-description=[h1]🎨 Minidoracat UI Library for B42[/h1]
+description=[h1]🎨 Minidoracat UI Library[/h1]
 description=[h3]By Minidoracat[/h3]
 description=
 description=[hr][/hr]
@@ -13,13 +13,13 @@ description=
 description=[h2]📦 Who needs it[/h2]
 description=These mods list it under Required Items — subscribe if you use any of them:
 description=[list]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url] (its add-ons such as MOD Maps, Zones and MOD Compatibility need it indirectly through MiniMap)
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control for B42[/url]
-description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url] (its add-ons such as MOD Maps, Zones and MOD Compatibility need it indirectly through MiniMap)
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control[/url]
+description=[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]
 description=[/list]
 description=If you use none of them, you don't need to enable it. Supports Build 42.20.1 or later, singleplayer and multiplayer.
 description=[list]

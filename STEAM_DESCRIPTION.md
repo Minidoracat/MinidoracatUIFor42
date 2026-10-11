@@ -1,4 +1,4 @@
-[h1]🎨 Minidoracat UI Library for B42[/h1]
+[h1]🎨 Minidoracat UI Library[/h1]
 [h3]By Minidoracat[/h3]
 
 [hr][/hr]
@@ -10,13 +10,13 @@ Minidoracat 系列 MOD 共用的[b]前置介面函式庫[/b]。本身[b]不新�
 [h2]📦 誰需要安裝[/h2]
 下列 MOD 把本 MOD 列為必要項目（Required Items），有用到其中任何一個就要訂閱：
 [list]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap for B42[/url]（MOD Maps、Zones、MOD Compatibility 等小地圖附加包透過它間接需要）
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control for B42[/url]
-[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager for B42[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]（MOD Maps、Zones、MOD Compatibility 等小地圖附加包透過它間接需要）
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3779823349]Minidoracat Cleaner[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3789836823]Minidoracat Notice Board[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3801482125]Minidoracat Economy[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3812410742]Minidoracat Vehicle Spawn Control[/url]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]
 [/list]
 沒有用到這些 MOD 時不需要啟用。支援 Build 42.20.1 以上，單機與多人皆可。
 [list]

@@ -1,4 +1,4 @@
-# Minidoracat UI Library for B42
+# Minidoracat UI Library
 
 Minidoracat 家族 MOD 共用 UI 函式庫（主題色票、圓角皮膚、單色圖示、浮動按鈕與 Toast），本體不新增遊戲內容，僅供家族 MOD 依賴使用
 
