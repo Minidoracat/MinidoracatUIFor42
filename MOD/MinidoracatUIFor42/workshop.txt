@@ -1,6 +1,6 @@
 version=1
 id=3789836701
-title=Minidoracat UI Library for B42
+title=[B42] Minidoracat UI Library
 description=[h1]🎨 Minidoracat UI Library for B42[/h1]
 description=[h3]By Minidoracat[/h3]
 description=
