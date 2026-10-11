@@ -1,6 +1,6 @@
 version=1
 id=3789836701
-title=[B42] Minidoracat UI Library
+title=[B42] UI Library by Minidoracat
 description=[h1]🎨 Minidoracat UI Library[/h1]
 description=[h3]By Minidoracat[/h3]
 description=
