@@ -4,6 +4,8 @@
 -- → 上飄淡出 400ms；同時最多 3 則、pending 佇列上限 5（超過即丟——徽章/紅點
 -- 已足以表示「有多則」，連續彈窗違反通知輕量原則）；訊息超寬二分截字
 -- （含 UTF-16 surrogate pair 防護——Kahlua string 底層是 Java UTF-16）。
+-- 標題超寬時換行（rev 19，CAPABILITIES.toastTitleWrap）：最多 TITLE_LINES 行，最後一行放不下帶省略號；
+-- 以前只畫一行、不截字，長標題（拉丁語系帶名稱的標題常見）會畫到框外。
 --
 -- 【全域共用堆疊】堆疊狀態是框架單例：所有 MOD 的 show() 進同一佇列、同一
 -- 疊放位置——兩個 MOD 同時通知不會互相重疊蓋字。每則自帶 title 與色票
@@ -41,6 +43,7 @@ local EXIT_MS = 400
 local MAX_VISIBLE = 3
 local MAX_PENDING = 5
 local MAX_FIT_UNITS = 512
+local TITLE_LINES = 2 -- rev 19：標題最多兩行
 
 local FALLBACK = {
     surface = { r = 0, g = 0, b = 0, a = 0.85 },
@@ -148,7 +151,8 @@ function Toast.dismiss(toast)
 end
 
 -- opts: { title=, message=, colors={surface,border,text}, holdMs=, maxLines= }
--- （rev 5 起 maxLines>1 時訊息自動換行、Toast 隨行數長高；預設 1＝單行截字）
+-- （rev 5 起 maxLines>1 時訊息自動換行、Toast 隨行數長高；預設 1＝單行截字。
+-- rev 19 起 title 放不下時換成最多兩行，同樣隨行數長高）
 -- 或直接傳字串（僅 message、無標題列）。
 -- 回傳 toast 實例；進 pending 或被丟棄時回 nil。
 function Toast.show(opts)
@@ -302,11 +306,14 @@ function Toast:prerender()
         colors.surface or FALLBACK.surface, false, alpha)
     Skin.border(self, 0, 0, self.width, self.height,
         colors.border or FALLBACK.border, false, alpha)
-    if self.titleText then
-        self:drawText(self.titleText, 8, 7,
-            textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+    if self.titleLines then
+        for i, line in ipairs(self.titleLines) do
+            self:drawText(line, 8, 7 + self.fontHeight * (i - 1),
+                textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
+        end
+        local top = 10 + self.fontHeight * (#self.titleLines - 1)
         for i, line in ipairs(self.lines) do
-            self:drawText(line, 8, 10 + self.fontHeight * i,
+            self:drawText(line, 8, top + self.fontHeight * i,
                 textColor.r, textColor.g, textColor.b, textColor.a * alpha, UIFont.NewSmall)
         end
     else
@@ -331,14 +338,17 @@ function Toast._create(entry)
     local x = getCore():getScreenWidth() + WIDTH
     local fontHeight = getTextManager():getFontHeight(UIFont.NewSmall)
     local lines = wrapText(entry.message, WIDTH - 16, entry.maxLines)
-    local height = HEIGHT + fontHeight * (#lines - 1)
+    -- 標題與訊息同一套斷行（斷行模組缺席時一樣退回單行截字），多出的標題行算進高度
+    local titleLines = entry.title ~= nil and wrapText(tostring(entry.title), WIDTH - 16, TITLE_LINES) or nil
+    local height = HEIGHT + fontHeight * (#lines - 1 + (titleLines and #titleLines - 1 or 0))
     local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, height)
     o.background = false
     o.alwaysOnTop = true
     o.wantMouseEvents = false
     o.startedAtMs = getTimestampMs()
     o.fontHeight = fontHeight
-    o.titleText = entry.title
+    o.titleText = entry.title      -- rev 1-18 的欄位：原始標題（測試與舊 consumer 讀它）
+    o.titleLines = titleLines
     o.lines = lines
     o.message = lines[1]           -- rev 1-4 的單行欄位：第一行（測試與舊 consumer 讀它）
     o.colors = entry.colors
@@ -356,5 +366,6 @@ end
 UI.Toast = Toast
 UI.CAPABILITIES.toast = true
 UI.CAPABILITIES.toastAvoid = true
+UI.CAPABILITIES.toastTitleWrap = true
 
 return Toast

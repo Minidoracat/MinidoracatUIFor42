@@ -832,7 +832,8 @@ MinidoracatUI.v1 = {
     --         之間的空白斷行（「1 件」「1,000 倖存幣」，2026-10-11 併入）；Skin.solidFill 不透明填色；
     --         Dropdown／DateField／FilterBar／Autocomplete 的彈出清單在不透明視窗裡（或帶 opts.opaque）
     --         也不透明（opaquePopup，2026-10-11 併入）
-    API_REVISION = 18,
+    -- rev 19：Toast 的 title 放不下時換成最多兩行、最後一行帶省略號（toastTitleWrap；以前只畫一行、會畫到框外）
+    API_REVISION = 19,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -872,6 +873,7 @@ MinidoracatUI.v1 = {
         buttonIconColor = false,  -- rev 17：Button 的 opts.iconColor 與 setIconColor（Widgets/Controls.lua）
         opaqueWindow = false,     -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua）
         opaquePopup = false,      -- rev 18：彈出清單跟著不透明視窗或 opts.opaque（Dropdown／DatePicker／FilterBar／Autocomplete）
+        toastTitleWrap = false,   -- rev 19：Toast 的 title 換行（最多兩行，Widgets/Toast.lua）
     },
     Theme = Theme,
     Skin = Skin,
