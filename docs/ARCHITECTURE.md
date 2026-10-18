@@ -48,8 +48,8 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 19,         -- additive 變更單調遞增；consumer 宣告最低需求
-                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）｜rev 19：Toast 標題換行，最多兩行（§3.4）
+    API_REVISION = 20,         -- additive 變更單調遞增；consumer 宣告最低需求
+                               -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）｜rev 19：Toast 標題換行，最多兩行（§3.4）｜rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（§3.14）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -87,6 +87,7 @@ MinidoracatUI.v1 = {
         opaqueWindow = false,  -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua，與 window 同檔）
         opaquePopup  = false,  -- rev 18：Dropdown／DatePicker／FilterBar／Autocomplete 的彈出清單跟著不透明視窗或 opts.opaque（四個元件檔任一載入即 true）
         toastTitleWrap = false, -- rev 19：Toast 的 title 放不下時換行，最多兩行（Widgets/Toast.lua，與 toast 同檔）
+        itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 用 getItemName，車輛零件含車型（Widgets/ItemPicker.lua，與 itemPicker 同檔）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -172,6 +173,9 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 -- rev 19 Toast 標題換行逐旗標探測；舊框架的標題只畫一行、不截字，比框寬的標題會畫到框外——
 -- 旗標缺席時自己處理放不下的標題（縮短，或併進訊息開頭：地圖手錶 C.toast 的做法）：
 --   local titleWraps = ok and UI.API_REVISION >= 19 and UI.CAPABILITIES.toastTitleWrap
+-- rev 20 ItemPicker 宇宙的 name 含車型逐旗標探測；舊框架的 name 是 getItemNameFromFullType，車輛零件的三種車型同名——
+-- 旗標缺席時要分開，就自己以 getItemName 建 items 交給 ItemPicker.new（Economy ECItemPicker 的做法）：
+--   local vehicleNames = ok and UI.API_REVISION >= 20 and UI.CAPABILITIES.itemPickerVehicleClass
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -613,7 +617,7 @@ local bar = UI.FilterBar.new{
 
 **不做的事**：bar 不是元素（沒有自己的底或裁切）；不擁有傳輸與狀態持久化；不提供通用下拉選單元件（rev 12 的類型下拉只服務類型；其他下拉用 `addControl` 接使用端的）；不做多鍵排序；關鍵字只比一個欄位的子字串，不做模糊比對。
 
-### 3.14 ItemPicker 物品挑選疊層（API rev 11）
+### 3.14 ItemPicker 物品挑選疊層（API rev 11；rev 20 擴充）
 
 `Widgets/ItemPicker.lua`，`CAPABILITIES.itemPicker`。收編 Economy `ECItemPicker` 的通用部分；英文名索引、上架政策、索引載入提示留在 consumer，以 `items`／`filter`／`revision`／`note` 注入。需要 Controls 與 Table，Focus 選用。
 
@@ -625,7 +629,7 @@ local bar = UI.FilterBar.new{
 | 回呼 | `onPick(target, rec, picker)`、`onCancel(target, picker)` | 疊層**先關再回呼**，只一次 |
 
 **行為契約**
-- **宇宙**：`getScriptManager():getAllItems()` 逐筆 pcall 讀取，跳過 `isHidden()`／`getObsolete()`；`name`＝`getItemNameFromFullType`（失敗退 fullType）、`category`＝`getDisplayCategory()`（空白退 `"Item"`）、`search`＝`lower(name .. " " .. fullType)`。不排序（數千筆，排序交給 consumer）。**空結果不快取**：script manager 還沒準備好時不讓 session 永遠拿到空宇宙。
+- **宇宙**：`getScriptManager():getAllItems()` 逐筆 pcall 讀取，跳過 `isHidden()`／`getObsolete()`；`name`＝`getItemName`（rev 20 起，`CAPABILITIES.itemPickerVehicleClass`：車輛零件依腳本 `VehicleType` 接上車型，與原版背包同名；rev 11–19 是 `getItemNameFromFullType`，三種車型同名；失敗退 fullType）、`category`＝`getDisplayCategory()`（空白退 `"Item"`）、`search`＝`lower(name .. " " .. fullType)`。不排序（數千筆，排序交給 consumer）。**空結果不快取**：script manager 還沒準備好時不讓 session 永遠拿到空宇宙。
 - **搜尋**：打字只重設計時器，停頓 120ms 才掃一次；查詢 trim＋小寫後對 `rec.search` 做純字串子字串比對，再套 `filter`。最多列出 `maxResults` 筆，提示列顯示「共 N 項」／「顯示前 N 項，共 M 項符合…」／「沒有符合的物品」，前面接 `note()`。`revision()` 的值變了（例如 consumer 的索引剛載好）同一查詢重問一次。
 - **結果列**（`UI.Table`，兩行高）：物品圖示（`getNormalTexture()`；record 沒帶 script 時 `FindItem`；取不到或繪製失敗記 `false`，session 內不再重試）、名稱、`original`（與名稱不同時畫在右側淡字）、第二行 `fullType / 類別`（類別以原版 `IGUI_ItemCat_<cat>` 翻譯，查無原字）；截字與幾何在綁定時算好，render 只畫。
 - **疊層**：背板**不透明、不乘 `theme.alpha`**（只對著自己讀，不透出底下的列），內卡片與框乘 alpha；背板吃掉所有傳到它的滑鼠事件（子元件先問，搜尋框與清單照常）。`open()` 清空搜尋並把鍵盤焦點放到搜尋框；`close()` 取消輸入焦點；點列、Enter、手把 A 都走 `choose`：已關閉時不回呼，同一次點擊或 Enter 的第二個來源不會選兩次。「取消」chip＝`cancel()`。`dispose()` 關閉並放掉回呼與列。
@@ -853,6 +857,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | API rev 17 設定視窗元件（**開發中**） | `UI.NavList`（§3.19）、`UI.SliderRow`（§3.20）、`UI.Preview`（§3.21）、Checkbox／Slider tooltip（§3.7）、斷行禁則擴充（§3.4）、`watch`／`zone`（§3.6）、`focusRect` 的捲動與可見判定（§3.10、§3.18） | `scripts/test_rev17.lua` 與 `scripts/test_wrap.lua`（見 §7）；`verify_mod.py` 第 12 項驗兩張新圖示；MiniMap 設定視窗改寫接用並實機驗證（鍵盤、手把、預覽）後定版 |
 | API rev 18 警示色（**開發中**） | `warning` token（§3.2）、法文標點空白與數字單位空白的斷行禁則（§3.4）、Window／Dialog 的 `opaque` 與跟著它的彈出清單（§3.7）、`Skin.solidFill`（§3.3） | `scripts/test_rev18.lua` 驗證兩套 palette 的值與 token 名單、在 `surface` 上的對比、與 `accent`／`errorText` 的色相距離、`Theme.create` 拷貝與覆寫，法文句子多行寬掃描的斷行禁則，以及不透明視窗與彈出清單；`scripts/test_wrap.lua` 驗證數字與單位不拆開；Safehouse 接用後定版 |
 | API rev 19 Toast 標題換行（**開發中**） | Toast 的 `title` 放不下時換行，最多兩行、第二行帶省略號，高度跟著長（§3.4） | `scripts/test_rev19.lua`（見 §7）；ui-e2e `rev19-sp` 實機截圖（真 Kahlua 斷行與真字型寬度）；地圖手錶 `C.toast` 在旗標存在時不再自己併標題，PTBR 實機看到兩行標題後定版 |
+| API rev 20 挑選器名稱含車型（**開發中**） | ItemPicker 宇宙的 `name` 改用 `getItemName`：車輛零件依腳本 `VehicleType` 接上車型，與原版背包同名，`search` 跟著含車型（§3.14） | `scripts/test_rev20.lua`（見 §7）；實機在 Economy 的 MP 情境查宇宙裡三個大型油箱的名稱與旗標 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -885,7 +890,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua` 與 `scripts/test_rev19.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua` 與 `scripts/test_rev20.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -903,6 +908,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
     - wrap（rev 18 補）：Toast 與 Dialog 的「1 件」「30 個」「1,000 倖存幣」整組換行（修正前會拆開）、「80% 成功率」、數字加單位比行寬長時照舊在空白斷、英文數字後的空白照常斷。
     - rev18：`warning` 兩套 palette 的值、token 名單恰為 17 個、在 `surface` 上 ≥ 4.5:1、色相離 `accent` 與 `errorText` 各 ≥ 15°、`Theme.create` 拷貝（改實例不污染 default）與 consumer 整顆覆寫；法文斷行：兩段實際句子在多個行寬掃描（沒有一行以 `:` `;` `!` `?` `»` 開頭、沒有一行以 `«` 結尾、每行放得下、沒吃字）、截點落在黏住的空白時往回找、冒號後的空白照常斷、U+00A0、英文照常斷、只剩黏住空白時硬切；不透明視窗：旗標、沒帶時本體照舊 0.8、opaque 本體 surface 色 alpha 1 且 theme 不被改、不乘 `theme.alpha`（標題列疊層照乘）、事後換色與事後設 opaque、Dialog 預設與 opaque、prerender 50 輪零配置；彈出清單：Dropdown／月曆／FilterBar 類型選單與日期月曆／Autocomplete 在不透明視窗裡 alpha 1、半透明視窗裡照舊、`opts.opaque` 在一般容器裡 1、開啟時才判斷（開著改視窗不影響、重開才跟上）、換 theme 色下一幀跟上、Dropdown 清單與 Autocomplete 下拉 50 幀零配置。
     - rev19：`toastTitleWrap` 旗標；放得下的標題照舊一行、高度不變、`titleText` 是原始標題；超寬標題在空白處斷成兩行、每行放得下、下一行不以空白開頭、Toast 高一行；比兩行還長停在兩行、第二行帶省略號；兩行標題＋三行訊息的高度與每行的 y（訊息從第二行標題下面開始、最後一行在框內）；下一則接在兩行標題那則的實際高度下面。植入「標題只放一行」時前五條會紅。
+    - rev20：`itemPickerVehicleClass` 旗標；重新載入元件後的宇宙：車輛零件的 `name` 是 `getItemName` 給的（含車型、三種分得開），`search` 含車型字，一般物品照舊。stub 讓 `getItemNameFromFullType` 只回譯名，換回它時第二條會紅。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

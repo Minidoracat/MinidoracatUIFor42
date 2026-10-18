@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 修正
+
+- **物品挑選清單裡，車輛零件的三種車型不再同名**：輪胎、油箱、車門等車輛零件分成標準型、商用型、運動型三種，在本函式庫的物品挑選清單裡以前都顯示同一個名字，分不出是哪一種。現在名稱會像遊戲背包一樣接上車型，搜尋車型也找得到。使用本函式庫預設物品清單的 MOD 自動受益；自己提供物品清單的 MOD（例如經濟系統）不受影響。
+
+> 技術要點：API rev 20 新增旗標 `itemPickerVehicleClass`：`UI.ItemPicker.universe()` 的 `name` 改用 `getItemName`（物品腳本的 `VehicleType` 大於 0 時接上車型，與原版背包相同），`search` 跟著含車型；其他物品的名稱不變。舊版框架上要分開三種車型的 MOD，可以自己用 `getItemName` 建 `items` 交給 `UI.ItemPicker.new`。
+
 ## [42.21.0-0.12.0] - 2026-10-14
 
 ### 修正

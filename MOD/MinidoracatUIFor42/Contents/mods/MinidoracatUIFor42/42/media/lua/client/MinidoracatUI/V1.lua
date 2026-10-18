@@ -833,7 +833,9 @@ MinidoracatUI.v1 = {
     --         Dropdown／DateField／FilterBar／Autocomplete 的彈出清單在不透明視窗裡（或帶 opts.opaque）
     --         也不透明（opaquePopup，2026-10-11 併入）
     -- rev 19：Toast 的 title 放不下時換成最多兩行、最後一行帶省略號（toastTitleWrap；以前只畫一行、會畫到框外）
-    API_REVISION = 19,
+    -- rev 20：ItemPicker 宇宙的 name 改用 getItemName，車輛零件照原版背包接上車型（itemPickerVehicleClass；
+    --         以前三種車型同名）
+    API_REVISION = 20,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -874,6 +876,7 @@ MinidoracatUI.v1 = {
         opaqueWindow = false,     -- rev 18：Window.new／Dialog.show 的 opts.opaque（Widgets/Window.lua）
         opaquePopup = false,      -- rev 18：彈出清單跟著不透明視窗或 opts.opaque（Dropdown／DatePicker／FilterBar／Autocomplete）
         toastTitleWrap = false,   -- rev 19：Toast 的 title 換行（最多兩行，Widgets/Toast.lua）
+        itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（Widgets/ItemPicker.lua）
     },
     Theme = Theme,
     Skin = Skin,

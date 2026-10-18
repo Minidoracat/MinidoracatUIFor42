@@ -1042,7 +1042,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 19, "API_REVISION 進到 19")
+    check(UI.API_REVISION == 20, "API_REVISION 進到 20")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1056,9 +1056,9 @@ do
         and UI.CAPABILITIES.navList == false and UI.CAPABILITIES.sliderRow == false
         and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
         and UI.CAPABILITIES.buttonIconColor == false and UI.CAPABILITIES.opaqueWindow == false
-        and UI.CAPABILITIES.opaquePopup == false
+        and UI.CAPABILITIES.opaquePopup == false and UI.CAPABILITIES.itemPickerVehicleClass == false
         and UI.CAPABILITIES.textWrap == true,
-        "rev 7～18 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        "rev 7～18、20 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -2090,7 +2090,7 @@ local sliceCtx = {
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
-    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19" }) do
+    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

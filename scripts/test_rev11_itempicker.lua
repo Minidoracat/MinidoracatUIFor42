@@ -29,7 +29,7 @@ getTextOrNull = function(key)
     return nil
 end
 local names = { ["Base.Axe"] = "Axe Name" }
-getItemNameFromFullType = function(fullType)
+getItemName = function(fullType)
     local n = names[fullType]
     if n == nil then error("no name") end
     return n
@@ -215,7 +215,7 @@ plain:close()
 -- ---------- 還原 ----------
 UI.Focus.clear(win)
 getText = keepGetText
-getTextOrNull, getItemNameFromFullType, getScriptManager = nil, nil, nil
+getTextOrNull, getItemName, getScriptManager = nil, nil, nil
 ISPanel.drawTextureScaled = nil
 
 return 27

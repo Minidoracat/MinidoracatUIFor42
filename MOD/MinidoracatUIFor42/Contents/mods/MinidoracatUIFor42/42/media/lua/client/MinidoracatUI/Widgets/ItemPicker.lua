@@ -6,6 +6,8 @@
 --       本 session 載入的全部物品 script（原版與 MOD），record = { fullType, name, category, script,
 --       search }；整個 session 共用，consumer 唯讀。只跳過 hidden／obsolete。不排序（數千筆，
 --       排序交給 consumer）。空結果不快取：script manager 還沒準備好時不能讓 session 永遠拿到空宇宙。
+--       name＝getItemName（rev 20，CAPABILITIES.itemPickerVehicleClass）：車輛零件的三種車型共用一個
+--       譯名，getItemName 才照原版背包接上車型；rev 11–19 用 getItemNameFromFullType，三種同名。
 --
 --   UI.ItemPicker.new(opts) -> picker（已 initialise 的 ISPanel，尚未 addChild）
 --       opts: x?, y?, width?, height?, theme?, font?, title?, placeholder?,
@@ -27,7 +29,8 @@
 --   getNormalTexture            Item.java:525-527
 --   getFullName                 Item.java:882-884
 --   getObsolete                 Item.java:3123-3125
---   getItemNameFromFullType     LuaManager.java:8582-8584
+--   getItemName                 LuaManager.java:8745-8763（快照 42.21.0-20260928；腳本 VehicleType > 0
+--                               時接 IGUI_ItemNameMechanicalType＋IGUI_VehicleType_<n>，同 InventoryItem.getName）
 --   getTextOrNull               LuaManager.java:8558-8560
 --   類別翻譯 IGUI_ItemCat_<cat>  原版 ISInventoryPane.lua:2532-2535
 --
@@ -115,7 +118,7 @@ local function describe(script)
 end
 
 local function itemName(fullType)
-    local ok, name = pcall(getItemNameFromFullType, fullType)
+    local ok, name = pcall(getItemName, fullType)
     if ok and type(name) == "string" and name ~= "" then
         return name
     end
@@ -522,5 +525,6 @@ end
 
 UI.ItemPicker = ItemPicker
 UI.CAPABILITIES.itemPicker = true
+UI.CAPABILITIES.itemPickerVehicleClass = true
 
 return ItemPicker
