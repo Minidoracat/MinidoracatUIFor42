@@ -353,9 +353,9 @@ _t = f"公開文件無基礎設施洩漏樣式（{len(_pub)} 檔）"
 fail(_t, leaks) if leaks else ok(_t)
 
 # ---- 12. UI 貼圖（皮膚＋圖示）----
-# 42/media/ui/MinidoracatUI/ 的 OUTPUT_NAMES（皮膚＋幾何圖示＋art 圖示＋彩色吉祥物）逐張過
-# gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）；吉祥物以外純白 RGB。
-# 吉祥物（rev 13 Dock 把手）另驗：64x64／1px 透明邊／含非白色彩。
+# 42/media/ui/MinidoracatUI/ 的 OUTPUT_NAMES（皮膚＋幾何圖示＋art 圖示＋彩色吉祥物＋彩色工具列圖示）逐張過
+# gen_ui_textures.verify_image。共同項：尺寸／IHDR（8-bit RGBA、無多餘 chunk）；彩色資產以外純白 RGB。
+# 彩色資產（rev 13 Dock 把手吉祥物、rev 21 通知紀錄鈴鐺）另驗：64x64／1px 透明邊／含非白色彩。
 # 皮膚另驗：committed alpha＝rounded_patch_alpha 重算幾何（ROUNDED_PATCHES 全部半徑 3／6／10／20）／
 # 照 NinePatchTexture.java:262-298 反解析切線＝(r,4,r)、上圓下直 (r,r+4,0)／拉伸區逐列相同／
 # 對稱／角透明／中心實心或透空／有 AA／半徑 6 參考 alpha 表逐像素比對。圖示另驗：32x32／1px 透明邊／鏡射對稱／

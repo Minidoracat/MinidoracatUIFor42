@@ -27,7 +27,7 @@
 - **通知停留得更久，滑鼠停在上面時不會消失**：沒有自己指定時間的通知，停留時間從 3 秒改成 5 秒；滑鼠游標停在通知上時暫停計時，移開才繼續。通知照樣不擋點擊，底下的按鈕照常按得到。
 - **工具列的說明改到旁邊顯示**：滑鼠停在家族工具列的按鈕上時，說明以前出現在按鈕正下方，會蓋住下一顆按鈕；現在出現在工具列旁邊、靠畫面中間的那一側。用鍵盤快捷鍵或手把移動時，方向鍵照畫面上的位置走。
 
-> 技術要點：API rev 21 新增旗標 `toastHistory` 與 `UI.ToastHistory`（`toggle()`／`isOpen()`／`move()`）；`Toast.show` 的參數不變，每則都寫進 `Toast.history`（最多 100 則，只在記憶體）。`Toast.setAvoid` 的呼叫方式不變，閃避結果改成只往下：判斷用三則單行的預留高度，放不下就留在原位，不再移到登記矩形的左側。自動位置的右緣在原版 moodle 欄與 Dock 預設格的左邊。`holdMs` 省略時改為 5000。玩家放的位置存在 layout.ini（每種解析度一份）。Dock 多一個框架自己的入口（`toasthistory`，order 100，鈴鐺圖示 `bell`），沒有徽章。所有 MOD 的通知都受這次的位置與停留時間變更影響，不需要改程式。Dock 的排版是框架選項頁的下拉（`ModOptions` 頁 `MinidoracatUIFor42`、選項 `dockLayout`：1 直排、2 橫排、3 方格，所有存檔共用）；`UI.Dock.register` 的 spec 與其他 API 不變，也沒有新旗標。Dock 在 layout.ini 的 x、y 改成存把手那格的位置：預設直排時與以前的面板左上角相同，舊記錄讀回不變。
+> 技術要點：API rev 21 新增旗標 `toastHistory` 與 `UI.ToastHistory`（`toggle()`／`isOpen()`／`move()`）；`Toast.show` 的參數不變，每則都寫進 `Toast.history`（最多 100 則，只在記憶體）。`Toast.setAvoid` 的呼叫方式不變，閃避結果改成只往下：判斷用三則單行的預留高度，放不下就留在原位，不再移到登記矩形的左側。自動位置的右緣在原版 moodle 欄與 Dock 預設格的左邊。`holdMs` 省略時改為 5000。玩家放的位置存在 layout.ini（每種解析度一份）。Dock 多一個框架自己的入口（`toasthistory`，order 100，彩色鈴鐺圖 `mui_dock_bell.png`，讀不到時畫圖示 `bell`），沒有徽章。所有 MOD 的通知都受這次的位置與停留時間變更影響，不需要改程式。Dock 的排版是框架選項頁的下拉（`ModOptions` 頁 `MinidoracatUIFor42`、選項 `dockLayout`：1 直排、2 橫排、3 方格，所有存檔共用）；`UI.Dock.register` 的 spec 與其他 API 不變，也沒有新旗標。Dock 在 layout.ini 的 x、y 改成存把手那格的位置：預設直排時與以前的面板左上角相同，舊記錄讀回不變。Dock 入口的 `icon` 貼圖讀不到時，改畫 spec 的 `iconKey`，再沒有才呼叫 `drawIcon`（以前不畫）：MOD 把入口換成彩色圖時，保留原本的 `iconKey` 當退路。
 
 ## [42.21.0-0.13.0] - 2026-10-18
 

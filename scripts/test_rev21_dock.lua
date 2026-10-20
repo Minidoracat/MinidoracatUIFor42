@@ -413,6 +413,39 @@ h = handleOf(p)
 check(loneAt == "1822,124" and at(h) == "1822,124" and p.x + p.width == 1866,
     "建立時只有 1 個入口：那顆按鈕放在把手的位置；入口變多時把手接手同一點，直排右緣照舊離 moodle 欄 12px")
 
+-- ---------- icon 讀不到時改畫 iconKey，再沒有才畫 drawIcon ----------
+local keepTex, keepScaled = getTexture, ISPanel.drawTextureScaled
+local OKICON, GAUGE = "media/ui/ok.png", "media/ui/MinidoracatUI/mui_icon_gauge.png"
+getTexture = function(path) if path == OKICON or path == GAUGE then return { path = path } end return nil end
+local drawn = {}
+ISPanel.drawTextureScaled = function(_, tex) drawn[#drawn + 1] = tex.path end
+D._resetForTests()
+UI.Skin._resetForTests() -- Icons 與 Skin 共用貼圖快取：清掉才會用上面的 getTexture
+local customDraws = 0
+local function iconSpec(id, order, fields)
+    local s = spec(id, order)
+    s.iconKey = nil
+    for k, v in pairs(fields) do s[k] = v end
+    return s
+end
+UI.Dock.register(iconSpec("ok", 1, { icon = OKICON, iconKey = "gauge" }))
+UI.Dock.register(iconSpec("fb", 2, { icon = "media/ui/missing.png", iconKey = "gauge" }))
+UI.Dock.register(iconSpec("dr", 3, { icon = "media/ui/missing.png", drawIcon = function() customDraws = customDraws + 1 end }))
+UI.Dock.register(iconSpec("no", 4, { icon = "media/ui/missing.png" }))
+handlers.OnGameStart()
+p = panel()
+local function iconDraws(id)
+    for i = #drawn, 1, -1 do drawn[i] = nil end
+    button(p, id):prerender()
+    return table.concat(drawn, "|")
+end
+check(iconDraws("ok") == OKICON and iconDraws("fb") == GAUGE,
+    "彩色 icon 讀得到只畫它；讀不到改畫 iconKey 的白色圖示（不留空格）")
+local drDraws = iconDraws("dr")
+check(drDraws == "" and customDraws == 1 and iconDraws("no") == "",
+    "icon 讀不到又沒有 iconKey：改呼叫 drawIcon；三種都沒有就不畫、不拋錯")
+getTexture, ISPanel.drawTextureScaled = keepTex, keepScaled
+
 -- ---------- 還原 ----------
 D._resetForTests()
 UI.Toast._resetForTests()

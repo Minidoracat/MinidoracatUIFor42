@@ -8,7 +8,7 @@
 --     拖曳照 Dock：setCapture＋4px 門檻。範例框是 UI.Focus 的目標：方向鍵每次 NUDGE（Shift 每次 1px）、
 --     Enter＝完成、Esc＝取消；手把十字鍵／A／B 走同一條。完成時 Toast.setAnchor（立刻寫 layout.ini）。
 --     按鍵觸發的關閉走 Focus.close：等觸發鍵放開被消耗了才關，Enter／Esc 的放開不會漏給遊戲（聊天、暫停選單）。
---   * Dock 入口（id "toasthistory"、order 100、iconKey "bell"）：不給 getBadge——不顯示未讀數字，也沒有紅點
+--   * Dock 入口（id "toasthistory"、order 100、彩色 icon mui_dock_bell.png，讀不到時框架改畫 iconKey "bell"）：不給 getBadge——不顯示未讀數字，也沒有紅點
 --     （2026-10-20 使用者裁定）。玩家端顯示選項在「選項 → MODS」的 MinidoracatUI 頁（2026-10-08 裁定：每個入口都要有）。
 -- 缺 Toast／Window／ScrollPanel／Button／Text.wrap 任一：不掛能力（toastHistory 維持 false），紀錄照樣在 Toast.history。
 -- 每幀路徑（prerender／render、Dock 回呼、keyboardTargets）不配置 table 或 closure；字串常值只有 ASCII，
@@ -576,6 +576,7 @@ if UI.CAPABILITIES.dock and UI.Dock and UI.Dock.register then
     pcall(UI.Dock.register, {
         id = "toasthistory",
         order = 100,
+        icon = "media/ui/MinidoracatUI/mui_dock_bell.png",
         iconKey = "bell",
         label = dockLabel,
         onClick = dockClick,

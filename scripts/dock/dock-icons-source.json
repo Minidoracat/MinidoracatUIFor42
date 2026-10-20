@@ -1,0 +1,86 @@
+{
+  "purpose": "rev 21 family Dock entry icons in the 'game item' style the user picked on 2026-10-21 (design draft ui-dock-icons-1021, option C): hand-painted, realistic but simplified, dark outline, readable on the near-black Dock panel at 28 px",
+  "generation": {
+    "model": "gpt-image-2 (openai-codex/gpt-image-2-codex)",
+    "tool": "OMP generate_image, 1024x1024 request, 1:1; the model returned RGBA with a transparent background",
+    "style_reference": {
+      "path": "scripts/dock/dock-icons-style-ref.webp",
+      "md5": "19453be903e3c72c0f60d370b2b01b79",
+      "note": "first option-C sheet; its steering wheel and gauge were too dark on the Dock and were redrawn, the sheet is kept only as the style input of the sheets below",
+      "prompt": {
+        "subject": "遊戲工具列用的四個彩色圖示設定表，畫面切成 2×2 四個等大的格子，每格正中央一個圖示：左上＝黃銅色通知鈴鐺（圓頂鐘身、頂端小圓環、口緣下方一顆小鐘舌）；右上＝汽車方向盤（黑色皮革輪圈、三根銀色輻條、中央圓形喇叭蓋）；左下＝美國郊區小木屋（紅褐色斜屋頂、淺色木板牆、一扇木門、一扇亮著暖黃燈的窗）；右下＝汽車儀表板的指針式速度錶（圓形錶面、白色刻度、綠黃紅三段弧、一根紅色指針）。四個圖示不要任何文字、數字或字母。",
+        "style": "像末日生存遊戲 Project Zomboid 的物品圖示：微斜的 3/4 視角、手繪上色帶一點筆觸與顆粒、寫實但簡化的質感、偏暖的低飽和配色、明顯的深色外框；形狀簡單、輪廓清楚，縮小到 28 像素仍然一眼認得；四個圖示同一套畫法、大小一致、光源一致（左上方）。",
+        "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白；四個格子之間不要畫分隔線或邊框。",
+        "scene": "整張是純白色平塗背景（#FFFFFF），沒有地面、沒有投影、沒有漸層、沒有雜點。"
+      }
+    },
+    "sheets": [
+      {
+        "path": "scripts/dock/dock-icons-sheet.webp",
+        "md5": "fcd8fae68c6c6d47eaf20bc6fcfd69e7",
+        "size": "1254x1254 RGBA, 2x2 cells: bell, steeringwheel / house, gauge",
+        "input": "scripts/dock/dock-icons-style-ref.webp (Image 1)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框、微斜 3/4 視角）重畫四個遊戲工具列圖示，畫面切成 2×2 四個等大的格子，每格正中央一個：左上＝黃銅色通知鈴鐺（和 Image 1 左上相同）；右上＝汽車方向盤，這次改用淺色：淺棕色皮革輪圈、亮銀色三根輻條、中央銀色圓形喇叭蓋，輪圈外緣有一圈明亮的高光，放在黑色背景上也要一眼看清楚；左下＝美國郊區小木屋（和 Image 1 左下相同：紅褐色屋頂、淺色木板牆、亮著暖黃燈的窗）；右下＝指針式速度錶，這次改用淺色錶面：米白色錶面、深色刻度、綠黃紅三段弧、紅色指針、亮銀色金屬外圈，放在黑色背景上也要一眼看清楚。四個圖示不要任何文字、數字或字母。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；每個圖示的亮部要夠亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚。",
+          "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
+      },
+      {
+        "path": "scripts/dock/dock-icons-existing-sheet.webp",
+        "md5": "f520334c1425ca915f06e0258321ff26",
+        "size": "1254x1254 RGBA, 2x2 cells: map, megaphone / battery (unused, window too small), corkboard (unused alternative)",
+        "input": "scripts/dock/dock-icons-style-ref.webp (Image 1)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框、微斜 3/4 視角）畫四個遊戲工具列圖示，畫面切成 2×2 四個等大的格子，每格正中央一個：左上＝攤開的摺疊紙地圖（米黃色舊紙、淡色道路與綠地、摺痕，上面插一根紅色定位針）；右上＝手持擴音喇叭（白色喇叭口、紅色握把、帶一點使用痕跡）；左下＝橫放的電池外殼（灰色金屬殼、右側一個正極凸頭），殼的正中央是一個空的長方形窗口，窗口裡完全透明、什麼都不畫；右下＝掛在牆上的軟木公告板（木頭外框、用彩色圖釘釘著兩三張紙）。四個圖示不要任何文字、數字或字母。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；亮部要夠亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚。",
+          "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
+      },
+      {
+        "path": "scripts/dock/dock-battery-shell.webp",
+        "md5": "90cfa8bfcb2debb6f80396f55e674221",
+        "size": "1254x1254 RGBA, one icon; the window in the middle is transparent",
+        "input": "scripts/dock/dock-icons-style-ref.webp (Image 1)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框）畫一個遊戲工具列用的電池圖示：一顆橫放、粗短的電池，整體長寬比約 2 比 1（像一顆 D 型大電池），亮銀色金屬外殼、右側一個黃銅色的正極凸頭；外殼正中央開一個大的長方形窗口，窗口佔外殼長度的六成、高度的六成，窗口裡完全透明、什麼都不畫（之後程式會在窗口裡畫電量）。不要任何文字、數字或字母。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；外殼要亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚。",
+          "composition": "正側面、電池水平置中，四周留約 10% 的空白。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
+      },
+      {
+        "path": "scripts/dock/dock-icons-econ-sheet.webp",
+        "md5": "f6ff5db514ce439cc2d4a280836f790c",
+        "size": "1254x1254 RGBA, 2x2 cells: survivor coin redrawn, coin stack / wallet, money pouch (the user picked the pouch, bottom right)",
+        "input": "Image 1 scripts/dock/dock-icons-style-ref.webp (style); Image 2 Economy's currency_survivor_anime_1024.png (the shipped survivor coin, motif)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框、偏暖的低飽和配色、微斜 3/4 視角）畫四個遊戲工具列用的「經濟中心」圖示，畫面切成 2×2 四個等大的格子，每格正中央一個：左上＝Image 2 這枚倖存幣用 Image 1 的畫法重畫：金色外圈、中間一棟木板封窗的小木屋，細節大幅簡化（只留屋頂、牆、一扇亮燈的窗），加深色外框，金色降低飽和；右上＝一小疊同樣的倖存幣，三枚疊起來，最上面一枚看得到簡化的小木屋圖樣；左下＝一個咖啡色皮革皮夾，夾口露出一枚金幣；右下＝一個麻布錢袋，用繩子綁著，袋口露出幾枚金幣。四個圖示不要任何文字、數字、字母或貨幣符號。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；亮部要夠亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚；形狀簡單、輪廓清楚。",
+          "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
+      }
+    ]
+  },
+  "cutout": [
+    "sheets are cut into 2x2 equal cells (627x627 each); the battery sheet is used whole",
+    "alpha < 8 set to 0 (drops faint specks), then crop to the alpha bounding box",
+    "resize with Lanczos on premultiplied alpha (Pillow RGBa) so the longer side is 62 px (46 px for the 48x48 NoticeBoard file), keeping the aspect ratio",
+    "centre on a 64x64 RGBA canvas (48x48 for NoticeBoard); RGB zeroed wherever alpha is 0; 1px transparent border on all sides",
+    "battery shell: the transparent window in the 64 px file is x 14..48, y 25..38 (inclusive); MiniMapWatch draws the charge inside it, scaled by size/64"
+  ],
+  "outputs": {
+    "MinidoracatUIFor42/MOD/MinidoracatUIFor42/Contents/mods/MinidoracatUIFor42/42/media/ui/MinidoracatUI/mui_dock_bell.png": "d59781b623721fda0a41948c124115b6",
+    "MinidoracatVehicleManagerFor42/MOD/MinidoracatVehicleManagerFor42/Contents/mods/MinidoracatVehicleManagerFor42/42/media/ui/MinidoracatVehicleManager/dock_steeringwheel.png": "8f327e325e874ec36d53a55eb099cd8b",
+    "MinidoracatSafehouseFor42/MOD/MinidoracatSafehouseFor42/Contents/mods/MinidoracatSafehouseFor42/42/media/ui/MinidoracatSafehouse/dock_house.png": "6a34f6a0bb8b102f43a3a383f338fb5e",
+    "MinidoracatDevProfilerFor42/MOD/MinidoracatDevProfilerFor42/Contents/mods/MinidoracatDevProfilerFor42/42/media/ui/MinidoracatDevProfiler/dock_gauge.png": "e95a49cfb67e60b9e9b8e0a1f2d9460c",
+    "MinidoracatMiniMapFor42/MOD/MinidoracatMiniMapFor42/Contents/mods/MinidoracatMiniMapFor42/42/media/ui/minimap_toggle.png": "0b5826e0f8268085e3210efea0aaef2f",
+    "MinidoracatNoticeBoardFor42/MOD/MinidoracatNoticeBoardFor42/Contents/mods/MinidoracatNoticeBoardFor42/42/media/ui/NoticeBoard/nb_megaphone.png": "33a65a0f93c2a753aa71c9e37ab2b9ff",
+    "MinidoracatMiniMapWatchFor42/MOD/MinidoracatMiniMapWatchFor42/Contents/mods/MinidoracatMiniMapWatchFor42/42/media/ui/MinidoracatWatch/dock_battery_shell.png": "fff3d7690081749344e428d7edd2e708",
+    "MinidoracatEconomyFor42/MOD/MinidoracatEconomyFor42/Contents/mods/MinidoracatEconomyFor42/42/media/ui/MinidoracatEconomy/dock_pouch.png": "0b4604d3681e642d1bf300d1f1e90614"
+  },
+  "kept_as_is": "PackThrow item texture (same as the inventory item), Dock handle mascot. Economy's currency coin currency_survivor.png also stays: it is the currency icon; only the toolbar and float button moved to dock_pouch.png"
+}

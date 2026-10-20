@@ -8,7 +8,7 @@
     外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
 兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
-另有兩類 commit 進來、本檔不生成只驗證的資產：art 圖示（ART_ICON_NAMES）與彩色吉祥物（MASCOT_NAMES）。
+另有兩類 commit 進來、本檔不生成只驗證的資產：art 圖示（ART_ICON_NAMES）與彩色資產（吉祥物 MASCOT_NAMES＋工具列圖示 DOCK_ART_NAMES）。
 純確定性計算（不用 ImageDraw，避免跨 Pillow 版本的柵格化差異），重跑產物逐位元組相同；
 生成後自檢並印統計／皮膚 alpha 表／圖示 16px ASCII 預覽／md5。
 
@@ -106,7 +106,10 @@ ART_ICON_NAMES = tuple(
 # verify 走 assert_mascot_content（64×64／1px 透明邊／含非白色彩）。
 MASCOT_SIZE = 64
 MASCOT_NAMES = ("mui_mascot_sleep.png", "mui_mascot_awake.png")
-OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES + MASCOT_NAMES
+# 彩色工具列圖示（rev 21 通知紀錄的 Dock 入口）：同吉祥物的規格與驗證；來源與處理：scripts/dock/dock-icons-source.json。
+DOCK_ART_NAMES = ("mui_dock_bell.png",)
+COLOR_NAMES = MASCOT_NAMES + DOCK_ART_NAMES
+OUTPUT_NAMES = SKIN_NAMES + ICON_NAMES + ART_ICON_NAMES + COLOR_NAMES
 
 
 def parse_alpha_table(text: str) -> tuple[tuple[int, ...], ...]:
@@ -1009,7 +1012,7 @@ def assert_mascot_content(filename: str, pixels: list[tuple[int, int, int, int]]
 def verify_image(path: Path) -> dict[str, object]:
     is_icon = path.name in ICON_SPECS
     is_art = path.name in ART_ICON_NAMES
-    is_mascot = path.name in MASCOT_NAMES
+    is_mascot = path.name in COLOR_NAMES
     if is_icon or is_art:
         expected_size = (ICON_SIZE, ICON_SIZE)
     elif is_mascot:

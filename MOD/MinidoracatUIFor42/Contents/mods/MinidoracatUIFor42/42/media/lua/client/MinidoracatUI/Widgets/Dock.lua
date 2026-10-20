@@ -639,15 +639,20 @@ local function drawBadge(btn, rec, c)
     btn:drawTextCentre(rec.badgeText, x + rec.badgeW / 2, (h - fontHeight()) / 2, s.r, s.g, s.b, 1)
 end
 
+-- icon 讀不到（缺檔、getTexture 回 nil）時改畫 iconKey，再沒有才畫 drawIcon：彩色圖壞掉也不留空格（rev 21）
 local function drawIcon(btn, rec, c)
     local spec = rec.spec
     local off = (btn.width - ICON) / 2
     if spec.icon then
         if rec.tex == nil then rec.tex = loadTexture(spec.icon) end
-        if rec.tex then pcall(drawTex, btn, rec.tex, off, off, ICON, 1, 1, 1, 1) end
-    elseif spec.iconKey then
+        if rec.tex then
+            pcall(drawTex, btn, rec.tex, off, off, ICON, 1, 1, 1, 1)
+            return
+        end
+    end
+    if spec.iconKey then
         Icons.draw(btn, spec.iconKey, off, off, ICON, c.text)
-    else
+    elseif spec.drawIcon then
         pcall(spec.drawIcon, btn, off, off, ICON)
     end
 end
