@@ -37,6 +37,7 @@ local TR = {
     IGUI_MinidoracatUI_Dock_Collapse = "Collapse (%1 entries)",
     IGUI_MinidoracatUI_Dock_StatusLine = "%1: %2",
     IGUI_MinidoracatUI_Dock_Open = "Open family toolbar",
+    IGUI_MinidoracatUI_Dock_HandleHint = "Right-click: layout",
 }
 getText = function(key, a, b)
     local s = TR[key]
@@ -396,18 +397,18 @@ c._mouseOver = false
 h = handleOf(p)
 h._mouseOver = true
 p:prerender()
-ok(tip.description == "Collapse (3 entries)", "把手（展開中）：收合（N 個入口）")
+ok(tip.description == "Collapse (3 entries)\nRight-click: layout", "把手（展開中）：收合（N 個入口），最後一行是右鍵選單提示（rev 21）")
 h:onMouseDown(1, 1)
 h:onMouseUp(1, 1)
 st.c, st.stateB = 4, "warn"
 ctx.advance(500)
 p:prerender()
-ok(tip.description == "Expand (3 entries)\nNc\nNb", "把手（收合中）：展開（N）＋每個待處理／警示入口一行（沒有狀態就只寫名稱）")
+ok(tip.description == "Expand (3 entries)\nNc\nNb\nRight-click: layout", "把手（收合中）：展開（N）＋每個待處理／警示入口一行（沒有狀態就只寫名稱）")
 st.status = "mail"
 st.a = 2
 ctx.advance(500)
 p:prerender()
-ok(tip.description == "Expand (3 entries)\nNa: mail\nNc\nNb", "有狀態的入口用「名稱：狀態」模板")
+ok(tip.description == "Expand (3 entries)\nNa: mail\nNc\nNb\nRight-click: layout", "有狀態的入口用「名稱：狀態」模板")
 h._mouseOver = false
 p:prerender()
 ok(tip.visible == false, "滑鼠離開：提示收掉")

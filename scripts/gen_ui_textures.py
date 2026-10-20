@@ -4,7 +4,7 @@
 輸出到 42/media/ui/MinidoracatUI/，兩類資產：
   皮膚（17 張）：圓角 9-slice 16 張（ROUNDED_PATCHES：半徑 6 的 round／roundtop、半徑 10 的
     pill（四角）／roundtop10、rev 15 的半徑 3／20 四角與上圓下直，各 fill＋border），以及 16x16 圓點。
-  圖示（34 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
+  圖示（35 張）：32x32 單色線性圖示，描邊 3px、端點與轉折一律圓頭、無漸層無陰影、
     外圍留 1px 透明邊；32px 原稿供 14-20px 顯示（16px 是乾淨的 2:1 降採樣）。
 
 兩類都是全白 RGB、alpha 為形狀（8x8 覆蓋率 AA）、運行時頂點染色，一套資產服務所有主題。
@@ -82,6 +82,7 @@ ICON_NAMES = (
     "mui_icon_infinity.png",
     "mui_icon_watch.png",
     "mui_icon_zone.png",
+    "mui_icon_bell.png",
 )
 # art 圖示：AI 生成剪影經 scripts/import_icon_sheet.py 轉成 32×32 純白 alpha PNG
 # 後 commit；不由本檔幾何生成（generate_images 不覆寫、不刪，缺檔＝assert），verify 走
@@ -383,7 +384,7 @@ def polygon_fill(points):
 
 
 def icon_shapes() -> dict:
-    """三十四個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
+    """三十五個圖示的幾何定義（座標＝32x32 貼圖像素，左上為原點，整數座標落在像素邊界）。
 
     共同語彙：主描邊 3px、端點與轉折圓頭、無漸層無陰影、內容全部落在 [1, 31] 之間
     （外圍 1px 透明邊，verify 會逐張確認——被裁到邊的圖示縮小後會黏在按鈕框上）。
@@ -573,6 +574,14 @@ def icon_shapes() -> dict:
             stroke_path([(28, 13), (28, 19)]),
             stroke_path([(16, 16), (16, 16)], half=2.5),
         ),
+        # rev 21 通知紀錄：鐘形（頂部半圓＋兩側直下再外擴到口緣）＋頂端短柄＋口緣下方的鐘舌圓點；
+        # 口緣與鐘舌之間留 1px，16px 顯示時仍分得開
+        "mui_icon_bell.png": (
+            arc(16, 13, 7, 180, 360),
+            stroke_path([(9, 13), (9, 18.5), (6, 22.5), (26, 22.5), (23, 18.5), (23, 13)]),
+            stroke_path([(16, 3), (16, 5)]),
+            stroke_path([(16, 27), (16, 27)], half=2.0),
+        ),
     }
 
 
@@ -748,6 +757,11 @@ ICON_SPECS = {
         "symmetry": "hv",
         "solid": ((16, 4), (4, 16), (4, 4), (16, 16)),     # 上邊中段、左邊中段、左上角、中心點
         "clear": ((10, 4), (16, 10), (8, 8)),              # 角段與中段之間的虛線間隙、框內留白
+    },
+    "mui_icon_bell.png": {
+        "symmetry": "v",
+        "solid": ((16, 5), (9, 16), (16, 22), (16, 27)),   # 鐘頂、左側、口緣、鐘舌
+        "clear": ((16, 15), (16, 24), (3, 16), (5, 27)),   # 鐘身內、口緣與鐘舌間的縫、左外、左下角
     },
 }
 

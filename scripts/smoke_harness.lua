@@ -728,8 +728,8 @@ do
     local t = Toast.show({ message = "anim", holdMs = 1000 })
     nowMs = nowMs + 100 -- 進場 100/250ms
     t:prerender()
-    local targetX = 1920 - 300 - 16
-    check(t:getX() > targetX and t:getX() < 1920 + 300, "進場中 x 介於畫面外與定位點之間")
+    local targetX = 1920 - (10 + 32) - 60 - 16 - 300 -- rev 21：moodle 欄（32px）與 Dock 預設格的左邊
+    check(t:getX() > targetX and t:getX() < targetX + 40, "進場中 x 介於起點（定位點右邊 40px）與定位點之間")
     nowMs = nowMs + 5000 -- 總時長 250+1000+400 遠超
     t:prerender()
     check(#Toast.active == 0, "超過總時長自動 dismiss")
@@ -782,7 +782,7 @@ do
     check(quiet:onRightMouseDown(1, 1) == false and quiet:onRightMouseUp(1, 1) == false,
         "通知不吃右鍵（明確回 false）")
 
-    -- 速度鈕：單人戴錶時在時鐘下方（y=82、高 28），落在通知欄 x 1604..1904 內
+    -- 速度鈕：單人戴錶時在時鐘下方（y=82、高 28），與通知欄 x 1502..1802 水平重疊
     local speed = { x = 1721, y = 82, w = 189, h = 28, visible = true, listed = true }
     function speed:isVisible() return self.visible end
     function speed:getX() return self.x end
@@ -1042,7 +1042,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 20, "API_REVISION 進到 20")
+    check(UI.API_REVISION == 21, "API_REVISION 進到 21")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1057,8 +1057,8 @@ do
         and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
         and UI.CAPABILITIES.buttonIconColor == false and UI.CAPABILITIES.opaqueWindow == false
         and UI.CAPABILITIES.opaquePopup == false and UI.CAPABILITIES.itemPickerVehicleClass == false
-        and UI.CAPABILITIES.textWrap == true,
-        "rev 7～18、20 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        and UI.CAPABILITIES.toastHistory == false and UI.CAPABILITIES.textWrap == true,
+        "rev 7～18、20、21 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -2043,8 +2043,8 @@ end
 切片測試載入器（本檔之後不必為了切片再改）：
   依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua、scripts/test_rev12.lua、
   scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua、scripts/test_rev14_dropdown.lua、
-  scripts/test_rev15.lua、scripts/test_rev16.lua、scripts/test_rev17.lua 與 scripts/test_rev18.lua；檔案不存在記一筆失敗
-  （十四個切片都已落地）。
+  scripts/test_rev15.lua、scripts/test_rev16.lua、scripts/test_rev17.lua、scripts/test_rev18.lua、scripts/test_rev19.lua、
+  scripts/test_rev20.lua、scripts/test_rev21.lua 與 scripts/test_rev21_dock.lua；檔案不存在記一筆失敗（十八個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2090,7 +2090,7 @@ local sliceCtx = {
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
-    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20" }) do
+    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

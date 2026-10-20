@@ -485,6 +485,8 @@ local ICON_FILES = {
     -- rev 17：設定視窗的分類圖示（同一套程序化描邊）
     watch        = "mui_icon_watch.png",
     zone         = "mui_icon_zone.png",
+    -- rev 21：通知紀錄的 Dock 入口（同一套程序化描邊）
+    bell         = "mui_icon_bell.png",
     -- rev 4：art 圖示（AI 生成剪影、scripts/import_icon_sheet.py 轉 32×32 白 glyph；
     -- 非幾何確定性生成，verify 只驗尺寸／純白／透明邊／著墨比例）。地圖符號類
     -- 供 consumer 畫在地圖上與設定視窗同用，同一 key 同一張
@@ -835,7 +837,10 @@ MinidoracatUI.v1 = {
     -- rev 19：Toast 的 title 放不下時換成最多兩行、最後一行帶省略號（toastTitleWrap；以前只畫一行、會畫到框外）
     -- rev 20：ItemPicker 宇宙的 name 改用 getItemName，車輛零件照原版背包接上車型（itemPickerVehicleClass；
     --         以前三種車型同名）
-    API_REVISION = 20,
+    -- rev 21：Toast 通知紀錄視窗與 Dock 入口、移動模式（Widgets/ToastHistory.lua，toastHistory）；Toast 的位置改成
+    --         右上固定一欄（避開區只往下推、不再往左跳）、玩家放的位置（Toast.setAnchor，存 layout.ini）、
+    --         預設停留 5 秒且游標停在上面時暫停；Icons 新增 bell
+    API_REVISION = 21,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -877,6 +882,7 @@ MinidoracatUI.v1 = {
         opaquePopup = false,      -- rev 18：彈出清單跟著不透明視窗或 opts.opaque（Dropdown／DatePicker／FilterBar／Autocomplete）
         toastTitleWrap = false,   -- rev 19：Toast 的 title 換行（最多兩行，Widgets/Toast.lua）
         itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（Widgets/ItemPicker.lua）
+        toastHistory = false,     -- rev 21：通知紀錄視窗、Dock 入口與移動模式（Widgets/ToastHistory.lua）
     },
     Theme = Theme,
     Skin = Skin,

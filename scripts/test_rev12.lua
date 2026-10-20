@@ -452,7 +452,8 @@ do
     end
     local plain = settle(Toast.show("a"))
     local px, py = plain.x, plain.y
-    ok(UI.CAPABILITIES.toastAvoid and px == 1920 - 300 - 16 and py == 60, "沒有登記：照舊右上（x=螢幕寬-寬-16、y=60）")
+    ok(UI.CAPABILITIES.toastAvoid and px == 1920 - (10 + 32) - 60 - 16 - 300 and py == 60,
+        "沒有登記：右上自動欄（右緣在 moodle 欄與 Dock 格左邊、y=60）")
     Toast._resetForTests()
     local win = { x = 1500, y = 40, w = 400, h = 300 }
     local function winRect() return win.x, win.y, win.w, win.h end
@@ -463,7 +464,7 @@ do
     ok(a.x == px and a.y == 40 + 300 + 8 and b.y == a.y + a.height + 8, "與視窗重疊：整疊移到視窗下方")
     win.h = 1000
     a:prerender()
-    ok(a.x == 1500 - 300 - 16 and a.y == 60, "下方放不下：改放到視窗左側")
+    ok(a.x == px and a.y == 60, "下方放不下：留在原欄原位（rev 21 起不往左移）")
     win.x, win.y, win.h = 100, 40, 300
     a:prerender()
     ok(a.x == px and a.y == 60, "視窗不在右上欄：位置不變")

@@ -3,7 +3,10 @@
 -- Contract (binding for the framework and every consumer): docs/ARCHITECTURE.md section 3.16.
 -- Consumers register entries with UI.Dock.register(spec); one dock panel for player 0 shows every
 -- available entry in (order, id) order. 0 entries: hidden. 1 entry: that button alone, no handle.
--- 2+ entries: mascot handle on top (click = collapse/expand) and a vertical strip of 40x40 buttons.
+-- 2+ entries: mascot handle (click = collapse/expand) and 40x40 buttons laid out as a column, a row or a
+-- near-square grid (rev 21; the player picks it in Options -> MODS or from the handle's right-click menu).
+-- Entries grow toward the screen centre: the handle stays at the end nearest the screen edge, and changing
+-- layout, collapsing or entries coming and going never moves it (see "layout" below).
 --
 -- Proven pieces reused from Widgets/FloatButton.lua (same constants and semantics):
 --   * setCapture drag with an absolute-mouse 4px threshold; pressing the handle or any entry
@@ -14,14 +17,15 @@
 --   * alwaysOnTop = false through the native setter after addToUIManager (ARCHITECTURE 3.4)
 -- Position and collapsed state persist through ISLayoutManager key "MinidoracatUIDock": the funcs
 -- table is RegisterWindow's 2nd argument, called as funcs.RestoreLayout(target, name, layout)
--- (ISLayoutManager.lua:6-13,99-113); OnPostSave writes layout.ini (:191-229).
+-- (ISLayoutManager.lua:6-13,99-113); OnPostSave writes layout.ini (:191-229). The layout is a ModOptions
+-- combobox (one value for every save and resolution), written right away when picked from the menu.
 -- Default position: left of the vanilla moodle column (MoodlesUI.getTextureSizeForOption,
 -- MoodlesUI.java:72-86; column x = screenW - (10 + size), UIManager.java:417).
 --
 -- Keyboard: keyBinding MinidoracatUI_Dock. Pressing it expands (remembering a collapsed state)
--- and makes the dock a UI.Focus root: arrows move between entries, Enter activates, Esc gives
--- focus back and re-collapses. Pressing it again gives focus back. Without UI.Focus the key only
--- toggles collapse. Joypad: "open family toolbar" in the world context menu (joypad players
+-- and makes the dock a UI.Focus root: arrows move between entries as laid out on screen, Enter
+-- activates, Esc gives focus back and re-collapses. Pressing it again gives focus back. Without UI.Focus
+-- the key only toggles collapse. Joypad: "open family toolbar" in the world context menu (joypad players
 -- only) hands joypad focus to the dock; B gives it back; activating an entry gives it back first.
 --
 -- Hot paths (prerender/render, keyboardTargets, toast avoid fn) allocate no tables or closures;
@@ -60,6 +64,7 @@ local RIGHT_CLICK_EXPIRE_MS = 800
 local TOOLTIP_THROTTLE_MS = 500
 local POLL_MS = 250
 local DEFAULT_Y = 120
+local TIP_GAP = 8
 local MOODLE_EDGE = 10 -- UIManager.java:417 setX(sw - (10 + width))
 local MOODLE_GAP = 12
 local MOODLE_SIZES = { 32, 48, 64, 80, 96, 128 } -- MoodlesUI.textureSizes, option 1-6
@@ -67,6 +72,9 @@ local LAYOUT_KEY = "MinidoracatUIDock"
 local BIND = "MinidoracatUI_Dock"
 local MASCOT_SLEEP = "media/ui/MinidoracatUI/mui_mascot_sleep.png"
 local MASCOT_AWAKE = "media/ui/MinidoracatUI/mui_mascot_awake.png"
+local LAYOUT_COLUMN, LAYOUT_ROW, LAYOUT_GRID = 1, 2, 3 -- also the ModOptions combobox indexes
+local OPTIONS_ID = "MinidoracatUIFor42" -- the framework's Options -> MODS page (shared with ToastHistory.lua)
+local OPTION_LAYOUT = "dockLayout"
 
 local records = {} -- id -> { spec, button, tex, badgeN, badgeText, badgeW }
 local sorted = {}  -- every record, (order, id)
@@ -222,11 +230,6 @@ local function moodleSize()
     return 32
 end
 
-local function applyDefault(p)
-    p:setX(getCore():getScreenWidth() - (MOODLE_EDGE + moodleSize()) - MOODLE_GAP - p.width)
-    p:setY(DEFAULT_Y)
-end
-
 local function layoutRegistered()
     local LM = ISLayoutManager
     return LM ~= nil and type(LM.windows) == "table" and LM.windows[LAYOUT_KEY] ~= nil
@@ -235,6 +238,55 @@ end
 -- write layout.ini now (the same path the game runs on every save)
 local function persist()
     if layoutRegistered() and ISLayoutManager.OnPostSave then pcall(ISLayoutManager.OnPostSave) end
+end
+
+-- ---------- player option: layout (Options -> MODS, the framework page shared with ToastHistory.lua) ----------
+-- The MODS tab is built only from pages that exist by then, so the page is registered at file load (get or
+-- create: whichever framework file loads first creates it). Vanilla reads ModOptions.ini only when it builds
+-- the options screen; the first read here loads it once more. A pick from the handle menu writes the ini at
+-- once (PZAPI.ModOptions:save, the writer the options screen's Apply uses). Combobox index = LAYOUT_*.
+
+local layoutOption = nil
+local layoutLoaded = false
+local applyLayout -- forward: picking a layout re-lays the dock out
+
+local function layoutValue()
+    local v = layoutOption and layoutOption:getValue()
+    if v == LAYOUT_ROW or v == LAYOUT_GRID then return v end
+    return LAYOUT_COLUMN
+end
+
+local function readLayout()
+    if not layoutLoaded then
+        layoutLoaded = true
+        if layoutOption then pcall(PZAPI.ModOptions.load, PZAPI.ModOptions) end
+    end
+    return layoutValue()
+end
+
+local function createOptions()
+    local M = PZAPI.ModOptions
+    local page = M:getOptions(OPTIONS_ID)
+    if page == nil then page = M:create(OPTIONS_ID, "UI_optionscreen_binding_MinidoracatUI") end
+    local combo = page:addComboBox(OPTION_LAYOUT, "IGUI_MinidoracatUI_Dock_Layout",
+        "IGUI_MinidoracatUI_Dock_Layout_tooltip")
+    combo:addItem("IGUI_MinidoracatUI_Dock_LayoutColumn", true)
+    combo:addItem("IGUI_MinidoracatUI_Dock_LayoutRow", false)
+    combo:addItem("IGUI_MinidoracatUI_Dock_LayoutGrid", false)
+    -- Apply writes the picked index into the option before calling apply (MainOptions.lua:3760-3762):
+    -- read it, do not reload the ini. Other options on the page chain their apply after this one.
+    local previousApply = page.apply
+    function page:apply()
+        if previousApply then previousApply(self) end
+        layoutLoaded = true
+        if panel then applyLayout(panel, layoutValue()) end
+    end
+    return combo
+end
+
+if type(PZAPI) == "table" and type(PZAPI.ModOptions) == "table" and type(PZAPI.ModOptions.create) == "function" then
+    local ok, combo = pcall(createOptions)
+    if ok then layoutOption = combo end
 end
 
 -- ---------- layout ----------
@@ -253,40 +305,114 @@ local function newButton(p, rec, onclick)
     return b
 end
 
+-- Every layout is first laid out growing right and down, then mirrored toward the screen centre
+-- (_growLeft/_growUp: which half the handle's cell is in; decided on default, restore and drag release,
+-- never mid-drag). The anchor is the handle (2+ entries) or the lone button (1 entry, which sits where the
+-- handle would). "home" is the top-left of the anchor's 48x48 cell (anchor + PAD all round). Relayout keeps
+-- home where it is, so the handle stays put and a lone button turns into the handle in place; only clamping
+-- to the screen moves it. In the default column on the right half home equals the panel's top-left, so
+-- layout.ini written before rev 21 by a dock with 2+ entries reads back unchanged.
+
+local function homeOf(p)
+    local a = p._anchor
+    if a == nil then return p:getX(), p:getY() end
+    return p:getX() + a:getX() - PAD, p:getY() + a:getY() - PAD
+end
+
+local function setHome(p, hx, hy)
+    local a = p._anchor
+    if a == nil then
+        p:setX(hx)
+        p:setY(hy)
+        return
+    end
+    p:setX(hx + PAD - a:getX())
+    p:setY(hy + PAD - a:getY())
+end
+
+local function place(p, el, x, y)
+    el:setX(p._growLeft and (p.width - x - CELL) or x)
+    el:setY(p._growUp and (p.height - y - CELL) or y)
+end
+
 local function relayout(p)
+    local hx, hy = homeOf(p)
     local n = #shown
     for i = 1, #sorted do
         local b = sorted[i].button
         if b then b:setVisible(false) end
     end
+    p.handle:setVisible(n >= 2)
+    if n == 0 then return end -- hidden by the caller
     if n == 1 then
-        p.handle:setVisible(false)
         local rec = shown[1]
         if rec.button == nil then rec.button = newButton(p, rec, activateEntry) end
-        rec.button:setX(0)
-        rec.button:setY(0)
-        rec.button:setVisible(true)
+        local b = rec.button
         p:setWidth(CELL)
         p:setHeight(CELL)
+        b:setX(0)
+        b:setY(0)
+        b:setVisible(true)
+        b._col, b._row = 0, 0
+        p._cols, p._rows = 1, 1
+        p._anchor = b
+        setHome(p, hx, hy)
         return
     end
-    p.handle:setX(PAD)
-    p.handle:setY(PAD)
-    p.handle:setVisible(n >= 2)
-    local y = PAD + CELL
-    if not p.collapsed then
-        for i = 1, n do
-            local rec = shown[i]
-            if rec.button == nil then rec.button = newButton(p, rec, activateEntry) end
-            y = y + GAP
-            rec.button:setX(PAD)
-            rec.button:setY(y)
-            rec.button:setVisible(true)
-            y = y + CELL
-        end
+    -- (ox, oy): first entry's cell before mirroring; entry i sits at column c, row r from there
+    local cols, rows, ox, oy = 1, n, PAD, PAD + CELL + GAP -- column: entries below the handle
+    if p.collapsed then
+        rows = 0
+    elseif p.layout == LAYOUT_ROW then
+        cols, rows, ox, oy = n, 1, PAD + CELL + GAP, PAD -- row: entries beside the handle
+    elseif p.layout == LAYOUT_GRID then
+        cols = math.ceil(math.sqrt(n)) -- near square: 4 -> 2 columns, 9 -> 3, 10 -> 4 (user decision 2026-10-20)
+        rows = math.ceil(n / cols) -- the handle keeps a row of its own above them
     end
-    p:setWidth(PAD + CELL + PAD)
-    p:setHeight(y + PAD)
+    p:setWidth(ox + cols * (CELL + GAP) - GAP + PAD)
+    p:setHeight(oy + rows * (CELL + GAP) - GAP + PAD)
+    p._cols, p._rows = cols, rows
+    place(p, p.handle, PAD, PAD)
+    for i = 1, (p.collapsed and 0 or n) do
+        local rec = shown[i]
+        if rec.button == nil then rec.button = newButton(p, rec, activateEntry) end
+        local b = rec.button
+        local c, r = (i - 1) % cols, math.floor((i - 1) / cols)
+        place(p, b, ox + c * (CELL + GAP), oy + r * (CELL + GAP))
+        b._col = p._growLeft and (cols - 1 - c) or c -- where it is on screen, for the arrow keys
+        b._row = p._growUp and (rows - 1 - r) or r
+        b:setVisible(true)
+    end
+    p._anchor = p.handle
+    setHome(p, hx, hy)
+end
+
+local function updateGrowth(p)
+    local core = getCore()
+    local hx, hy = homeOf(p)
+    p._growLeft = hx + PAD + CELL / 2 > core:getScreenWidth() / 2
+    p._growUp = hy + PAD + CELL / 2 > core:getScreenHeight() / 2
+end
+
+-- after home moved (default, restore, drag release): pick the growth direction and lay out again
+local function regrow(p)
+    updateGrowth(p)
+    relayout(p)
+end
+
+-- default home: just inside the vanilla moodle column at y 120 (same spot as before rev 21)
+local function applyDefault(p)
+    local right = getCore():getScreenWidth() - (MOODLE_EDGE + moodleSize()) - MOODLE_GAP
+    setHome(p, right - (PAD * 2 + CELL), DEFAULT_Y)
+    regrow(p)
+end
+
+applyLayout = function(p, layout)
+    if p.layout == layout then return end
+    p.layout = layout
+    relayout(p)
+    clamp(p)
+    persist() -- the clamp may have moved home
 end
 
 local function setCollapsed(p, value, temporary)
@@ -299,6 +425,40 @@ end
 local function toggleCollapsed(p)
     p._wasCollapsed = nil -- an explicit choice replaces any focus-session memory
     setCollapsed(p, not p.collapsed, false)
+end
+
+-- ---------- handle right-click menu: layout and reset position (vanilla ISContextMenu) ----------
+
+local function pickLayout(p, layout)
+    if layoutOption then
+        layoutOption:setValue(layout)
+        pcall(PZAPI.ModOptions.save, PZAPI.ModOptions)
+    end
+    applyLayout(p, layout)
+end
+
+local function resetPosition(p)
+    applyDefault(p)
+    clamp(p)
+    persist()
+end
+
+local function openLayoutMenu(p)
+    if ISContextMenu == nil or type(ISContextMenu.get) ~= "function" then return end
+    local hx, hy = p.handle:getAbsoluteX(), p.handle:getAbsoluteY()
+    local menu = ISContextMenu.get(0, hx, hy)
+    local column = menu:addOption(getText("IGUI_MinidoracatUI_Dock_LayoutColumn"), p, pickLayout, LAYOUT_COLUMN)
+    local row = menu:addOption(getText("IGUI_MinidoracatUI_Dock_LayoutRow"), p, pickLayout, LAYOUT_ROW)
+    local grid = menu:addOption(getText("IGUI_MinidoracatUI_Dock_LayoutGrid"), p, pickLayout, LAYOUT_GRID)
+    local current = column
+    if p.layout == LAYOUT_ROW then current = row elseif p.layout == LAYOUT_GRID then current = grid end
+    menu:setOptionChecked(current, true)
+    menu:addOption(getText("IGUI_MinidoracatUI_Dock_ResetPosition"), p, resetPosition)
+    -- beside the handle on the screen-centre side; vanilla keeps the menu on screen (keepOnScreen)
+    local x = p._growLeft and (hx - menu.width - GAP) or (hx + CELL + GAP)
+    menu:setX(x)
+    menu.requestX = x
+    p._menu = menu -- the handle tooltip opens on the same side: keep it hidden while the menu shows
 end
 
 -- ---------- focus sessions (keyboard hotkey / joypad menu) ----------
@@ -361,7 +521,8 @@ end
 
 local function handleTip(p)
     local count = tostring(#shown)
-    if not p.collapsed then return getText("IGUI_MinidoracatUI_Dock_Collapse", count) end
+    local hint = getText("IGUI_MinidoracatUI_Dock_HandleHint") -- the right-click menu is otherwise invisible
+    if not p.collapsed then return getText("IGUI_MinidoracatUI_Dock_Collapse", count) .. "\n" .. hint end
     local text = getText("IGUI_MinidoracatUI_Dock_Expand", count)
     for i = 1, #shown do
         local spec = shown[i].spec
@@ -372,7 +533,7 @@ local function handleTip(p)
             text = text .. "\n" .. line
         end
     end
-    return text
+    return text .. "\n" .. hint
 end
 
 local function hideTip(p)
@@ -385,7 +546,7 @@ local function hideTip(p)
 end
 
 local function tipTarget(p)
-    if p._down then return nil end
+    if p._down or (p._menu and p._menu:getIsVisible()) then return nil end
     local h = p.handle
     if h:getIsVisible() and h:isMouseOver() then return h end
     for i = 1, #shown do
@@ -397,6 +558,25 @@ local function tipTarget(p)
         if f and f.parent == p and f:getIsVisible() then return f end
     end
     return nil
+end
+
+-- beside the dock, on the screen-centre side, never off screen. Row: under it on the upper half, over it
+-- on the lower half. Column and grid: left or right of it, level with the target. The owner is the panel
+-- (not isButton), so vanilla does not move the tooltip afterwards (ISToolTip.lua:90-95).
+local function placeTip(p, target, tip)
+    local core = getCore()
+    local tw, th = tip.width or 0, tip.height or 0
+    local px, py = p:getAbsoluteX(), p:getAbsoluteY()
+    local x, y
+    if p.layout == LAYOUT_ROW then
+        x = target:getAbsoluteX()
+        y = p._growUp and (py - th - TIP_GAP) or (py + p.height + TIP_GAP)
+    else
+        x = p._growLeft and (px - tw - TIP_GAP) or (px + p.width + TIP_GAP)
+        y = target:getAbsoluteY()
+    end
+    tip:setDesiredPosition(math.max(0, math.min(x, core:getScreenWidth() - tw)),
+        math.max(0, math.min(y, core:getScreenHeight() - th)))
 end
 
 local function updateTip(p)
@@ -425,13 +605,9 @@ local function updateTip(p)
         local text = target._rec and entryTip(target._rec) or handleTip(p)
         tip.description = text
         tip.maxLineWidth = string.find(text, "\n", 1, true) and 1000 or 300 -- ISButton.lua:326-330
+        if tip.doLayout then pcall(tip.doLayout, tip) end -- size for the new text now, not one frame late
     end
-    local below = target:getAbsoluteY() + target.height + 8
-    if target:isMouseOver() then
-        tip:setDesiredPosition(getMouseX(), below)
-    else
-        tip:setDesiredPosition(target:getAbsoluteX(), below)
-    end
+    placeTip(p, target, tip)
 end
 
 -- ---------- drawing ----------
@@ -536,28 +712,49 @@ end
 
 function DockButton:render() end -- replaces ISButton:render (title / joypad glyph drawing)
 
--- arrows move between entries (cycling); keyboard handle() and joypad dirs ask this first
+-- the entry button on screen at (col, row); nil = an empty cell (last grid row not full)
+local function cellAt(col, row)
+    for i = 1, #shown do
+        local b = shown[i].button
+        if b and b._col == col and b._row == row then return b end
+    end
+    return nil
+end
+
+-- arrows follow the screen: left/right along a row, up/down along a column, wrapping round at the ends
+-- and skipping empty cells; a single line (column or row) takes all four arrows. Keyboard handle() and
+-- joypad dirs ask this first.
 function DockButton:onFocusKey(key)
     if self._rec == nil or Focus == nil then return false end
-    local delta
-    if key == Keyboard.KEY_UP or key == Keyboard.KEY_LEFT then
-        delta = -1
-    elseif key == Keyboard.KEY_DOWN or key == Keyboard.KEY_RIGHT then
-        delta = 1
+    local dc, dr = 0, 0
+    if key == Keyboard.KEY_LEFT then
+        dc = -1
+    elseif key == Keyboard.KEY_RIGHT then
+        dc = 1
+    elseif key == Keyboard.KEY_UP then
+        dr = -1
+    elseif key == Keyboard.KEY_DOWN then
+        dr = 1
     else
         return false
     end
-    local n = #shown
-    local index = 0
-    for i = 1, n do
-        if shown[i] == self._rec then index = i end
+    local p = self.parent
+    local cols, rows = p and p._cols or 0, p and p._rows or 0
+    if cols < 1 or rows < 1 or self._col == nil then return true end
+    if cols == 1 then
+        dr, dc = dr + dc, 0
+    elseif rows == 1 then
+        dc, dr = dc + dr, 0
     end
-    if index == 0 or n < 2 then return true end
-    index = index + delta
-    if index < 1 then index = n end
-    if index > n then index = 1 end
-    local target = shown[index].button
-    if target then Focus.focusControl(target, true) end
+    local col, row = self._col, self._row
+    for _ = 1, cols + rows do
+        col, row = (col + dc) % cols, (row + dr) % rows -- Lua % of a negative is still 0..n-1
+        local target = cellAt(col, row)
+        if target then
+            Focus.focusControl(target, true)
+            return true
+        end
+    end
     return true
 end
 
@@ -596,6 +793,7 @@ local function releaseDock(btn)
     btn:setCapture(false)
     if p._dragged then
         p._dragged = nil
+        regrow(p) -- dropped in another half: the entries now grow toward the centre from there
         clamp(p)
         persist()
     else
@@ -609,22 +807,26 @@ function DockButton:onMouseMoveOutside(dx, dy) return moveDock(self) end
 function DockButton:onMouseUp(x, y) return releaseDock(self) end
 function DockButton:onMouseUpOutside(x, y) return releaseDock(self) end
 
+-- right-click: down/up pairing with an expiry, none while left-dragging. The handle opens the layout
+-- menu; an entry calls its onRightClick.
 function DockButton:onRightMouseDown(x, y)
     local p = self.parent
-    if self._rec and self._rec.spec.onRightClick and p and not p._down then
+    if p and not p._down and (self._rec == nil or self._rec.spec.onRightClick) then
         self._rDown, self._rDownAt = true, getTimestampMs()
     end
     return true
 end
 
 function DockButton:onRightMouseUp(x, y)
+    local paired = self._rDown and getTimestampMs() - (self._rDownAt or 0) < RIGHT_CLICK_EXPIRE_MS
+    self._rDown = nil
+    if not paired then return true end
     local rec = self._rec
-    if rec and rec.spec.onRightClick and self._rDown
-        and getTimestampMs() - (self._rDownAt or 0) < RIGHT_CLICK_EXPIRE_MS then
-        self._rDown = nil
+    if rec == nil then
+        if self.parent then openLayoutMenu(self.parent) end
+    elseif rec.spec.onRightClick then
         pcall(rec.spec.onRightClick, rec.spec)
     end
-    self._rDown = nil
     return true
 end
 
@@ -653,6 +855,7 @@ local function createPanel()
     p.alwaysOnTop = false
     p.theme = UI.Theme.create()
     p.collapsed = false -- first run: expanded
+    p.layout = readLayout()
     p._focusControls = {}
     p._focusList = { { kind = "group", controls = p._focusControls, captionSide = "none" } }
     if Focus then p:setWantKeyEvents(true) end -- key hooks only act during a hotkey session
@@ -728,23 +931,23 @@ function DockPanel:render()
     if Focus and Focus.root == self then Focus.render(self, self.theme) end
 end
 
+-- x, y = home (see "layout"): the panel's top-left for the default column, so older records still fit
 function DockPanel:SaveLayout(name, layout)
-    layout.x = self:getX()
-    layout.y = self:getY()
+    local hx, hy = homeOf(self)
+    layout.x = hx
+    layout.y = hy
     -- a focus session expands temporarily; save the state the player chose
     layout.collapsed = tostring((self._wasCollapsed or self.collapsed) == true)
 end
 
 function DockPanel:RestoreLayout(name, layout)
-    local x, y = tonumber(layout.x), tonumber(layout.y)
-    if x and y then
-        self:setX(x)
-        self:setY(y)
-    end
     if layout.collapsed == "true" or layout.collapsed == "false" then
         self.collapsed = layout.collapsed == "true"
         relayout(self)
     end
+    local x, y = tonumber(layout.x), tonumber(layout.y)
+    if x and y then setHome(self, x, y) end
+    regrow(self)
     clamp(self)
 end
 
@@ -836,6 +1039,7 @@ function Dock._resetForTests()
     records, sorted, shown, panel = {}, {}, {}, nil
     dirty, nextPoll = true, 0
     mascotProbed, mascotSleep, mascotAwake, fontH = false, nil, nil, nil
+    layoutLoaded = false
 end
 
 -- ---------- events ----------
