@@ -30,7 +30,7 @@
 
 > 技術要點：API rev 21 新增旗標 `toastHistory` 與 `UI.ToastHistory`（`toggle()`／`isOpen()`／`move()`）；`Toast.show` 的參數不變，每則都寫進 `Toast.history`（最多 100 則，只在記憶體）。`Toast.setAvoid` 的呼叫方式不變，閃避結果改成只往下：判斷用三則單行的預留高度，放不下就留在原位，不再移到登記矩形的左側。自動位置的右緣在原版 moodle 欄與 Dock 預設格的左邊。`holdMs` 省略時改為 5000。玩家放的位置存在 layout.ini（每種解析度一份）。Dock 多一個框架自己的入口（`toasthistory`，order 100，彩色鈴鐺圖 `mui_dock_bell.png`，讀不到時畫圖示 `bell`），沒有徽章。所有 MOD 的通知都受這次的位置與停留時間變更影響，不需要改程式。Dock 的排版是框架選項頁的下拉（`ModOptions` 頁 `MinidoracatUIFor42`、選項 `dockLayout`：1 直排、2 橫排、3 方格，所有存檔共用）；`UI.Dock.register` 的 spec 與其他 API 不變，也沒有新旗標。Dock 在 layout.ini 的 x、y 改成存把手那格的位置：預設直排時與以前的面板左上角相同，舊記錄讀回不變。Dock 入口的 `icon` 貼圖讀不到時，改畫 spec 的 `iconKey`，再沒有才呼叫 `drawIcon`（以前不畫）：MOD 把入口換成彩色圖時，保留原本的 `iconKey` 當退路。
 
-> 技術要點：API rev 22 新增旗標 `tileGrid` 與 `UI.TileGrid`（ARCHITECTURE §3.22）：固定格高的方格清單，每列格數＝max(1, floor((寬 − 12) / tileW))，捲軸 12px 一律預留；`drawTile` 畫格子內容（框架先畫卡片底、選取的 `selected`＋1px `accent` 框、hover），`onPick` 在點格子、Enter、Space、手把 A 時呼叫，選用 `tooltip` 只在滑鼠換格時問一次，`focusRect` 不會把焦點框畫到元件外。既有元件不變。
+> 技術要點：API rev 22 新增旗標 `tileGrid` 與 `UI.TileGrid`（ARCHITECTURE §3.22）：固定格高的方格清單，每列格數＝max(1, floor((寬 − 12) / tileW))，捲軸 12px 一律預留；`drawTile` 畫格子內容（框架先畫卡片底、選取的 `selected`＋1px `accent` 框、hover），`onPick` 在點格子、Enter、Space、手把 A 時呼叫，選用 `tooltip` 只在滑鼠換格時問一次，`focusRect` 不會把焦點框畫到元件外。兩套內建色票新增 `card`（方格卡片底；深色白 a＝0.04，與經濟系統自己的卡片色相同，淺色黑 a＝0.04），MOD 自己的同名色票照舊優先；本函式庫只有方格讀它，既有元件外觀不變。
 
 ## [42.21.0-0.13.0] - 2026-10-18
 

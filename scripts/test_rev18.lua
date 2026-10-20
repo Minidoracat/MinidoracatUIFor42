@@ -45,9 +45,9 @@ check(UI.API_MAJOR == 1 and UI.API_REVISION >= 18
     and same(light.warning, { r = 0.70, g = 0.27, b = 0, a = 1 }),
     "rev 18：兩套 palette 都有 warning（深色 #FF8C33、淺色 #B34500）")
 
--- 名單守門：16 個舊 token＋warning，少一個或多一個都紅（ARCHITECTURE §3.2 的 token 數）
+-- 名單守門：16 個舊 token＋warning（rev 18）＋card（rev 22），少一個或多一個都紅（ARCHITECTURE §3.2 的 token 數）
 local TOKENS = { "surface", "surfaceTitle", "well", "border", "text", "textMuted", "textFaint", "textDisabled",
-    "accent", "hover", "selected", "errorSurface", "errorText", "onAccent", "titleText", "titleMuted", "warning" }
+    "accent", "hover", "selected", "errorSurface", "errorText", "onAccent", "titleText", "titleMuted", "warning", "card" }
 local function exactly(palette)
     local count = 0
     for _ in pairs(palette) do count = count + 1 end
@@ -56,7 +56,7 @@ local function exactly(palette)
     end
     return count == #TOKENS
 end
-check(exactly(dark) and exactly(light), "兩套 palette 的 token 名單＝17 個（16 個舊 token＋warning）")
+check(exactly(dark) and exactly(light), "兩套 palette 的 token 名單＝18 個（16 個舊 token＋warning＋rev 22 的 card）")
 
 check(ratio(dark.warning, dark.surface) >= 4.5 and ratio(light.warning, light.surface) >= 4.5,
     "warning 在 surface 上 >= 4.5:1（深色 9.07:1、淺色 4.66:1）")

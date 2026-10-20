@@ -214,13 +214,18 @@ ctx.setMouse(109 * 2 + 50, 40)
 reset(dg)
 dg:prerender()
 local colors = dg.theme.colors
-local well = colors.card or colors.well
-check(colors.card == nil and sameColor(dg.rects[1], well) and dg.rects[1].x == 2 and dg.rects[1].y == 2
-    and dg.rects[1].w == 105 and dg.rects[1].h == 76, "卡片底：palette 沒有 card 時用 well，畫在卡片範圍")
+local card = colors.card
+local dark = UI.Theme.create().colors
+check(dark.card ~= nil and dark.card.a > 0 and (dark.card.r ~= dark.surface.r or dark.card.g ~= dark.surface.g
+    or dark.card.b ~= dark.surface.b) and UI.Theme.create{ variant = "light" }.colors.card ~= nil,
+    "預設深色 theme 有 card token、顏色和 surface 不同（不透明黑視窗上卡片看得見）；淺色也有")
+check(sameColor(dg.rects[1], card) and dg.rects[1].a == card.a and dg.rects[1].x == 2 and dg.rects[1].y == 2
+    and dg.rects[1].w == 105 and dg.rects[1].h == 76, "卡片底：預設 theme 用 card token，畫在卡片範圍")
 local sel, hov = nil, nil
 for _, r in ipairs(dg.rects) do
-    if r.x == 111 and sameColor(r, colors.selected) then sel = r end
-    if r.x == 220 and sameColor(r, colors.hover) then hov = r end
+    -- 深色的 card／hover／selected 都是白疊層：連 alpha 一起比，才分得出是哪一層
+    if r.x == 111 and sameColor(r, colors.selected) and r.a == colors.selected.a then sel = r end
+    if r.x == 220 and sameColor(r, colors.hover) and r.a == colors.hover.a then hov = r end
 end
 local b = dg.borders[1]
 check(sel ~= nil and #dg.borders == 1 and b.x == 111 and b.y == 2 and b.w == 105 and b.h == 76 and sameColor(b, colors.accent),
@@ -244,7 +249,13 @@ local custom = UI.Theme.create{ colors = { card = { r = 0.1, g = 0.2, b = 0.3, a
 local cg = UI.TileGrid.new{ width = 340, height = 200, tileW = 100, tileH = 80, theme = custom }
 cg:setItems(items(1))
 cg:prerender()
-check(sameColor(cg.rects[1], custom.colors.card), "theme 有 card token 時卡片底用它")
+check(sameColor(cg.rects[1], custom.colors.card), "consumer 覆寫的 card token 優先")
+local old = UI.Theme.create()
+old.colors.card = nil -- 舊框架 palette／consumer 自建 theme 沒有 card
+local og = UI.TileGrid.new{ width = 340, height = 200, tileW = 100, tileH = 80, theme = old }
+og:setItems(items(1))
+og:prerender()
+check(sameColor(og.rects[1], old.colors.well) and og.rects[1].a == old.colors.well.a, "theme 沒有 card 時卡片底退回 well")
 
 -- ---------- 提示 ----------
 local asks = 0

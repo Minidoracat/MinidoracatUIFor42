@@ -618,6 +618,7 @@ local DARK = {
     titleText    = { r = 1,    g = 1,    b = 1,    a = 1.0 },
     titleMuted   = { r = 0.62, g = 0.62, b = 0.62, a = 1.0 },
     warning      = { r = 1,    g = 0.55, b = 0.2,  a = 1.0 },
+    card         = { r = 1,    g = 1,    b = 1,    a = 0.04 }, -- rev 22：方格卡片底（同 Economy 的 card）
 }
 
 -- 淺色（experimental，v0.1 首發後依實測調值）：白色疊層族改黑色疊層、
@@ -640,6 +641,7 @@ local LIGHT = {
     titleText    = { r = 0.08, g = 0.08, b = 0.08, a = 1.0 },
     titleMuted   = { r = 0.35, g = 0.35, b = 0.35, a = 1.0 },
     warning      = { r = 0.70, g = 0.27, b = 0,    a = 1.0 },
+    card         = { r = 0,    g = 0,    b = 0,    a = 0.04 }, -- rev 22
 }
 
 local PALETTES = { dark = DARK, light = LIGHT }
@@ -840,7 +842,8 @@ MinidoracatUI.v1 = {
     -- rev 21：Toast 通知紀錄視窗與 Dock 入口、移動模式（Widgets/ToastHistory.lua，toastHistory）；Toast 的位置改成
     --         右上固定一欄（避開區只往下推、不再往左跳）、玩家放的位置（Toast.setAnchor，存 layout.ini）、
     --         預設停留 5 秒且游標停在上面時暫停；Icons 新增 bell
-    -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua，tileGrid；收編自 Economy ECPanelGrid 的通用部分）
+    -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua，tileGrid；收編自 Economy ECPanelGrid 的通用部分）；
+    --         theme token card（方格卡片底，深色白 0.04、淺色黑 0.04；以前沒有 card 的卡片用 well）
     API_REVISION = 22,
     CAPABILITIES = {
         theme = true,
