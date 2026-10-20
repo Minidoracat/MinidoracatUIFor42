@@ -1042,7 +1042,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 21, "API_REVISION 進到 21")
+    check(UI.API_REVISION == 22, "API_REVISION 進到 22")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1057,8 +1057,9 @@ do
         and UI.CAPABILITIES.preview == false and UI.CAPABILITIES.controlTooltips == false
         and UI.CAPABILITIES.buttonIconColor == false and UI.CAPABILITIES.opaqueWindow == false
         and UI.CAPABILITIES.opaquePopup == false and UI.CAPABILITIES.itemPickerVehicleClass == false
-        and UI.CAPABILITIES.toastHistory == false and UI.CAPABILITIES.textWrap == true,
-        "rev 7～18、20、21 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        and UI.CAPABILITIES.toastHistory == false and UI.CAPABILITIES.tileGrid == false
+        and UI.CAPABILITIES.textWrap == true,
+        "rev 7～18、20～22 能力在 widget 檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -2044,7 +2045,8 @@ end
   依序 loadfile scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua、scripts/test_rev12.lua、
   scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua、scripts/test_rev14_dropdown.lua、
   scripts/test_rev15.lua、scripts/test_rev16.lua、scripts/test_rev17.lua、scripts/test_rev18.lua、scripts/test_rev19.lua、
-  scripts/test_rev20.lua、scripts/test_rev21.lua 與 scripts/test_rev21_dock.lua；檔案不存在記一筆失敗（十八個切片都已落地）。
+  scripts/test_rev20.lua、scripts/test_rev21.lua、scripts/test_rev21_dock.lua 與 scripts/test_rev22.lua；檔案不存在記一筆失敗
+  （十九個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2090,7 +2092,8 @@ local sliceCtx = {
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
-    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock" }) do
+    "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock",
+    "rev22" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

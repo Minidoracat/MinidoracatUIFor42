@@ -16,7 +16,7 @@
 - 不做通用 widget 大全（NeatUI 的 scope 滑坡教訓）；每個元件都要有 ≥1 個真實 consumer 才收。
 - 控制元件的**外觀**不沿用 vanilla（2026-09-26 使用者決定：家族 UI 一律用框架的現代元素，不用官方原生的樣子）：rev 7 起 Button／TextField／Checkbox／Tabs／Window／Dialog 由框架提供現代外觀；vanilla 只作**輸入與事件基底**（`ISButton` 的點擊／搖桿語意、`ISTextEntryBox` 的 IME／游標、`ISLayoutManager` 的存讀），不重寫這些原生行為。
 - 不 monkeypatch vanilla class。
-- v1 不做 grid／變動列高清單／貼圖數字字型。
+- v1 不做變動列高清單／貼圖數字字型。grid 只有 rev 22 的 `UI.TileGrid`（固定格高的方格清單，§3.22）；NeatUI 那種把 grid 塞進清單同一個 class 的做法照舊不做。
 
 ## 1. 依賴與解耦模型（使用者要求：盡量模組化解耦）
 
@@ -48,8 +48,9 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 21,         -- additive 變更單調遞增；consumer 宣告最低需求
+    API_REVISION = 22,         -- additive 變更單調遞增；consumer 宣告最低需求
                                -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）｜rev 19：Toast 標題換行，最多兩行（§3.4）｜rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（§3.14）｜rev 21：Toast 右上固定一欄與玩家位置、紀錄、預設 5 秒與游標暫停；通知紀錄視窗、移動模式與 Dock 入口（toastHistory）；bell 圖示（§3.4、§3.6、§3.16）
+                               -- ｜rev 22：TileGrid 方格清單（§3.22）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -89,6 +90,7 @@ MinidoracatUI.v1 = {
         toastTitleWrap = false, -- rev 19：Toast 的 title 放不下時換行，最多兩行（Widgets/Toast.lua，與 toast 同檔）
         itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 用 getItemName，車輛零件含車型（Widgets/ItemPicker.lua，與 itemPicker 同檔）
         toastHistory = false,  -- rev 21：通知紀錄視窗、移動模式與 Dock 入口（Widgets/ToastHistory.lua；另需 toast／window／scrollPanel／controls）
+        tileGrid     = false,  -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua；另需 virtualList，Focus 選用）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -101,7 +103,8 @@ MinidoracatUI.v1 = {
     -- Date／DateField／DatePicker（rev 11，datePicker）、Table／TableHeader（rev 11，table）、
     -- FilterBar（rev 11，filterBar）、ItemPicker（rev 11，itemPicker）、Autocomplete（rev 11，autocomplete）、
     -- Dock（rev 13，dock）、Dropdown（rev 14，dropdown）、ScrollPanel（rev 16，scrollPanel）、
-    -- NavList（rev 17，navList）、SliderRow（rev 17，sliderRow）、Preview（rev 17，preview）、ToastHistory（rev 21，toastHistory）
+    -- NavList（rev 17，navList）、SliderRow（rev 17，sliderRow）、Preview（rev 17，preview）、ToastHistory（rev 21，toastHistory）、
+    -- TileGrid（rev 22，tileGrid）
 }
 ```
 
@@ -180,6 +183,8 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 -- rev 21 通知紀錄：consumer 不用改程式（Toast.show 的每則都會進紀錄）；要從自己的介面打開紀錄或移動模式時逐旗標探測：
 --   local canHistory = ok and UI.API_REVISION >= 21 and UI.CAPABILITIES.toastHistory and UI.ToastHistory ~= nil
 --   if canHistory then UI.ToastHistory.toggle() end   -- 或 UI.ToastHistory.move()
+-- rev 22 方格清單逐旗標探測；旗標缺席時退回原本的清單（例：VirtualList／Table），不要自己拼一份 grid：
+--   local canGrid = ok and UI.API_REVISION >= 22 and UI.CAPABILITIES.tileGrid and UI.TileGrid ~= nil
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -208,6 +213,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/ScrollPanel.lua` | rev 16 | `UI.ScrollPanel` 捲動容器（§3.18）；只需要原生 `ISPanel`，不 require Focus（Focus 以 `_scrollPanel` 標記認它），`CAPABILITIES.scrollPanel` |
 | `Widgets/NavList.lua` | rev 17 | `UI.NavList` 分組側欄導覽（§3.19）；只需要原生 `ISPanel`，不 require Focus（實作 `onFocusKey`／`focusRect`／`focusLabel` 接點），`CAPABILITIES.navList` |
 | `Widgets/Preview.lua` | rev 17 | `UI.Preview` 效果預覽框（§3.21）；只需要原生 `ISPanel`，`CAPABILITIES.preview` |
+| `Widgets/TileGrid.lua` | rev 22 | `UI.TileGrid` 方格清單（§3.22）；繼承 `UI.VirtualList`（自行 pcall require，缺席即 return），不 require Focus（實作 `onFocusKey`／`focusRect`／`focusLabel` 接點），`CAPABILITIES.tileGrid` |
 
 載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
 `MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
@@ -304,7 +310,7 @@ theme:fill(element, x, y, w, h, colorOrToken, shape, alphaScale)
 | 內容高度從已移動 child 量測（`niscrollview.lua:103-117`） | `contentHeight = count × stride + padding`，純計算 |
 | stencil 只 set→clear（`:354-362`） | set→draw→clear→repaint 成對 |
 | selection 散在 cell | selection/focus 存 list，cell 是投影 |
-| grid 塞同 class＋熱路徑 print（`nigridvirtualscrollview.lua:316`） | 不做 grid；框架預設零 log |
+| grid 塞同 class＋熱路徑 print（`nigridvirtualscrollview.lua:316`） | VirtualList 本身不做 grid；rev 22 的方格是另一個 class `UI.TileGrid`（§3.22，繼承它的捲軸與 stencil、不用 cell 池）；框架預設零 log |
 
 **解除綁定時機**：已綁定 cell 因資料縮水而隱藏，或在 `rebuildPool`（包含 resize）移除前，呼叫一次 `unbindCell(list, cell)`；回呼執行時仍可讀取舊綁定。未綁定的空 cell 不呼叫。可見 cell 捲動／revision 更新仍直接呼叫 `bindCell` 覆蓋，不新增 unbind 通知；consumer 必須在 bind 中重設舊投影，以維持既有呼叫語意。tooltip 等獨立於 cell 的資源須由 consumer 清除，不能只依賴 child 被移除。
 
@@ -840,6 +846,31 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 
 **使用端契約**：draw 只用元素繪製（`self:drawRect`、`drawTextureScaled`、`drawText` 等，座標用傳入的內框）；不要在 draw 裡 `setStencilRect`（巢狀第三層），也不要加子元件。
 
+### 3.22 TileGrid 方格清單（API rev 22）
+
+`Widgets/TileGrid.lua`，`UI.TileGrid`（`CAPABILITIES.tileGrid`）。固定格高的方格清單（物品搜尋、商店的「方格」檢視）；收編自 Economy ECPanelGrid＋ECPanelWidgets（`W.gridStrips`／`W.tileAt`／`W.gridFocusKey`）的通用部分，格子內容與點了之後做什麼留在 consumer。繼承 `UI.VirtualList`（捲軸、拇指拖曳、軌道跳頁、stencil 成對、資料 revision、選取存放），**不用 cell 池**：`items` 是格子陣列，`contentHeight`＝列數 × `tileH`，格子在 prerender 直接畫在元件自己身上。Focus 選用（缺席時只能用滑鼠）。首個 consumer：Safehouse 物品搜尋面板（2026-10-21 使用者核准「像 Economy 商店的清單／方格切換」）；Economy 之後再遷移。
+
+| 面 | API | 說明 |
+|---|---|---|
+| 建構 | `UI.TileGrid.new{ x?, y?, width?, height?, tileW, tileH, theme?, target?, drawTile, onPick, focusLabel?, label?, tooltip? }` | 回傳已 `initialise()` 的元素，consumer `addChild`。`tileW`＝最小格寬、`tileH`＝格高（缺或非數字退 64） |
+| 版面 | `perRow()`、`tileWidth()` | 每列格數＝max(1, floor((width − 12) / tileW))；格寬＝floor((width − 12) / 每列格數)（多出的寬平均分）。捲軸的 12px（VirtualList 捲軸 10＋間距 2）**一律預留**，捲軸出現時不重排 |
+| 資料 | `setItems(items)`、`getItems()` | `setItems` 同 VirtualList：捲動夾回範圍；游標仍在範圍內就保留，否則清成 nil |
+| 游標 | `getSelectedIndex()`、`setSelectedIndex(i)`、`getSelectedItem()` | 游標＝格子索引（nil＝沒有）；`setSelectedIndex` 超出範圍忽略、不捲動、不回呼 |
+| 捲動 | `scrollToIndex(i)`、`resize(w, h)` | `scrollToIndex`：捲到那格完整可見（已完整可見不動；超出範圍不動）。`resize`：改尺寸、重算每列格數、捲動夾回範圍 |
+| 命中 | `indexAt(x, y)` | 元素座標下的格；卡片之間的空隙、最後一列的空位、捲軸區回 nil |
+| 回呼 | `drawTile(target, grid, item, x, y, w, h, state)`、`onPick(target, item, index, grid)`、`focusLabel(target, item)`、`tooltip(target, item, index)` | 見下 |
+
+**行為契約**
+- **繪製**：每個可見列（含部分可見）的每格先畫卡片：卡片＝格子四邊內縮 2px（兩格之間 4px 空隙），底色＝theme 的 `card` token（內建 palette 沒有，consumer 可以在 `Theme.create` 的 colors 補），沒有就用 `well`；選取格＝`selected` 底＋1px `accent` 框（選中不只靠顏色）；滑鼠下的格＝`hover` 底（沒有框）；形狀 `Skin.shapeOf(theme, "control")`，chrome 乘 `theme.alpha`。接著 `pcall(drawTile, target, grid, item, x, y, w, h, state)`：**`grid` 就是畫布**（consumer 對它呼叫 `drawText`／`drawTextCentre`／`drawTextureScaledAspect` 等），x, y, w, h＝卡片在 grid 上的元素座標，已扣掉捲動量、畫在 grid 的 stencil 裡（超出可視區被裁掉），consumer 不讀捲動狀態；`state`＝重用的同一張表 `{ picked, hover, index }`，consumer 不得留著。drawTile 出錯只少那格內容（不 log）。拇指拖曳中不算 hover。
+- **滑鼠**：按下在卡片上＝游標移到那格＋`onPick` 一次；空隙、空位不動；捲軸區交給 VirtualList（拇指拖曳、軌道跳頁）。滾輪一次捲一列（VirtualList 是三列）。
+- **提示（`tooltip`）**：滑鼠下的格子換了（含 `setItems` 之後、捲動讓另一格到游標下）才 pcall 問一次，回非空字串才顯示；滑鼠離開、移到空隙或那格回 nil 就收掉。顯示走 §3.7 rev 17 controlTooltips 同一條路（借原版 `ISButton:updateTooltip`），之後把提示框移到那格卡片下方 8px、游標的 x（原版放在整個元件下緣，方格高時離游標太遠）。
+- **焦點／手把**：整個元件是一個 `_focusKind="button"` 目標，`_focusLabel`＝`label`。左右＝前／後一格（行尾跨到下一列開頭、行首跨回上一列結尾）；上下＝同一欄的上／下一列，最後一列較短時往下落在它的最後一格；Home／End＝第一／最後一格；PgUp／PgDn＝一頁（可見的完整列數，至少 1）同一欄，碰到頂落在第一列同欄、碰到底落在最後一列同欄或最後一格。沒有游標時第一個導覽鍵落在第一格（End 落在最後一格）。動不了回 false（鍵盤焦點留著、手把移到上／下一個目標）。Enter／小鍵盤 Enter／Space／手把 A＝`onPick`（沒有游標時先落在第一格；沒有格子時吃掉不回呼）。游標移動時捲到那格，並請所有捲動容器祖先 `scrollTo(self)`（同 NavList）。
+- **`focusRect()`**：只框游標格的卡片；那格整個捲出**本元件**的可視區回 nil（Focus 改框住整個元件），部分可見時裁到可視區內——焦點框不畫到元件外（Focus 的「捲出可視區不畫」只比對外層 ScrollPanel，看不到元件自己的捲動）。
+- **`focusLabel()`**：`focusLabel(target, item)` 回非空字串就用它，否則回 `label`（不留給 Focus 的 `captionOf` 退回：它會讀 `self.tooltip`，也就是滑鼠下那格的提示）。
+- prerender（含 hover、提示、drawTile 的 pcall）＋render 零 table／closure 配置。
+
+**不做的事**：不做多選、拖曳排序、變動格高、橫向捲動、群組標題；不做 hover 以外的格內互動（格子上的按鈕由 consumer 在 `onPick` 之後的面板處理）。
+
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
 | # | NeatUI 事實 | 本框架對應決策 |
@@ -876,6 +907,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 | API rev 19 Toast 標題換行（**開發中**） | Toast 的 `title` 放不下時換行，最多兩行、第二行帶省略號，高度跟著長（§3.4） | `scripts/test_rev19.lua`（見 §7）；ui-e2e `rev19-sp` 實機截圖（真 Kahlua 斷行與真字型寬度）；地圖手錶 `C.toast` 在旗標存在時不再自己併標題，PTBR 實機看到兩行標題後定版 |
 | API rev 20 挑選器名稱含車型（**開發中**） | ItemPicker 宇宙的 `name` 改用 `getItemName`：車輛零件依腳本 `VehicleType` 接上車型，與原版背包同名，`search` 跟著含車型（§3.14） | `scripts/test_rev20.lua`（見 §7）；實機在 Economy 的 MP 情境查宇宙裡三個大型油箱的名稱與旗標 |
 | API rev 21 通知位置與紀錄、工具列排版（**開發中**） | Toast 右上固定一欄（moodle 與 Dock 預設格內側，避開區只往下推、看預留高度）、玩家位置與往上疊（`Toast.setAnchor`，layout.ini）、紀錄（`Toast.history`）、預設停留 5 秒與游標暫停（§3.4）；`UI.ToastHistory` 紀錄視窗、移動模式與 Dock 入口（`toastHistory`）；`bell` 圖示（§3.6）；Dock 直排／橫排／方格（選項下拉＋把手右鍵選單）、往畫面中間長、提示框改到側邊、方向鍵照畫面（§3.16，沒有新旗標） | `scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`（見 §7）；ui-e2e `toast-sp` 實機截圖（與修改前 `ui-toast-before-1020` 同一套示意框）、`toast-input-sp`（背景真點擊、拖曳、方向鍵、Enter、Esc）與 `dock-layout-sp`（四個真 consumer＋示意入口，真右鍵選單切換三種排版、拖到左下、方向鍵）；下游聯測 11 個 consumer 全過（NoticeBoard `test_nbpanel.lua` 的進場座標改成 rev 21 的值） |
+| API rev 22 方格清單（**開發中**） | `UI.TileGrid`（§3.22）：固定格高方格、12px 捲軸預留、選取框與 hover、鍵盤與手把游標、hover 提示、focusRect 不出元件 | `scripts/test_rev22.lua`（見 §7）；Safehouse 物品搜尋面板接用並實機驗證（滑鼠、鍵盤、手把、捲動中的焦點框、提示）後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -909,7 +941,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua` 與 `scripts/test_rev21_dock.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua` 與 `scripts/test_rev22.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -930,6 +962,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
     - rev20：`itemPickerVehicleClass` 旗標；重新載入元件後的宇宙：車輛零件的 `name` 是 `getItemName` 給的（含車型、三種分得開），`search` 含車型字，一般物品照舊。stub 讓 `getItemNameFromFullType` 只回譯名，換回它時第二條會紅。
     - rev21：自動欄位置（moodle 32／48px 兩種寬）；預留高度（一則碰不到、三則的預留區碰得到的障礙物：第一則就在它下方，第二則來了不跳）；下方放不下留在原欄原位（不往左）；玩家位置優先且不避開、上半部往下疊、下半部往上疊（多行第一則往上長）、夾回螢幕、`setAnchor(nil)`；layout.ini 存讀（取整數、讀回重算方向、換解析度回自動、換回讀回、恢復預設後讀回是自動）；紀錄存完整訊息／來源／色條／時間、被丟掉的第 9 則也記、只留 100 則；預設 5 秒與指定值；游標暫停（進場不暫停、停留暫停、移開接著計時）；紀錄視窗（Dock 入口 spec 沒有徽章、選項頁與勾選框、第一次才讀 ini、套用後隱藏並 refresh、最新在上、長訊息多行不截字、列高、相對時間、新通知重排、空狀態、恢復預設鈕的啟用、底部說明在窄視窗換行且留在視窗內）；移動模式（起點、焦點框、方向鍵與 Shift、4px 門檻、拖到下半部、夾回螢幕、按鈕列放在堆疊外、真 Enter 與 Esc 的按下放開都被吃掉、三顆按鈕、模態吃點擊、手把說明、回主選單收掉）。植入「移除 record」「預設 3 秒」時對應的條目會紅。
     - rev21_dock：選項頁的下拉（三項、預設直排、載入時不讀 ini）；ini 存了橫排時建立 Dock 讀一次、開局就是橫排；三種排版的尺寸（9 個 48×444／444×48／136×180，方格 4／5／10 個的欄數）與右上的鏡射（橫排把手在右端、方格把手自己佔右上一列）；套用不重讀 ini、不另存；不認得的值當直排；換排版、入口增減、收合展開時把手的螢幕位置不變；拖曳中不變形、放到左下改往上往右長、把手留在放開處；layout.ini 存 home、重開讀回、換解析度回預設再讀回；把手右鍵選單（四項、目前的打勾、開在靠畫面中間那側、選了立刻寫 ModOptions.ini、800ms 過期、左鍵按住中不接、恢復預設位置並存檔、選單開著時把手提示框不出來）；方向鍵照畫面位置（3×3 四個方向、走出邊界繞回、跳過空格、直排左右鍵沿著走）；提示框位置（直排在右半部放左邊、橫排上半部放下面、下半部放上面、方格在右下放左邊、夾到螢幕內、換字先 `doLayout`、把手提示最後一行是右鍵說明）；方格加提示框 50 幀零配置；建立時只有 1 個入口：那顆按鈕在把手的位置，入口變多時把手接手同一點、直排右緣照舊離 moodle 欄 12px；入口圖示的退路（`icon` 讀得到只畫它、讀不到改畫 `iconKey`、再沒有呼叫 `drawIcon`、三者都沒有不畫不拋錯）。植入「不鏡射」「方格固定 3 欄」「relayout 不保 home」「提示框一律放下面」「放開不重判方向」「欄號不鏡射」「選了不存檔」「選單開著仍顯示提示框」「`icon` 讀不到不退回」時各有條目會紅。
+    - rev22：TileGrid 載入自檢（facade 未發布、VirtualList 缺席、原生 ISPanel 缺席）與旗標；每列格數扣 12px 預留、格寬平均分、內容高、`resize` 重算（剛好與差 1px）；`setItems` 清掉超出範圍的游標、保留範圍內的；方向鍵（左右跨列、第一格不動回 false、上下保持欄位、最後一列較短落在最後一格、最後一列再往下回 false）、Home／End、PgUp／PgDn、沒有游標時的第一個鍵、其他鍵不處理；Enter／Space／小鍵盤 Enter 的 `onPick` 參數與次數、沒有游標先落第一格、沒有格子；游標移動捲到那格、`scrollToIndex`（最後一列、已可見不動、部分可見、超出範圍）、滾輪一列、捲動容器祖先 `scrollTo`；滑鼠（點卡片、空隙三邊、最後一列空位、捲軸區、軌道跳頁）；`focusRect`（卡片、整格捲出 nil、部分可見裁切、沒有游標 nil）；繪製（卡片底 `well`、theme 有 `card` 時用它、選取 `selected`＋唯一的 `accent` 框、hover 沒有框、只畫可見列、drawTile 參數與重用 state、stencil 成對、捲到底的列）；提示（只問一次、每幀走 updateTooltip、提示框在卡片下方、換到沒有提示的格收掉、空隙與離開不問、`setItems` 後重問）；`focusLabel` 與退回 `label`；Focus 接線（kind=button＋label、鍵盤右／下／Enter、手把方向與 A、`Focus.render` 只框游標格、部分捲出裁在元件內、整格捲出框住整個元件、最後一列往下移到下一個目標）；50 輪零配置。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

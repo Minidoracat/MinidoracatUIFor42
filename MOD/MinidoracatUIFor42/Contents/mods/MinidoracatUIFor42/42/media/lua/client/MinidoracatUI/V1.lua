@@ -840,7 +840,8 @@ MinidoracatUI.v1 = {
     -- rev 21：Toast 通知紀錄視窗與 Dock 入口、移動模式（Widgets/ToastHistory.lua，toastHistory）；Toast 的位置改成
     --         右上固定一欄（避開區只往下推、不再往左跳）、玩家放的位置（Toast.setAnchor，存 layout.ini）、
     --         預設停留 5 秒且游標停在上面時暫停；Icons 新增 bell
-    API_REVISION = 21,
+    -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua，tileGrid；收編自 Economy ECPanelGrid 的通用部分）
+    API_REVISION = 22,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -883,6 +884,7 @@ MinidoracatUI.v1 = {
         toastTitleWrap = false,   -- rev 19：Toast 的 title 換行（最多兩行，Widgets/Toast.lua）
         itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（Widgets/ItemPicker.lua）
         toastHistory = false,     -- rev 21：通知紀錄視窗、Dock 入口與移動模式（Widgets/ToastHistory.lua）
+        tileGrid = false,         -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua）
     },
     Theme = Theme,
     Skin = Skin,
