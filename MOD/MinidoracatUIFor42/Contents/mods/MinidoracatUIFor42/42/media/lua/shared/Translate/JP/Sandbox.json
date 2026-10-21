@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "ファミリーツールバーのハンドル",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "ファミリーツールバーのハンドル（ツールバーを折りたたむ・展開するボタン）に表示する画像です。このサーバーの全プレイヤーに同じ画像が表示されます。\nマスコット：Minidoracat の猫耳少女。ツールバーを折りたたんでいる間は眠っています。\nSpiffo：ゲーム内の Spiffo のぬいぐるみのアイコン。\n矢印：シンプルな矢印。",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "マスコット（猫耳少女）",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "矢印"
+}

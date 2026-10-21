@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "패밀리 도구 모음 손잡이",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "패밀리 도구 모음 손잡이(도구 모음을 접고 펼치는 버튼)에 표시할 그림입니다. 이 서버의 모든 플레이어에게 같은 그림이 보입니다.\n마스코트: Minidoracat의 고양이 소녀로, 도구 모음을 접어 두는 동안 잠들어 있습니다.\n스피포: 게임에 있는 스피포 인형 아이콘입니다.\n화살표: 단순한 화살표입니다.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "마스코트(고양이 소녀)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "스피포",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "화살표"
+}

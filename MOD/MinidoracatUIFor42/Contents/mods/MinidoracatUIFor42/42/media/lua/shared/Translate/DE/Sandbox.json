@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Griff der Mod-Familienleiste",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Bild auf dem Griff der Mod-Familienleiste, also dem Knopf, der die Leiste ein- und ausklappt. Alle Spieler auf diesem Server sehen dasselbe Bild.\nMaskottchen: Minidoracats Katzenmädchen; es schläft, solange die Leiste eingeklappt ist.\nSpiffo: das Symbol des Spiffo-Plüschtiers aus dem Spiel.\nPfeil: ein schlichter Pfeil.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Maskottchen (Katzenmädchen)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Pfeil"
+}

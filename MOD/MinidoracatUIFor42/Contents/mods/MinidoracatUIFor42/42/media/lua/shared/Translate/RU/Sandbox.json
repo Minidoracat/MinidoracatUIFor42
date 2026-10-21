@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Ручка панели семейства модов",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Картинка на ручке панели семейства модов — кнопке, которая сворачивает и разворачивает панель. Все игроки на этом сервере видят одну и ту же.\nТалисман: девочка-кошка Minidoracat, которая спит, пока панель свёрнута.\nСпиффо: значок мягкой игрушки «Енот Спиффо» из игры.\nСтрелка: простая стрелка.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Талисман (девочка-кошка)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Спиффо",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Стрелка"
+}

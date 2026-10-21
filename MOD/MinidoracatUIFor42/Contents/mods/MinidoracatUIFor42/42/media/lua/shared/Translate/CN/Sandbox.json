@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat 家族界面",
+    "Sandbox_MinidoracatUI_DockHandle": "家族工具栏把手",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "家族工具栏把手上的图。把手是收起、展开工具栏的那个按钮；这个服务器的每位玩家看到的都一样。\n猫娘：Minidoracat 的吉祥物，工具栏收起时会睡着。\n斯皮福：游戏自带的浣熊斯皮福玩偶图标。\n箭头：普通的箭头。",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "猫娘",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "斯皮福",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "箭头"
+}

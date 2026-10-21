@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Uchwyt paska rodziny modów",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Obrazek na uchwycie paska rodziny modów, czyli przycisku, który zwija i rozwija pasek. Wszyscy gracze na tym serwerze widzą ten sam.\nMaskotka: kocia dziewczyna Minidoracat, która śpi, gdy pasek jest zwinięty.\nSpiffo: ikona pluszaka Spiffo z gry.\nStrzałka: zwykła strzałka.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Maskotka (kocia dziewczyna)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Strzałka"
+}

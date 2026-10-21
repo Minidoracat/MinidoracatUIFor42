@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Mod ailesi araç çubuğu tutamacı",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Mod ailesi araç çubuğunun tutamacındaki resim; tutamaç, araç çubuğunu daraltıp genişleten düğmedir. Bu sunucudaki tüm oyuncular aynı resmi görür.\nMaskot: Minidoracat'ın kedi kızı; araç çubuğu daraltılmışken uyur.\nSpiffo: oyundaki Spiffo peluşunun simgesi.\nOk: sade bir ok.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Maskot (kedi kız)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Ok"
+}

@@ -10,6 +10,7 @@ local keep = {
     Events = Events, keyBinding = keyBinding, ISLayoutManager = ISLayoutManager, ISToolTip = ISToolTip,
     getKeyName = getKeyName, JoypadState = JoypadState, ISWorldObjectContextMenu = ISWorldObjectContextMenu,
     drawTextureScaled = ISPanel.drawTextureScaled, drawTextureAllPoint = ISPanel.drawTextureAllPoint,
+    drawTextureScaledUniform = ISPanel.drawTextureScaledUniform, SandboxVars = SandboxVars,
     KEY_PERIOD = K.KEY_PERIOD,
 }
 
@@ -92,9 +93,12 @@ function ISToolTip:addToUIManager() self.inUI = true end
 function ISToolTip:removeFromUIManager() self.inUI = false end
 function ISToolTip:setDesiredPosition(x, y) self.px, self.py = x, y end
 
--- 貼圖：只有 texOK 列出的路徑載得到；繪製記在元件的 draws
-local texOK = {}
-getTexture = function(path) if texOK[path] then return { path = path } end return nil end
+-- 貼圖：只有 texOK 列出的路徑載得到（原圖寬 texW，預設 32）；繪製記在元件的 draws
+local texOK, texW = {}, {}
+getTexture = function(path)
+    if texOK[path] then return { path = path, getWidthOrig = function() return texW[path] or 32 end } end
+    return nil
+end
 local function record(el, entry)
     el.draws = el.draws or {}
     el.draws[#el.draws + 1] = entry
@@ -104,6 +108,9 @@ ISPanel.drawTextureScaled = function(self, tex, x, y, w, h, a, r, g, b)
 end
 ISPanel.drawTextureAllPoint = function(self, tex, tlx, tly, trx, try, brx, bry, blx, bly, r, g, b, a)
     record(self, { path = tex.path, w = trx - tlx, flip = tly > bly })
+end
+ISPanel.drawTextureScaledUniform = function(self, tex, x, y, scale, a, r, g, b)
+    record(self, { path = tex.path, x = x, y = y, scale = scale, uniform = true, flip = false })
 end
 local SLEEP = "media/ui/MinidoracatUI/mui_mascot_sleep.png"
 local AWAKE = "media/ui/MinidoracatUI/mui_mascot_awake.png"
@@ -450,6 +457,52 @@ ok(okC1 and okC2 and down.path == CHEVRON and down.flip == false and up.path == 
 texOK[SLEEP], texOK[CHEVRON] = nil, nil
 fresh()
 
+-- ---------- 把手圖：伺服器沙盒 MinidoracatUI.DockHandle（1 貓娘、2 Spiffo、3 箭頭；每幀讀 SandboxVars） ----------
+local SPIFFO = "Item_PlushSpiffo"
+local function dockWithHandle()
+    D.register(spec("a", 10))
+    D.register(spec("b", 20))
+    handlers.OnGameStart()
+    p = panel()
+end
+local function drawnAs(style, collapsed)
+    SandboxVars = { MinidoracatUI = { DockHandle = style } }
+    p.collapsed = collapsed
+    local okD, d = handleDraw()
+    return okD and d or {}
+end
+texOK[SLEEP], texOK[AWAKE], texOK[CHEVRON], texOK[SPIFFO] = true, true, true, true
+dockWithHandle()
+local s2c, s2e = drawnAs(2, true), drawnAs(2, false)
+ok(s2c.path == SPIFFO and s2c.uniform and s2c.x == 4 and s2c.y == 4 and s2c.scale == 1 and s2e.path == SPIFFO
+    and s2e.uniform, "沙盒 2＝原版 Spiffo 布偶圖示：原色、照貼圖自己的位移畫進 32px 框，收合與展開同一張")
+local s3c, s3e = drawnAs(3, true), drawnAs(3, false)
+ok(s3c.path == CHEVRON and s3c.flip == false and s3e.path == CHEVRON and s3e.flip == true,
+    "沙盒 3＝箭頭：吉祥物載得到也畫 chevronDown（展開時上下翻轉）；同一個面板換值下一幀就換圖")
+local s1, sNoValue, sUnknown, sString = drawnAs(1, false), drawnAs(nil, false), drawnAs(7, false), drawnAs("2", false)
+SandboxVars = nil
+local okNoSandbox, sNoSandbox = handleDraw()
+ok(s1.path == AWAKE and sNoValue.path == AWAKE and sUnknown.path == AWAKE and sString.path == AWAKE
+    and okNoSandbox and sNoSandbox.path == AWAKE, "沙盒 1、沒有這個值、不認得的值、沒有 SandboxVars：都畫貓娘")
+fresh()
+texOK[SPIFFO] = nil
+dockWithHandle()
+local sMissing = drawnAs(2, true)
+ok(sMissing.path == CHEVRON and sMissing.flip == false, "沙盒 2 但原版圖示讀不到（遊戲改版拿掉或改名）：退回箭頭")
+fresh()
+texOK[SPIFFO], texW[SPIFFO] = true, 64
+dockWithHandle()
+local sWide = drawnAs(2, false)
+ok(sWide.path == SPIFFO and sWide.scale == 0.5, "原圖寬 64：scale＝32／64，框照樣是 32px")
+fresh()
+texW[SPIFFO] = 0
+dockWithHandle()
+local sZero = drawnAs(2, false)
+ok(sZero.path == CHEVRON and sZero.flip == true, "原圖寬讀成 0：當成讀不到、退回箭頭（不除以 0）")
+SandboxVars = keep.SandboxVars
+texOK[SLEEP], texOK[AWAKE], texOK[CHEVRON], texOK[SPIFFO], texW[SPIFFO] = nil, nil, nil, nil, nil
+fresh()
+
 -- ---------- 快捷鍵：焦點交接 ----------
 D.register(spec("a", 10))
 D.register(spec("b", 20))
@@ -576,6 +629,7 @@ getCore, getText, getSpecificPlayer, getTexture = keep.getCore, keep.getText, ke
 Events, keyBinding, ISLayoutManager, ISToolTip = keep.Events, keep.keyBinding, keep.ISLayoutManager, keep.ISToolTip
 getKeyName, JoypadState, ISWorldObjectContextMenu = keep.getKeyName, keep.JoypadState, keep.ISWorldObjectContextMenu
 ISPanel.drawTextureScaled, ISPanel.drawTextureAllPoint = keep.drawTextureScaled, keep.drawTextureAllPoint
+ISPanel.drawTextureScaledUniform, SandboxVars = keep.drawTextureScaledUniform, keep.SandboxVars
 K.KEY_PERIOD = keep.KEY_PERIOD
 
-return 66
+return 72

@@ -1,0 +1,6 @@
+VERSION = 1,
+
+/* 家族工具列把手的圖（Widgets/Dock.lua handleStyle）：1 貓娘吉祥物（預設）、2 Spiffo（原版物品圖示 Item_PlushSpiffo，
+   從遊戲讀、不放進本 MOD）、3 箭頭。沙盒存的是第幾個值：只能往後加新值，不改既有值的意思 */
+option MinidoracatUI.DockHandle
+{type = enum, numValues = 3, default = 1, page = MinidoracatUI, translation = MinidoracatUI_DockHandle, valueTranslation = MinidoracatUI_DockHandle,}

@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **伺服器可以換掉家族工具列把手的圖**：家族工具列最上面那顆收合、展開的把手，伺服器管理員現在可以在沙盒設定「Minidoracat 家族介面 → 家族工具列把手」選貓娘（預設）、Spiffo（遊戲內建的 Spiffo 布偶圖示）或箭頭，伺服器上每個玩家看到的都一樣。執行中改這個設定，玩家不用重進遊戲就會換圖。沒改設定的伺服器照舊是貓娘。
+
+> 技術要點：新沙盒選項 `MinidoracatUI.DockHandle`（enum：1 吉祥物、2 Spiffo、3 箭頭，預設 1；頁 `MinidoracatUI`）。Dock 每幀讀 `SandboxVars.MinidoracatUI.DockHandle`，沒有值或不認得的值當 1；Spiffo 是原版物品圖示 `Item_PlushSpiffo`，由遊戲讀取、本函式庫不附這張圖，讀不到時把手畫箭頭。`UI.Dock` 的 API、`API_REVISION` 與 `CAPABILITIES` 都不變，依賴本函式庫的 MOD 不用改程式。之後加新圖只會往值的後面加，已設定的值意思不變。
+
 ## [42.21.0-0.14.0] - 2026-10-21
 
 ### 新增

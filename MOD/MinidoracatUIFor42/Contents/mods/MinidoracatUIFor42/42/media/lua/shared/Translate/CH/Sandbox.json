@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat 家族介面",
+    "Sandbox_MinidoracatUI_DockHandle": "家族工具列把手",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "家族工具列把手上的圖。把手是收合、展開工具列的那顆按鈕；這個伺服器的每個玩家看到的都一樣。\n貓娘：Minidoracat 的吉祥物，工具列收合時會睡著。\nSpiffo：遊戲內建的 Spiffo 布偶圖示。\n箭頭：單純的箭頭。",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "貓娘",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "箭頭"
+}

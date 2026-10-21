@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Asa de la barra de la familia de mods",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Imagen del asa de la barra de la familia de mods, el botón que la contrae y la expande. Todos los jugadores de este servidor ven la misma.\nMascota: la chica gato de Minidoracat, que se duerme mientras la barra está contraída.\nSpiffo: el icono del peluche de Spiffo del propio juego.\nFlecha: una flecha sencilla.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Mascota (chica gato)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Flecha"
+}

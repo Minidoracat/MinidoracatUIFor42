@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Poignée de la barre de la famille de mods",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Image sur la poignée de la barre de la famille de mods, le bouton qui la replie et la déplie. Tous les joueurs de ce serveur voient la même.\nMascotte : la fille-chat de Minidoracat, qui dort tant que la barre est repliée.\nSpiffo : l'icône de la peluche Spiffo du jeu.\nFlèche : une simple flèche.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Mascotte (fille-chat)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Flèche"
+}

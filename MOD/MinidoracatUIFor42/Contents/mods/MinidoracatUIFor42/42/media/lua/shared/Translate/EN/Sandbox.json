@@ -1,0 +1,8 @@
+{
+    "Sandbox_MinidoracatUI": "Minidoracat UI",
+    "Sandbox_MinidoracatUI_DockHandle": "Family toolbar handle",
+    "Sandbox_MinidoracatUI_DockHandle_tooltip": "Picture on the handle of the family toolbar, the button that collapses and expands it. Every player on this server sees the same one.\nMascot: Minidoracat's catgirl, asleep while the toolbar is collapsed.\nSpiffo: the game's own Spiffo plush icon.\nArrow: a plain arrow.",
+    "Sandbox_MinidoracatUI_DockHandle_option1": "Mascot (catgirl)",
+    "Sandbox_MinidoracatUI_DockHandle_option2": "Spiffo",
+    "Sandbox_MinidoracatUI_DockHandle_option3": "Arrow"
+}

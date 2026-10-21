@@ -3,8 +3,9 @@
 -- Contract (binding for the framework and every consumer): docs/ARCHITECTURE.md section 3.16.
 -- Consumers register entries with UI.Dock.register(spec); one dock panel for player 0 shows every
 -- available entry in (order, id) order. 0 entries: hidden. 1 entry: that button alone, no handle.
--- 2+ entries: mascot handle (click = collapse/expand) and 40x40 buttons laid out as a column, a row or a
+-- 2+ entries: a handle (click = collapse/expand) and 40x40 buttons laid out as a column, a row or a
 -- near-square grid (rev 21; the player picks it in Options -> MODS or from the handle's right-click menu).
+-- The server picks the handle picture (sandbox MinidoracatUI.DockHandle): the mascot, Spiffo or an arrow.
 -- Entries grow toward the screen centre: the handle stays at the end nearest the screen edge, and changing
 -- layout, collapsing or entries coming and going never moves it (see "layout" below).
 --
@@ -72,6 +73,8 @@ local LAYOUT_KEY = "MinidoracatUIDock"
 local BIND = "MinidoracatUI_Dock"
 local MASCOT_SLEEP = "media/ui/MinidoracatUI/mui_mascot_sleep.png"
 local MASCOT_AWAKE = "media/ui/MinidoracatUI/mui_mascot_awake.png"
+local SPIFFO = "Item_PlushSpiffo" -- vanilla Spiffo plush item icon (UI.pack): read from the game, not shipped here
+local HANDLE_MASCOT, HANDLE_SPIFFO, HANDLE_ARROW = 1, 2, 3 -- sandbox MinidoracatUI.DockHandle (enum index)
 local LAYOUT_COLUMN, LAYOUT_ROW, LAYOUT_GRID = 1, 2, 3 -- also the ModOptions combobox indexes
 local OPTIONS_ID = "MinidoracatUIFor42" -- the framework's Options -> MODS page (shared with ToastHistory.lua)
 local OPTION_LAYOUT = "dockLayout"
@@ -83,6 +86,7 @@ local panel = nil
 local dirty = true
 local nextPoll = 0
 local mascotProbed, mascotSleep, mascotAwake = false, nil, nil
+local spiffoProbed, spiffoTex, spiffoScale = false, nil, 1
 local fontH = nil
 local endFocus -- forward: entry activation ends a joypad session before calling onClick
 
@@ -664,15 +668,48 @@ local function probeMascot()
     if sleep and awake then mascotSleep, mascotAwake = sleep, awake end
 end
 
+local function widthOrig(tex) return tex:getWidthOrig() end
+
+local function probeSpiffo()
+    if spiffoProbed then return end
+    spiffoProbed = true
+    local tex = loadTexture(SPIFFO)
+    if not tex then return end
+    local ok, w = pcall(widthOrig, tex)
+    if ok and type(w) == "number" and w > 0 then spiffoTex, spiffoScale = tex, MASCOT / w end
+end
+
+-- vanilla item icons are trimmed pack sub-textures: DrawTextureScaledUniform adds their offsets
+-- (UIElement.java:390-410); drawTextureScaled would stretch the trimmed part over the whole frame
+local function drawUniform(el, tex, x, y, scale)
+    el:drawTextureScaledUniform(tex, x, y, scale, 1, 1, 1, 1)
+end
+
+-- the server's pick (SandboxVars is the live value on clients too); missing or unknown values draw the mascot
+local function handleStyle()
+    local sv = SandboxVars and SandboxVars.MinidoracatUI
+    local v = sv and sv.DockHandle
+    if v == HANDLE_SPIFFO or v == HANDLE_ARROW then return v end
+    return HANDLE_MASCOT
+end
+
 local function drawHandle(btn, p, c)
     local w, h = btn.width, btn.height
     if btn:isMouseOver() or p._down == btn then Skin.fill(btn, 0, 0, w, h, c.hover) end
-    probeMascot()
-    if mascotSleep then
+    local style = handleStyle()
+    if style == HANDLE_MASCOT then
+        probeMascot()
+        if mascotSleep then
+            local off = (w - MASCOT) / 2
+            local tex = p.collapsed and mascotSleep or mascotAwake
+            if pcall(drawTex, btn, tex, off, off, MASCOT, 1, 1, 1, 1) then return end
+        end
+    elseif style == HANDLE_SPIFFO then
+        probeSpiffo()
         local off = (w - MASCOT) / 2
-        local tex = p.collapsed and mascotSleep or mascotAwake
-        if pcall(drawTex, btn, tex, off, off, MASCOT, 1, 1, 1, 1) then return end
+        if spiffoTex and pcall(drawUniform, btn, spiffoTex, off, off, spiffoScale) then return end
     end
+    -- the arrow: picked by the server, or the picture above did not load
     local t = c.text
     local chevron = Icons.get("chevronDown")
     if chevron then
@@ -1044,6 +1081,7 @@ function Dock._resetForTests()
     records, sorted, shown, panel = {}, {}, {}, nil
     dirty, nextPoll = true, 0
     mascotProbed, mascotSleep, mascotAwake, fontH = false, nil, nil, nil
+    spiffoProbed, spiffoTex, spiffoScale = false, nil, 1
     layoutLoaded = false
 end
 
