@@ -56,6 +56,10 @@ ISPanel.drawTextureScaled = function(self, tex, x, y, w, h, a, r, g, b)
     self.tex = self.tex or {}
     self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h }
 end
+ISPanel.drawTextureScaledAspect = function(self, tex, x, y, w, h, a, r, g, b)
+    self.tex = self.tex or {}
+    self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h, aspect = true }
+end
 
 -- ---------- 宇宙 ----------
 local empty = UI.ItemPicker.universe()
@@ -177,8 +181,8 @@ local cell = list.pool[1]
 cell:render()
 local t = cell.texts
 check(cell.entry == records[1] and t[1].text == "Thing 1" and t[2].text == "Orig One"
-    and t[3].text == "Base.Thing1  /  FoodCat" and #cell.tex == 1 and cell.tex[1].tex.tex == "Base.Thing1",
-    "列：名稱＋右側 original＋fullType / 類別翻譯（IGUI_ItemCat_）＋圖示")
+    and t[3].text == "Base.Thing1  /  FoodCat" and #cell.tex == 1 and cell.tex[1].tex.tex == "Base.Thing1"
+    and cell.tex[1].aspect, "列：名稱＋右側 original＋fullType / 類別翻譯（IGUI_ItemCat_）＋圖示（照原圖比例，不拉成正方形）")
 local finds = findCalls
 list:setItems(list:getItems())
 check(findCalls == finds, "重綁不重新找圖示（依 fullType 快取）")
@@ -216,6 +220,6 @@ plain:close()
 UI.Focus.clear(win)
 getText = keepGetText
 getTextOrNull, getItemName, getScriptManager = nil, nil, nil
-ISPanel.drawTextureScaled = nil
+ISPanel.drawTextureScaled, ISPanel.drawTextureScaledAspect = nil, nil
 
 return 27

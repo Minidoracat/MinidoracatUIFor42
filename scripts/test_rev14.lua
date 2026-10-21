@@ -10,11 +10,17 @@ local function check(cond, label)
     ok(cond, label)
 end
 
--- ISPanel stub 沒有 drawTextureScaled：本切片暫時補上（紀錄進 self.tex），結束還原
+-- ISPanel stub 沒有 drawTextureScaled／drawTextureScaledAspect：本切片暫時補上（紀錄進 self.tex，aspect 標出
+-- 照原圖比例畫的那種），結束還原
 local keepDrawTexture = ISPanel.drawTextureScaled
+local keepDrawAspect = ISPanel.drawTextureScaledAspect
 function ISPanel:drawTextureScaled(tex, x, y, w, h, a, r, g, b)
     self.tex = self.tex or {}
     self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b }
+end
+function ISPanel:drawTextureScaledAspect(tex, x, y, w, h, a, r, g, b)
+    self.tex = self.tex or {}
+    self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b, aspect = true }
 end
 local keepGetTexture = getTexture
 getTexture = function(path) return { path = path } end
@@ -80,7 +86,7 @@ check(tb.width == 20 + 20 + 16 + 6, "Texture 圖示：自動寬度＝標題＋�
 tb:prerender()
 local d = tb.tex[1]
 check(#tb.tex == 1 and d.tex == itemTex and d.w == 16 and d.h == 16 and d.r == 1 and d.g == 1 and d.b == 1
-    and nearly(d.a, 1), "Texture 圖示原色畫（頂點色全白、alpha 1、16px）")
+    and nearly(d.a, 1) and d.aspect, "Texture 圖示原色畫（頂點色全白、alpha 1、16px 方框照原圖比例，不拉成正方形）")
 check(tb.texts[1].x == d.x + 16 + 6, "Texture 圖示在標題左側、隔 6px")
 tb:setEnabled(false)
 reset(tb)
@@ -93,7 +99,7 @@ check(#kb.tex == 1 and kb.tex[1].tex.path == "media/ui/MinidoracatUI/mui_icon_ba
     and nearly(kb.tex[1].r, 0.9) and nearly(kb.tex[1].g, 0.35), "Icons key 照舊以字色（danger＝errorText）染色")
 
 local broken = UI.Button.new{ title = "AB", icon = itemTex }
-broken.drawTextureScaled = function() error("simulated draw failure") end
+broken.drawTextureScaledAspect = function() error("simulated draw failure") end
 local okDraw = pcall(broken.prerender, broken)
 check(okDraw and broken.texts[1] ~= nil and broken.texts[1].text == "AB",
     "Texture 繪製拋錯被攔下：標題照畫、不外洩錯誤")
@@ -142,8 +148,8 @@ UI.Skin._resetForTests()
 local win = UI.Window.new{ x = 0, y = 0, width = 300, height = 200, title = "Watch", icon = itemTex, theme = valutech }
 win:prerender()
 local wt = win.tex[1]
-check(#win.tex == 1 and wt.tex == itemTex and wt.w == 16 and wt.r == 1 and nearly(wt.a, 1),
-    "Window：Texture 標題圖示原色 16px")
+check(#win.tex == 1 and wt.tex == itemTex and wt.w == 16 and wt.r == 1 and nearly(wt.a, 1) and wt.aspect,
+    "Window：Texture 標題圖示原色、16px 方框照原圖比例")
 local title = win.texts[#win.texts]
 check(title.text == "Watch" and nearly(title.r, 0.12) and title.x == wt.x + 16 + 6,
     "Window：標題字讀 titleText、接在圖示後")
@@ -171,6 +177,6 @@ keyWin:prerender()
 check(keyWin.tex == nil and keyWin.texts[1].x == 8, "Window 未知 icon key：不畫圖示、標題不位移")
 
 getTexture = keepGetTexture
-ISPanel.drawTextureScaled = keepDrawTexture
+ISPanel.drawTextureScaled, ISPanel.drawTextureScaledAspect = keepDrawTexture, keepDrawAspect
 UI.Skin._resetForTests()
 return n

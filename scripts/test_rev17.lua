@@ -15,7 +15,7 @@ local F, K, T = UI.Focus, Keyboard, ctx.TARGET
 
 -- 忠於原版的位置與捲動 stub（同 test_rev16.lua；結束還原）
 local STUBBED = { "getAbsoluteX", "getAbsoluteY", "getYScroll", "setYScroll", "setScrollHeight", "getScrollHeight",
-    "setScrollChildren", "createChildren", "getMouseX", "getMouseY", "drawTextureScaled" }
+    "setScrollChildren", "createChildren", "getMouseX", "getMouseY", "drawTextureScaled", "drawTextureScaledAspect" }
 local keep = {}
 for _, k in ipairs(STUBBED) do
     keep[k] = rawget(ISPanel, k)
@@ -57,6 +57,10 @@ function ISPanel:getMouseY() return my - self:getYScroll() - self:getAbsoluteY()
 function ISPanel:drawTextureScaled(tex, x, y, w, h, a, r, g, b)
     self.tex = self.tex or {}
     self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b }
+end
+function ISPanel:drawTextureScaledAspect(tex, x, y, w, h, a, r, g, b)
+    self.tex = self.tex or {}
+    self.tex[#self.tex + 1] = { tex = tex, x = x, y = y, w = w, h = h, a = a, r = r, g = g, b = b, aspect = true }
 end
 local keepGetText = getText
 getText = function(key, a, b)
@@ -182,7 +186,8 @@ check(perfT and perfT.text ~= rows[6].label and string.sub(perfT.text, -3) == ".
     "放不下的名稱以 Text.fit 截字")
 local texIcon = nav.tex[1]
 check(#nav.tex == 1 and texIcon.tex == itemTex and texIcon.x == 8 and texIcon.y == 70 and texIcon.w == 16
-    and nearly(texIcon.a, 1), "缺貼圖：Icons key 的圖示不畫（名稱照畫）；Texture 圖示原色 16px")
+    and nearly(texIcon.a, 1) and texIcon.aspect,
+    "缺貼圖：Icons key 的圖示不畫（名稱照畫）；Texture 圖示原色、16px 方框照原圖比例")
 getTexture = function(path) return { path = path } end
 UI.Skin._resetForTests()
 reset(nav)
@@ -192,10 +197,11 @@ for _, t in ipairs(nav.tex) do if type(t.tex.path) == "string" and string.find(t
 check(skull and skull.x == 8 and skull.y == 46 and skull.w == 16 and skull.r == colors.accent.r,
     "貼圖在：Icons key 的圖示以名稱色染色（選中列 accent）")
 function nav:drawTextureScaled() error("draw failure") end
+function nav:drawTextureScaledAspect() error("draw failure") end
 reset(nav)
 local okDraw = pcall(nav.prerender, nav)
 check(okDraw and findText(nav, "Animals") ~= nil, "圖示繪製拋錯：被攔下，名稱照畫")
-nav.drawTextureScaled = nil
+nav.drawTextureScaled, nav.drawTextureScaledAspect = nil, nil
 getTexture = nil
 UI.Skin._resetForTests()
 
@@ -273,6 +279,7 @@ check(nav:getContentHeight() == 192 and #nav._rows == 8, "setGroups 重建")
 -- 零配置：prerender（hover、開關、截字快取、缺圖）＋refresh
 local noop = function() end
 nav.drawRect, nav.drawRectBorder, nav.drawText, nav.drawTextureScaled = noop, noop, noop, noop
+nav.drawTextureScaledAspect = noop
 nav._mouseOver = true
 local keepTM = getTextManager
 local tm = keepTM()
@@ -290,6 +297,7 @@ local grew = collectgarbage("count") - kb
 collectgarbage("restart")
 getTextManager = keepTM
 nav.drawRect, nav.drawRectBorder, nav.drawText, nav.drawTextureScaled = nil, nil, nil, nil
+nav.drawTextureScaledAspect = nil
 nav._mouseOver = false
 check(grew == 0, "NavList prerender（hover、開關、截字、缺圖）＋refresh 重讀 50 輪不配置記憶體")
 
@@ -472,6 +480,7 @@ getTexture = nil
 UI.Skin._resetForTests()
 tb:setIconColor(tint)
 tb.drawTextureScaled, tb.drawRect, tb.drawRectBorder, tb.drawText = noop, noop, noop, noop
+tb.drawTextureScaledAspect = noop
 getTextManager = function() return tm end
 collectgarbage("collect")
 collectgarbage("stop")

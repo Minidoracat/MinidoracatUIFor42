@@ -439,7 +439,7 @@ UI.Icons.draw(element, name, x, y, size, color, alpha) -- boolean：true＝已�
 - **Tabs 停用**：`setEnabled(false)` 整列停用（標籤 `textDisabled`、chrome 淡化、不 hover、點擊與 `selectRelative` 都不切換；`Focus` 以 `_enabled == false` 跳過它）；`setItemEnabled(id, false)` 單項停用（照樣顯示、標籤 `textDisabled`，點擊不切換、左右鍵與手把 LB／RB 跳過）。停用不改選取，停用的選中項不自動切走；程式呼叫 `setSelected` 不受停用限制。新建項目預設可用。
 
 **rev 14 擴充**（地圖錶面板；以 `API_REVISION >= 14` 探測，與 controls／window 同檔）
-- **Texture 圖示**：Button 與 Window 的 `icon` 除了 `UI.Icons` key（字串，以字色染色）也接受 consumer 的 Texture（任何非字串、非 nil 值，例如 `getScriptManager():FindItem(t):getNormalTexture()` 或 `item:getTex()`），以**原色**（頂點色全白）畫 16px，不乘 `theme.alpha`。原色無法改成 `textDisabled`，停用的 Button 改以 `DISABLED_ALPHA`（0.45）淡化 Texture 圖示。繪製以 pcall 具名函式包住，拋錯時只少圖示、標題照畫。舊框架（rev ≤13）的 `Icons.get` 對非字串回 nil，同一份 consumer 碼在舊框架上只畫文字，不必另寫退回。
+- **Texture 圖示**：Button 與 Window 的 `icon` 除了 `UI.Icons` key（字串，以字色染色）也接受 consumer 的 Texture（任何非字串、非 nil 值，例如 `getScriptManager():FindItem(t):getNormalTexture()` 或 `item:getTex()`），以**原色**（頂點色全白）畫進 16px 方框，不乘 `theme.alpha`。照原圖比例縮放、置中（`drawTextureScaledAspect` 以未裁的原圖尺寸算比例，`UIElement.java:412-429`）：原版物品圖示是材質包裡裁掉透明邊的子貼圖，用 `drawTextureScaled` 會把裁過的那塊拉成正方形（酒瓶變方塊）；MOD 自己的完整 PNG 畫出來跟拉滿一樣。原色無法改成 `textDisabled`，停用的 Button 改以 `DISABLED_ALPHA`（0.45）淡化 Texture 圖示。繪製以 pcall 具名函式包住，拋錯時只少圖示、標題照畫。舊框架（rev ≤13）的 `Icons.get` 對非字串回 nil，同一份 consumer 碼在舊框架上只畫文字，不必另寫退回。
 - **`Button:setIcon(icon)`**：換 key／Texture／nil（相同值 no-op）。自動寬度的按鈕重算寬度；明示寬度的按鈕在下一幀依扣掉圖示後的可用寬重新截字與自動 tooltip（規則同 rev 11）。給重複使用的按鈕池（同一顆按鈕依狀態換標題與圖示）。
 - **標題列與 accent 字色**：primary 按鈕的字讀 `onAccent`，Window 的標題／標題圖示／關閉鈕讀 `titleText`／`titleMuted`（§3.2）；預設值等於 rev 13 的繪製色。
 
@@ -650,7 +650,7 @@ local bar = UI.FilterBar.new{
 **行為契約**
 - **宇宙**：`getScriptManager():getAllItems()` 逐筆 pcall 讀取，跳過 `isHidden()`／`getObsolete()`；`name`＝`getItemName`（rev 20 起，`CAPABILITIES.itemPickerVehicleClass`：車輛零件依腳本 `VehicleType` 接上車型，與原版背包同名；rev 11–19 是 `getItemNameFromFullType`，三種車型同名；失敗退 fullType）、`category`＝`getDisplayCategory()`（空白退 `"Item"`）、`search`＝`lower(name .. " " .. fullType)`。不排序（數千筆，排序交給 consumer）。**空結果不快取**：script manager 還沒準備好時不讓 session 永遠拿到空宇宙。
 - **搜尋**：打字只重設計時器，停頓 120ms 才掃一次；查詢 trim＋小寫後對 `rec.search` 做純字串子字串比對，再套 `filter`。最多列出 `maxResults` 筆，提示列顯示「共 N 項」／「顯示前 N 項，共 M 項符合…」／「沒有符合的物品」，前面接 `note()`。`revision()` 的值變了（例如 consumer 的索引剛載好）同一查詢重問一次。
-- **結果列**（`UI.Table`，兩行高）：物品圖示（`getNormalTexture()`；record 沒帶 script 時 `FindItem`；取不到或繪製失敗記 `false`，session 內不再重試）、名稱、`original`（與名稱不同時畫在右側淡字）、第二行 `fullType / 類別`（類別以原版 `IGUI_ItemCat_<cat>` 翻譯，查無原字）；截字與幾何在綁定時算好，render 只畫。
+- **結果列**（`UI.Table`，兩行高）：物品圖示（`getNormalTexture()`；record 沒帶 script 時 `FindItem`；照原圖比例畫進方框、置中，同 §3.7 的 Texture 圖示；取不到或繪製失敗記 `false`，session 內不再重試）、名稱、`original`（與名稱不同時畫在右側淡字）、第二行 `fullType / 類別`（類別以原版 `IGUI_ItemCat_<cat>` 翻譯，查無原字）；截字與幾何在綁定時算好，render 只畫。
 - **疊層**：背板**不透明、不乘 `theme.alpha`**（只對著自己讀，不透出底下的列），內卡片與框乘 alpha；背板吃掉所有傳到它的滑鼠事件（子元件先問，搜尋框與清單照常）。`open()` 清空搜尋並把鍵盤焦點放到搜尋框；`close()` 取消輸入焦點；點列、Enter、手把 A 都走 `choose`：已關閉時不回呼，同一次點擊或 Enter 的第二個來源不會選兩次。「取消」chip＝`cancel()`。`dispose()` 關閉並放掉回呼與列。
 
 **焦點／手把接線**：`keyboardTargets()` 開著時回快取的 `{ 搜尋框 entry, 結果 list, 取消鈕 }`，關著回空陣列；`open`／`close` 都 `Focus.invalidate(root)`。放在框架 Window 裡時，consumer 覆寫 `win.keyboardTargets`：`picker:isOpen()` 時回 `picker:keyboardTargets()`，否則回 `Focus.collectTargets(win)`——疊層開著時頁面的控制項不該被 Tab 到。
@@ -803,7 +803,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 | 面 | API | 說明 |
 |---|---|---|
 | 建構 | `UI.NavList.new{ x?, y?, width?=160, height?, theme?, font?, target?, groups, selected?, onSelect? }` | `height` 省略＝內容高，之後 `setGroups` 時跟著變；`selected` 不存在的 id 視為沒選 |
-| 資料 | `groups = { { title = <已翻譯字串\|nil>, items = { { id, label, icon?, switch?, enabled? }, ... } }, ... }` | `icon`＝Icons key（以名稱色染色）或 Texture（原色；停用列淡化 0.45）；`switch = { get = fn() → bool, set = fn(bool), enabled = fn() → bool \| nil }`；`enabled = fn() → bool \| nil`（整列停用）。沒有 `id` 的項目略過；`label` 非字串用 `tostring(id)`；`switch` 缺 `get` 視為沒有開關 |
+| 資料 | `groups = { { title = <已翻譯字串\|nil>, items = { { id, label, icon?, switch?, enabled? }, ... } }, ... }` | `icon`＝Icons key（以名稱色染色）或 Texture（原色、照原圖比例畫進方框，同 §3.7；停用列淡化 0.45）；`switch = { get = fn() → bool, set = fn(bool), enabled = fn() → bool \| nil }`；`enabled = fn() → bool \| nil`（整列停用）。沒有 `id` 的項目略過；`label` 非字串用 `tostring(id)`；`switch` 缺 `get` 視為沒有開關 |
 | 方法 | `setGroups(groups)`、`setSelected(id, silent)`、`getSelected()`、`getContentHeight()`、`refresh()` | `setGroups` 重建列：目前選取仍在就保留，否則**靜默**清成 nil；游標回到選取列或第一個可用列（不捲動）。`setSelected`：未知 id 忽略、nil＝清空（靜默）、相同值 no-op、不受停用限制、游標跟到選取列。`refresh()`：下一幀重讀全部 `get`／`enabled` |
 | 回呼 | `onSelect(target, id, nav)` | 選取**實際改變**時一次：點列、Enter／小鍵盤 Enter／Space／手把 A、非 silent 的 `setSelected` |
 

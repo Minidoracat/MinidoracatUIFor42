@@ -251,7 +251,8 @@ function PickCell:render()
     local icon = self._icon
     if icon then
         local size = self._iconSize
-        if not pcall(self.drawTextureScaled, self, icon, PAD, self._iconY, size, size, 1, 1, 1, 1) then
+        -- 照原圖比例縮進方框、置中（裁過透明邊的物品圖示不拉成正方形；同 Controls.lua drawTextureIcon）
+        if not pcall(self.drawTextureScaledAspect, self, icon, PAD, self._iconY, size, size, 1, 1, 1, 1) then
             icons[rec.fullType] = false
             self._icon = nil
         end

@@ -20,6 +20,12 @@
 
 > 技術要點：新沙盒選項 `MinidoracatUI.DockHandle`（enum：1 吉祥物、2 Spiffo、3 箭頭，預設 1；頁 `MinidoracatUI`）。Dock 每幀讀 `SandboxVars.MinidoracatUI.DockHandle`，沒有值或不認得的值當 1；Spiffo 是原版物品圖示 `Item_PlushSpiffo`，由遊戲讀取、本函式庫不附這張圖，讀不到時把手畫箭頭。`UI.Dock` 的 API、`API_REVISION` 與 `CAPABILITIES` 都不變，依賴本函式庫的 MOD 不用改程式。之後加新圖只會往值的後面加，已設定的值意思不變。
 
+### 修正
+
+- **遊戲物品圖示不再被壓扁或拉寬**：按鈕、視窗標題、側邊清單和挑選物品清單裡的遊戲物品圖示，改照圖原本的比例畫在方框中間；之前酒瓶會被撐成方塊、香菸會變成一條粗塊。經濟中心管理員挑選物品的清單最看得出差別。各 MOD 自己的物品圖示本來就是完整的方圖，看起來不變。
+
+> 技術要點：Button／Window 的 Texture 圖示、NavList 的 Texture 圖示與 ItemPicker 結果列的物品圖示，改用 `drawTextureScaledAspect`（以未裁的原圖尺寸算比例、置中，`UIElement.java:412-429`）。原版物品圖示是材質包裡裁掉透明邊的子貼圖（例：`Item_Wine` 11×31、原圖 32×32），`drawTextureScaled` 會把裁過的那塊拉滿正方形。MOD 自己的 PNG 沒有裁邊，畫出來和以前一樣。API 不變。
+
 ## [42.21.0-0.14.0] - 2026-10-21
 
 ### 新增

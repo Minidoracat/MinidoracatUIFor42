@@ -60,9 +60,10 @@ local function chromeAlpha(theme)
     return type(a) == "number" and a or 1
 end
 
--- rev 14：標題列圖示可傳 Texture（原色，例如物品圖示）；pcall 具名函式，不建 per-frame closure
+-- rev 14：標題列圖示可傳 Texture（原色，例如物品圖示）；pcall 具名函式，不建 per-frame closure。
+-- 照原圖比例縮進方框、置中（裁過透明邊的物品圖示不拉成正方形；同 Controls.lua drawTextureIcon）
 local function drawTextureIcon(el, texture, x, y, size)
-    el:drawTextureScaled(texture, x, y, size, size, 1, 1, 1, 1)
+    el:drawTextureScaledAspect(texture, x, y, size, size, 1, 1, 1, 1)
 end
 
 -- 回 true＝已畫：字串走 Icons（以標題字色染色），其他非 nil 值當 Texture 原色畫

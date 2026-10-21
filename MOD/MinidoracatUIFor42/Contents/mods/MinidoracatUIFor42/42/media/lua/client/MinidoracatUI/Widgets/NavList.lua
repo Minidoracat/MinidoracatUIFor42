@@ -189,8 +189,9 @@ local function toggleRow(nav, i)
     return true
 end
 
+-- 照原圖比例縮進方框、置中（裁過透明邊的物品圖示不拉成正方形；同 Controls.lua drawTextureIcon）
 local function drawTextureIcon(el, texture, x, y, size, a)
-    el:drawTextureScaled(texture, x, y, size, size, a, 1, 1, 1)
+    el:drawTextureScaledAspect(texture, x, y, size, size, a, 1, 1, 1)
 end
 
 function NavList:prerender()

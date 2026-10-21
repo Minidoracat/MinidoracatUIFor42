@@ -90,9 +90,11 @@ local function iconTexture(icon)
     return icon
 end
 
--- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白，rev 17 iconColor＝以該色染色
+-- pcall 具名函式＋傳參（不建 per-frame closure）；原色＝頂點色全白，rev 17 iconColor＝以該色染色。
+-- 照原圖比例縮進 size 方框、置中：物品圖示是材質包裡裁掉透明邊的子貼圖，drawTextureScaled 會把裁過的
+-- 那塊拉成正方形；drawTextureScaledAspect 以原圖（未裁）尺寸算比例（UIElement.java:412-429）
 local function drawTextureIcon(el, texture, x, y, size, a, r, g, b)
-    el:drawTextureScaled(texture, x, y, size, size, a, r, g, b)
+    el:drawTextureScaledAspect(texture, x, y, size, size, a, r, g, b)
 end
 
 -- rev 17 controlTooltips：ISPanel 基底的元件（Checkbox／Slider／SliderRow）借原版 ISButton:updateTooltip——
