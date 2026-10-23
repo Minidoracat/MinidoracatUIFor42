@@ -100,10 +100,15 @@ end
 -- rev 17 controlTooltips：ISPanel 基底的元件（Checkbox／Slider／SliderRow）借原版 ISButton:updateTooltip——
 -- 它只讀 isMouseOver／joypadFocused／tooltip／tooltipUI 與自身位置（ISButton.lua:316-346），hover 時建 ISToolTip、
 -- 離開或 tooltip 變 nil 時收掉，和 Button 同一條路徑。只在有 tooltip 或還掛著 ISToolTip 時呼叫。
+-- 原版只在空白斷行，中日文說明一行到底：之後由 TextWrap.fixTooltip 換成斷好行的說明（TextWrap 缺席＝原版行為）。
 -- 鍵盤焦點的說明是 Focus 的 captionOf：沒有 title 的控制項以 tooltip 當說明（Focus.lua）。
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap")
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.fixTooltip and TextWrap or nil
+
 local function updateTooltip(el)
     if el.tooltip or el.tooltipUI then
         ISButton.updateTooltip(el)
+        if TextWrap then TextWrap.fixTooltip(el) end
     end
 end
 
@@ -157,11 +162,9 @@ function Button:prerender()
         return
     end
     refitTitle(self)
-    -- 原版 ISButton:prerender 在 :176 跑 tooltip；整段覆寫後自己呼叫。
+    -- 原版 ISButton:prerender 在 :176 跑 tooltip；整段覆寫後自己呼叫（同 Checkbox 的 updateTooltip，含中日文斷行）。
     -- updateTooltip 只在 hover／搖桿焦點時才建 ISToolTip（ISButton.lua:316-346）。
-    if self.tooltip or self.tooltipUI then
-        self:updateTooltip()
-    end
+    updateTooltip(self)
 
     local colors = self.theme.colors
     local w, h = self.width, self.height
@@ -465,6 +468,12 @@ function TextField:prerender()
             drawColorText(self, "!", ix + 6, entry.y + TEXTBOX_INSET, mark, 1, self.font) -- 缺圖退回文字記號
         end
     end
+end
+
+-- 內層原生 entry 的 prerender 每幀把 tooltip 原文寫進 description（ISTextEntryBox.lua:206-226）；本元件的 render
+-- 在子元件之後（UIElement.java:1626-1636），在這裡換成斷好行的說明。entry.tooltip 不動（Focus 的 captionOf 讀它）
+function TextField:render()
+    if TextWrap then TextWrap.fixTooltip(self._entry) end
 end
 
 -- rev 16：錯誤狀態。invalid＝框改 errorText、右側 warning 記號；message（選用）＝滑鼠停留的 tooltip 與鍵盤焦點說明，

@@ -28,6 +28,8 @@ if not (UI and UI.API_MAJOR == 1 and UI.Skin) or not ISPanel then
 end
 
 local Skin = UI.Skin
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap") -- 選用：缺席時說明照原版（中日文一行到底）
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.tooltip and TextWrap or nil
 
 local FloatButton = ISPanel:derive("MinidoracatUIFloatButton")
 
@@ -75,8 +77,10 @@ local function updateTooltip(btn)
         if firstShow or not btn._tipNextMs or nowMs >= btn._tipNextMs then
             btn._tipNextMs = nowMs + TOOLTIP_THROTTLE_MS
             local desc, maxLineWidth = btn.getTooltipText(btn)
-            tip.description = desc or ""
-            tip.maxLineWidth = maxLineWidth or 300
+            maxLineWidth = maxLineWidth or 300
+            desc = desc or ""
+            tip.description = TextWrap and TextWrap.tooltip(btn, desc, maxLineWidth) or desc -- 中日文斷好行
+            tip.maxLineWidth = maxLineWidth
         end
         tip:setDesiredPosition(getMouseX(), btn:getAbsoluteY() + btn:getHeight() + 8)
     else

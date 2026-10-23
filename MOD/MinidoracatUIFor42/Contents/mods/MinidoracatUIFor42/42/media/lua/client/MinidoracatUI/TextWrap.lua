@@ -20,6 +20,16 @@
 -- UI.Text.wrap(text, maxWidth, font?) → { line, ... }（rev 16）
 --   同 lines，但以 (font, maxWidth, text) 快取：同樣三者回同一張表（呼叫端只讀、不得修改），每幀呼叫不配置。
 --   font 省略＝UIFont.Small；text 非字串以 tostring 轉。快取超過 WRAP_CACHE_MAX 筆整個清掉重來。
+-- TextWrap.tooltip(owner, text, maxLineWidth) → 給 ISToolTip.description 的字串
+--   原版 ISToolTip 的說明是 rich text，只在空白斷行（ISRichTextPanel:paginate，ISRichTextPanel.lua:456-502），
+--   沒有空白的中日文一行到底。含中日韓字、又比原版行寬（maxLineWidth × 字高／15，ISToolTip.lua:189-192）寬的
+--   說明，用同一套 lines 以 ISToolTip.GetFont() 斷好，再以 " <LINE> " 接起來；其餘（拉丁、西里爾、放得下的、
+--   已含 "\n" 或 "<LINE>" 的）原樣回傳。結果快取在 owner 的 _tipWrap* 欄位：文字、字型、行寬都沒變就直接回。
+-- TextWrap.fixTooltip(el)
+--   接在原版 ISButton:updateTooltip（或 ISTextEntryBox:prerender）之後：原版把 tooltip 原文寫進 description 的
+--   那些幀（hover 或手把焦點），換成 tooltip 斷好行的版本，maxLineWidth 照原版 300。el.tooltip 本身不動（Focus 說明讀原文）。
+--   所在頂層視窗 opaque（rev 18 opts.opaque）時說明框也不透明（同 opaquePopup）：原版 ISToolTip 的底是
+--   backgroundColor（每個實例自己的表，a 預設 0）再疊一層 a 0.7 的深色（ISToolTip.lua:64,99,351），把 a 改成 1。
 --
 -- 截點一律落在字元邊界：Kahlua 字串是 UTF-16 code unit（不切開 surrogate pair），harness 的
 -- 標準 Lua 是 UTF-8 位元組（不切開多位元組字）；字元模型的判斷同 V1.lua 的 Text.fit。
@@ -242,6 +252,59 @@ local function wrap(text, maxWidth, font)
     byWidth[text] = lines
     wrapCount = wrapCount + 1
     return lines
+end
+
+-- 原版沒有空白可斷的字：中日韓字（含補充平面字）。多位元組 UTF-8 的後續位元組 codeAt 回 0x80-0xBF，不會誤判
+local function hasIdeograph(s)
+    for i = 1, string.len(s) do
+        if ideographic(codeAt(s, i)) then
+            return true
+        end
+    end
+    return false
+end
+
+local TIP_FONT_BASE = 15 -- ISToolTip:layoutContents 的 widthScale＝字高／15（ISToolTip.lua:189）
+local BUTTON_TIP_WIDTH = 300 -- ISButton:updateTooltip 單行說明的 maxLineWidth（ISButton.lua:326-330）
+
+function TextWrap.tooltip(owner, text, maxLineWidth)
+    if type(text) ~= "string" then
+        return text
+    end
+    local font = ISToolTip and ISToolTip.GetFont and ISToolTip.GetFont() or UIFont.NewSmall
+    local manager = getTextManager()
+    local width = maxLineWidth * manager:getFontHeight(font) / TIP_FONT_BASE
+    if text == owner._tipWrapSrc and font == owner._tipWrapFont and width == owner._tipWrapWidth then
+        return owner._tipWrapOut
+    end
+    local out = text
+    if not string.find(text, "\n", 1, true) and not string.find(text, "<LINE>", 1, true)
+        and manager:MeasureStringX(font, text) > width and hasIdeograph(text) then
+        out = table.concat(TextWrap.lines(text, width, font), " <LINE> ")
+    end
+    owner._tipWrapSrc, owner._tipWrapFont, owner._tipWrapWidth, owner._tipWrapOut = text, font, width, out
+    return out
+end
+
+local MAX_DEPTH = 32
+
+local function opaqueRoot(el)
+    for _ = 1, MAX_DEPTH do
+        if el.parent == nil then break end
+        el = el.parent
+    end
+    return el.opaque == true
+end
+
+function TextWrap.fixTooltip(el)
+    local tip, text = el.tooltipUI, el.tooltip
+    if tip ~= nil and type(text) == "string" and (el:isMouseOver() or el.joypadFocused) then
+        tip.description = TextWrap.tooltip(el, text, BUTTON_TIP_WIDTH)
+        local bg = tip.backgroundColor
+        if bg ~= nil and bg.a ~= 1 and opaqueRoot(el) then
+            bg.a = 1
+        end
+    end
 end
 
 local UI = MinidoracatUI and MinidoracatUI.v1

@@ -50,6 +50,8 @@ local VirtualList = UI.VirtualList
 if not VirtualList then
     return
 end
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap") -- 選用：缺席時提示照原版（中日文一行到底）
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.fixTooltip and TextWrap or nil
 
 local Skin = UI.Skin
 
@@ -169,6 +171,7 @@ local function updateTip(grid, hover)
         return
     end
     ISButton.updateTooltip(grid)
+    if TextWrap then TextWrap.fixTooltip(grid) end -- 中日文提示斷好行（TextWrap.lua）
     local tip = grid.tooltipUI
     if tip ~= nil and hover ~= nil and grid.tooltip ~= nil and tip.setDesiredPosition then
         local _, y, _, h = cardRect(grid, hover)

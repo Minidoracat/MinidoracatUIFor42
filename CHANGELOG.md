@@ -12,6 +12,15 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 修正
+
+- **中文、日文的滑鼠說明會換行了**：勾選框、滑桿、按鈕、下拉選單等控制項的滑鼠停留說明，中文和日文以前整段排成一長行，會拉出視窗、蓋到旁邊的畫面；現在跟英文一樣在約 300 像素寬處換行。英文、俄文等有空格的語言不受影響。所有使用本函式庫的 MOD 自動受益
+- **不透明視窗裡的說明框也不透明了**：設成不透明的視窗裡，控制項的說明框底下不會再透出視窗裡的字
+
+> 技術要點：原版 ISToolTip 只在空白斷行。框架控制項（Button、Checkbox、Slider、SliderRow、Dropdown、TileGrid、TextField、FloatButton、Dock）交給原版說明框的文字，含中日韓字且寬過原版行寬（`maxLineWidth` × 字高／15）時先以 `UI.Text.wrap` 同一套規則斷好、用 ` <LINE> ` 接起；已含 `\n` 或 `<LINE>` 的不動。元件的 `tooltip` 欄位保留原文。所在頂層視窗 `opaque = true` 時說明框底改不透明。API 不變、`API_REVISION` 不變，consumer 不必改。
+
 ## [42.21.0-0.15.0] - 2026-10-21
 
 ### 新增

@@ -44,6 +44,8 @@ if not UI.Focus then
     pcall(require, "MinidoracatUI/Focus")
 end
 local Focus = UI.Focus -- 選用：缺席時清單只能用滑鼠
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap") -- 選用：缺席時說明照原版（中日文一行到底）
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.fixTooltip and TextWrap or nil
 
 local Skin = UI.Skin
 local Text = UI.Text
@@ -375,6 +377,7 @@ function Dropdown:prerender()
     if self.isCollapsed then return end
     if self.tooltip or self.tooltipUI then
         self:updateTooltip()
+        if TextWrap then TextWrap.fixTooltip(self) end -- 中日文說明斷好行（TextWrap.lua）
     end
     local w, h = self.width, self.height
     local label = self._label

@@ -45,6 +45,8 @@ if not UI.Focus then
     pcall(require, "MinidoracatUI/Focus")
 end
 local Focus = UI.Focus -- optional: without it the hotkey only toggles collapse
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap") -- optional: without it CJK tips stay one long line
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.tooltip and TextWrap or nil
 local Skin, Icons = UI.Skin, UI.Icons
 
 local Dock = {}
@@ -607,7 +609,7 @@ local function updateTip(p)
     if firstShow or target ~= p._tipFor or now >= (p._tipNextMs or 0) then
         p._tipFor, p._tipNextMs = target, now + TOOLTIP_THROTTLE_MS
         local text = target._rec and entryTip(target._rec) or handleTip(p)
-        tip.description = text
+        tip.description = TextWrap and TextWrap.tooltip(p, text, 300) or text -- CJK pre-wrapped; "\n" text unchanged
         tip.maxLineWidth = string.find(text, "\n", 1, true) and 1000 or 300 -- ISButton.lua:326-330
         if tip.doLayout then pcall(tip.doLayout, tip) end -- size for the new text now, not one frame late
     end
