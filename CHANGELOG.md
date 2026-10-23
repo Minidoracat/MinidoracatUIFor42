@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **家族 MOD 的設定被遊戲清空時會自動補回**：主選單沒有啟用任何有設定的 MOD 時，在主選單的選項按套用，遊戲會把所有 MOD 的設定清空，進遊戲後全部回到預設；存檔時沒載入的 MOD 的設定也可能黏在一起、讀不回來。現在本函式庫替家族 MOD 各自備份設定，下次進遊戲自動補回。用到這個功能的 MOD 也要更新到接上它的版本才會生效。
+
+> 技術要點：新 API `UI.ModOptionsBackup.protect(options)`（`API_REVISION` 23、`CAPABILITIES.modOptionsBackup`），consumer 建好 `PZAPI.ModOptions` 選項、在原版 load 之前呼叫。某個選項在 `ModOptions.ini` 裡沒有自己的一行（黏在別行裡的不算）、而備份裡有同型別的一行，就接到檔尾；檔案裡有的以檔案為準，改了型別的舊設定不補。備份在 `Zomboid/Lua/MinidoracatUI/ModOptions_<MOD ID>.ini`，遊戲中每分鐘跟上一次。不改原版函式、不印 log。想把設定全部重設，要連這些備份一起刪。
+
 ## [42.21.0-0.15.1] - 2026-10-23
 
 ### 修正

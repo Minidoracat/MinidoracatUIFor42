@@ -844,7 +844,9 @@ MinidoracatUI.v1 = {
     --         預設停留 5 秒且游標停在上面時暫停；Icons 新增 bell
     -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua，tileGrid；收編自 Economy ECPanelGrid 的通用部分）；
     --         theme token card（方格卡片底，深色白 0.04、淺色黑 0.04；以前沒有 card 的卡片用 well）
-    API_REVISION = 22,
+    -- rev 23：UI.ModOptionsBackup.protect(options)：consumer 自己的 PZAPI.ModOptions 設定的備份與逐筆補回
+    --         （ModOptionsBackup.lua，modOptionsBackup；設定檔被原版清空或黏行時補回，不改原版函式）
+    API_REVISION = 23,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -888,6 +890,7 @@ MinidoracatUI.v1 = {
         itemPickerVehicleClass = false, -- rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（Widgets/ItemPicker.lua）
         toastHistory = false,     -- rev 21：通知紀錄視窗、Dock 入口與移動模式（Widgets/ToastHistory.lua）
         tileGrid = false,         -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua）
+        modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua）
     },
     Theme = Theme,
     Skin = Skin,

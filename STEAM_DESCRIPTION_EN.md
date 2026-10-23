@@ -7,6 +7,8 @@ A [b]required UI library[/b] shared by Minidoracat mods. It [b]adds no gameplay 
 
 ✨ [b]Family toolbar[/b]: the buttons of all family mods sit in one collapsible vertical strip; press the "." key to open it.
 
+✨ [b]Settings protection[/b]: when the game wipes mod settings (for example after pressing Apply in the main-menu options), family mods that use this library put their own settings back the next time you play.
+
 [h2]📦 Who needs it[/h2]
 These mods list it under Required Items — subscribe if you use any of them:
 [list]
