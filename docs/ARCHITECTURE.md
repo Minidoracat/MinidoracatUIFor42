@@ -727,8 +727,9 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | NoticeBoard | `noticeboard` | 20 |
 | Economy | `economy` | 30 |
 | VehicleManager | `vehiclemanager` | 40 |
-| VehicleCapsule | `vehiclecapsule` | 50 |
+| Pack & Throw（原 VehicleCapsule） | `packthrow` | 50 |
 | Safehouse | `safehouse` | 60 |
+| Quests & Achievements | `quest` | 70 |
 | DevProfiler | `devprofiler` | 90 |
 | 框架：通知紀錄（rev 21，`Widgets/ToastHistory.lua`） | `toasthistory` | 100 |
 
