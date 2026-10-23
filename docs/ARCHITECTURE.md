@@ -889,7 +889,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 | 保護 | `UI.ModOptionsBackup.protect(options)` → 補回的選項數或 nil | `options`＝`PZAPI.ModOptions:create(modID, name)` 的回傳值。不是這種表、或讀寫出錯時回 nil（自己 pcall，不拋錯）。重複呼叫無害 |
 
 **行為契約**
-- **時機**：建好選項、在原版 load 之前呼叫，補回的值才會被那次 load 套上。檔案載入時就自己 `load()` 的 consumer（VehicleManager、PackThrow）寫在自己的 load 前面；其餘在 `OnGameBoot`——它早於 `OnMainMenuEnter` 裡 `MainOptions:create` 的 load，多人進服的 `ResetLua` 也是先 `OnGameBoot` 再 `OnMainMenuEnter`（`Core.java:3962-3963`）。之後又加選項（MiniMap 的地圖包、區域選項在 `OnGameBoot` 才加）就在加完後再呼叫一次。
+- **時機**：建好選項、在原版 load 之前呼叫，補回的值才會被那次 load 套上。檔案載入時就自己 `load()` 的 consumer（VehicleManager、PackThrow）寫在自己的 load 前面；第一次讀值才 load 的（NoticeBoard）寫在註冊完；其餘在檔案載入時或 `OnGameBoot` 都可以——兩者都早於 `OnMainMenuEnter` 裡 `MainOptions:create` 的 load，多人進服的 `ResetLua` 也是先載入檔案、跑 `OnGameBoot`，再 `OnMainMenuEnter`（`Core.java:3962-3963`）。檔案載入時呼叫不必等框架：`require=` 的依賴在 MOD 清單裡一定排在前面（`ZomboidFileSystem.loadModAndRequired`），`LuaManager.LoadDirBase` 照這份清單一個 MOD 一個 MOD 載入。選項分在幾個檔或之後才加（MiniMap 的地圖包、區域選項在 `OnGameBoot` 才加；Safehouse 另一個檔再加一個）就在全部加完後呼叫，或加完後再呼叫一次。
 - **補回**：讀 `ModOptions.ini`。某個會存的選項（有 `getValue`，同原版 save 的條件）在檔案裡沒有自己的一行，而備份裡有同型別的一行，就把備份那行接到檔尾。「自己的一行」＝以 `|` 切開（同 `luautils.split`，空欄不算）第 2、3 欄是本 MOD 與這個選項、而且不超過 4 欄：黏行的第一筆超過 4 欄，原版讀不到正確的值。型別不看——舊 combobox 行算「有」，留給 consumer 自己的 `.selected` 遷移。檔案裡有的一律以檔案為準。整檔寫回（原本的行原樣在前），寫完讀回比對，不符就寫回原內容、回 0。
 - **備份**：`Zomboid/Lua/MinidoracatUI/ModOptions_<modID>.ini`（MOD ID 的非英數字元換成 `_`）。依 `options.data` 順序：檔案裡本 MOD 的行（同一選項以最後一行為準，同原版 load），檔案裡沒有的選項留上一份備份的行；改了型別的舊行丟掉（不會補回）；還沒註冊的選項（之後才加，或已刪除）的行留在檔尾，等它註冊再補。內容沒變不寫，沒有任何一行時不建檔。
 - **跟上這一場的改動**：遊戲中 `Events.EveryOneMinute`（兩次讀檔至少隔 `MIN_INTERVAL_MS` 真實時間，快轉時不狂讀）讀一次 `ModOptions.ini`，照上一條更新每個 protect 過的備份；檔案讀不到時不動備份。只讀存檔過的值，不讀記憶體（後註冊、還沒 load 的選項在記憶體裡是預設值）。
