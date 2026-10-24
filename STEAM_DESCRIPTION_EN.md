@@ -9,7 +9,7 @@ A [b]required UI library[/b] shared by Minidoracat mods. It [b]adds no gameplay 
 
 ✨ [b]Settings protection[/b]: when the game wipes mod settings (for example after pressing Apply in the main-menu options), family mods that use this library put their own settings back the next time you play.
 
-✨ [b]Update notes[/b]: the first time you play after a family mod updates, a short note in your language appears at the top right, once per update; turn it off under OPTIONS → MODS → Minidoracat UI.
+✨ [b]Update notes[/b]: after a family mod updates, a short note in your language appears once at the top right, and you can turn it off in the options.
 
 [h2]📦 Who needs it[/h2]
 These mods list it under Required Items — subscribe if you use any of them:
