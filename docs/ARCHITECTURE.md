@@ -48,9 +48,9 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 23,         -- additive 變更單調遞增；consumer 宣告最低需求
+    API_REVISION = 24,         -- additive 變更單調遞增；consumer 宣告最低需求
                                -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）｜rev 19：Toast 標題換行，最多兩行（§3.4）｜rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（§3.14）｜rev 21：Toast 右上固定一欄與玩家位置、紀錄、預設 5 秒與游標暫停；通知紀錄視窗、移動模式與 Dock 入口（toastHistory）；bell 圖示（§3.4、§3.6、§3.16）
-                               -- ｜rev 22：TileGrid 方格清單（§3.22）、card token（§3.2）｜rev 23：ModOptionsBackup 設定備份與逐筆補回（§3.23）
+                               -- ｜rev 22：TileGrid 方格清單（§3.22）、card token（§3.2）｜rev 23：ModOptionsBackup 設定備份與逐筆補回（§3.23）｜rev 24：WhatsNew 更新概要通知（§3.24）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -92,6 +92,7 @@ MinidoracatUI.v1 = {
         toastHistory = false,  -- rev 21：通知紀錄視窗、移動模式與 Dock 入口（Widgets/ToastHistory.lua；另需 toast／window／scrollPanel／controls）
         tileGrid     = false,  -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua；另需 virtualList，Focus 選用）
         modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua；不需要任何 widget）
+        whatsNew     = false,  -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua；另需 toast）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -105,7 +106,7 @@ MinidoracatUI.v1 = {
     -- FilterBar（rev 11，filterBar）、ItemPicker（rev 11，itemPicker）、Autocomplete（rev 11，autocomplete）、
     -- Dock（rev 13，dock）、Dropdown（rev 14，dropdown）、ScrollPanel（rev 16，scrollPanel）、
     -- NavList（rev 17，navList）、SliderRow（rev 17，sliderRow）、Preview（rev 17，preview）、ToastHistory（rev 21，toastHistory）、
-    -- TileGrid（rev 22，tileGrid）、ModOptionsBackup（rev 23，modOptionsBackup）
+    -- TileGrid（rev 22，tileGrid）、ModOptionsBackup（rev 23，modOptionsBackup）、WhatsNew（rev 24，whatsNew）
 }
 ```
 
@@ -191,6 +192,16 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --   if ok and UI.API_REVISION >= 23 and UI.CAPABILITIES.modOptionsBackup and UI.ModOptionsBackup then
 --       UI.ModOptionsBackup.protect(options)   -- 回這次補回的選項數；要記 log 由 consumer 自己記
 --   end
+-- rev 24 更新概要逐旗標探測；檔案載入時登記一次，旗標缺席時什麼都不做。發布列車的 ready 以 regex 讀這段，
+-- 四欄一律寫字面字串、一欄一行，modId 照 mod.info；發版寫了新概要才把 since 改成本版（§3.24）：
+--   if ok and UI.API_REVISION >= 24 and UI.CAPABILITIES.whatsNew and UI.WhatsNew then
+--       UI.WhatsNew.register({
+--           modId = "MinidoracatMiniMapFor42",
+--           since = "0.50.0",
+--           name = "UI_MinidoracatMiniMap_DockLabel",
+--           text = "UI_MinidoracatMiniMap_WhatsNew",
+--       })
+--   end
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -221,6 +232,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/Preview.lua` | rev 17 | `UI.Preview` 效果預覽框（§3.21）；只需要原生 `ISPanel`，`CAPABILITIES.preview` |
 | `Widgets/TileGrid.lua` | rev 22 | `UI.TileGrid` 方格清單（§3.22）；繼承 `UI.VirtualList`（自行 pcall require，缺席即 return），不 require Focus（實作 `onFocusKey`／`focusRect`／`focusLabel` 接點），`CAPABILITIES.tileGrid` |
 | `ModOptionsBackup.lua` | rev 23 | `UI.ModOptionsBackup` 設定備份與逐筆補回（§3.23）；不 require 任何 widget，只用原版 `getFileReader`／`getFileWriter`、`Events.EveryOneMinute`，不改原版函式，`CAPABILITIES.modOptionsBackup` |
+| `WhatsNew.lua` | rev 24 | `UI.WhatsNew` 更新概要通知（§3.24）；自行 pcall require Toast（缺席即 return），只用原版 `getFileReader`／`getFileWriter`、`getActivatedMods`／`getModInfoByID`、`getTextOrNull` 與 `Events.OnGameStart`／`OnTick`，`CAPABILITIES.whatsNew` |
 
 載入順序防雷：v0.1 核心單檔（無內部順序問題）；v0.2 起的 Widget 檔開頭自行檢查
 `MinidoracatUI.v1` 存在、缺席時不掛能力——不重演 NeatUI「scrollview 用
@@ -899,6 +911,24 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 
 **不做的事**：不防止清空（那要改原版 save，見 Fixes）；不補別的 MOD 的設定；不讀寫 consumer 記憶體裡的值；不提供手動還原或匯出入口。玩家刪掉 `ModOptions.ini` 想重設時，有備份的選項會被補回——要連 `Zomboid/Lua/MinidoracatUI/` 的備份一起刪。
 
+### 3.24 WhatsNew 更新概要通知（API rev 24）
+
+`WhatsNew.lua`，`UI.WhatsNew`（`CAPABILITIES.whatsNew`）。Steam 會自動更新 MOD，玩家多半不會去開 Workshop 的更新紀錄，國際版家族 MOD 的更新說明也只有繁中；這個模組讓玩家更新後第一次進遊戲時，在右上角看到一則用自己語言寫的更新重點（設計稿 `ui-whatsnew-1024`，2026-10-24 使用者核准：同時只放一則；框架自己從 rev 24 的下一版起也登記）。需要 Toast，缺席就不掛能力。
+
+| 面 | API | 說明 |
+|---|---|---|
+| 登記 | `UI.WhatsNew.register(spec)` → `true`／`false` | `spec.modId`（mod.info 的 id）、`spec.since`（這段概要屬於哪一版，要含數字）、`spec.text`（內文翻譯鍵）、選用 `spec.name`（標題的 MOD 名稱翻譯鍵，沒有或查不到時用 mod.info 的 name）。不對時回 `false`、不拋錯；同一個 `modId` 再登記是覆寫 |
+
+**行為契約**
+- **登記時機與寫法**：consumer 在檔案載入時呼叫（早於 `OnGameStart`；之後才登記的下一場才算）。發布列車 `release_train.py ready` 以 regex 讀這段，四欄一律寫字面字串、寫在同一個 `register({ … })` 裡（樣板見 §2）。發版寫了新概要才把 `since` 改成本版；沒改就不跳。
+- **紀錄**：`Zomboid/Lua/MinidoracatUI/WhatsNew.ini`，一行一個 MOD「`modId=版本`」，值是這台電腦最後看過的概要版本；空值＝見過這個 MOD、它還沒有概要。框架是唯一寫入者，整檔重寫（`getFileWriter` 一開就截斷）。讀檔時註解、沒有 id、沒有等號的行略過，同一個 id 以第一行為準。
+- **判斷**（每次 `OnGameStart`，每個 MOD 一次）：沒有這一行＝新安裝，只記不跳；剛升到 rev 24 時大家也都沒有紀錄，所以框架自己與 `require=` 有本框架的 MOD（`getActivatedMods`＋`getModInfoByID(id):getRequire()`；引擎已去掉反斜線、沒去空白，`ChooseGameInfo.java:224`）就算沒登記也先記一行空值，它之後的第一段概要才跳得出來。登記的 `since` 比紀錄新（逐段比數字）才跳；看過了、降版、內文鍵查不到（`getTextOrNull` 回 nil）都不跳，也不改紀錄。翻譯先載英文再用玩家語言蓋過去（`Translator.java:340-353`），只寫英文的 MOD 照樣顯示英文。
+- **放出**：`OnGameStart` 在載入畫面按下「點擊開始」之後才觸發（`IngameState.java:766`）；多人進服後伺服器的 MOD 才載入，所以不在主選單做。`START_DELAY_MS` 後開始，每 `POLL_MS` 看一次：上一則概要還在畫面上、`Toast.pending` 不是空的、或 `Toast.active` 已有 `MAX_VISIBLE` 則就等——概要不進 Toast 佇列，不會擠掉別的 MOD 的通知。標題 `IGUI_MinidoracatUI_WhatsNew_Title`（MOD 名稱、概要版本），內文最多 `MAX_LINES` 行，停 `HOLD_MS`（游標停在上面時照 §3.4 暫停），完整內文照樣進通知紀錄。真的放出去才寫紀錄；玩家中途離開，剩下的下一場再放。佇列空了就拿掉 `OnTick`。
+- **玩家選項**：框架「選項 → MODS」頁的「顯示 MOD 更新概要」（`WhatsNewShow`，預設勾選；第一次用到時補讀一次 ini，同 ToastHistory）。關掉時要跳的改成只記，之後再打開也不補跳；遊戲中關掉，剩下的也只記。
+- **零 log**；讀寫失敗一律當沒有紀錄（最壞是少跳一次，不會一直跳）。
+
+**不做的事**：不在主選單跳；不顯示未讀數字或紅點（2026-10-20 裁定）；沒有能隨時回看全部更新的視窗（通知紀錄只留這次遊戲）；跳過幾版的玩家只看到最新一段（`since` 只有一個）；不管翻譯包與不依賴本框架的 MOD。
+
 ## 4. NeatUI 教訓總表（設計依據，證據見 AGENTS.md 與三方報告）
 
 | # | NeatUI 事實 | 本框架對應決策 |
@@ -937,6 +967,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 | API rev 21 通知位置與紀錄、工具列排版（**開發中**） | Toast 右上固定一欄（moodle 與 Dock 預設格內側，避開區只往下推、看預留高度）、玩家位置與往上疊（`Toast.setAnchor`，layout.ini）、紀錄（`Toast.history`）、預設停留 5 秒與游標暫停（§3.4）；`UI.ToastHistory` 紀錄視窗、移動模式與 Dock 入口（`toastHistory`）；`bell` 圖示（§3.6）；Dock 直排／橫排／方格（選項下拉＋把手右鍵選單）、往畫面中間長、提示框改到側邊、方向鍵照畫面（§3.16，沒有新旗標） | `scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`（見 §7）；ui-e2e `toast-sp` 實機截圖（與修改前 `ui-toast-before-1020` 同一套示意框）、`toast-input-sp`（背景真點擊、拖曳、方向鍵、Enter、Esc）與 `dock-layout-sp`（四個真 consumer＋示意入口，真右鍵選單切換三種排版、拖到左下、方向鍵）；下游聯測 11 個 consumer 全過（NoticeBoard `test_nbpanel.lua` 的進場座標改成 rev 21 的值） |
 | API rev 22 方格清單（**開發中**） | `UI.TileGrid`（§3.22）：固定格高方格、12px 捲軸預留、選取框與 hover、鍵盤與手把游標、hover 提示、focusRect 不出元件 | `scripts/test_rev22.lua`（見 §7）；Safehouse 物品搜尋面板接用並實機驗證（滑鼠、鍵盤、手把、捲動中的焦點框、提示）後定版 |
 | API rev 23 設定備份（**開發中**） | `UI.ModOptionsBackup.protect`（§3.23）：consumer 自己的 `PZAPI.ModOptions` 設定被原版清空或黏行時逐筆補回、遊戲中每分鐘跟上備份 | `scripts/test_rev23.lua`（見 §7）；MiniMap 接用並以 E2E（單人與多人，沒有 Fixes）實機驗證清空後補回後定版 |
+| API rev 24 更新概要通知（**開發中**） | `UI.WhatsNew.register`（§3.24）：MOD 更新後第一次進遊戲跳一則更新概要、同時只放一則、不進 Toast 佇列，紀錄在 `Zomboid/Lua/MinidoracatUI/WhatsNew.ini`，玩家可在選項關掉 | `scripts/test_rev24.lua`（見 §7）；ui-e2e 實機：預先寫好舊紀錄並登記示範概要，進遊戲 5 秒後右上角出現、紀錄更新，再進一次不跳 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -970,7 +1001,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`、`scripts/test_rev22.lua` 與 `scripts/test_rev23.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`、`scripts/test_rev22.lua`、`scripts/test_rev23.lua` 與 `scripts/test_rev24.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -993,6 +1024,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
     - rev21_dock：選項頁的下拉（三項、預設直排、載入時不讀 ini）；ini 存了橫排時建立 Dock 讀一次、開局就是橫排；三種排版的尺寸（9 個 48×444／444×48／136×180，方格 4／5／10 個的欄數）與右上的鏡射（橫排把手在右端、方格把手自己佔右上一列）；套用不重讀 ini、不另存；不認得的值當直排；換排版、入口增減、收合展開時把手的螢幕位置不變；拖曳中不變形、放到左下改往上往右長、把手留在放開處；layout.ini 存 home、重開讀回、換解析度回預設再讀回；把手右鍵選單（四項、目前的打勾、開在靠畫面中間那側、選了立刻寫 ModOptions.ini、800ms 過期、左鍵按住中不接、恢復預設位置並存檔、選單開著時把手提示框不出來）；方向鍵照畫面位置（3×3 四個方向、走出邊界繞回、跳過空格、直排左右鍵沿著走）；提示框位置（直排在右半部放左邊、橫排上半部放下面、下半部放上面、方格在右下放左邊、夾到螢幕內、換字先 `doLayout`、把手提示最後一行是右鍵說明）；方格加提示框 50 幀零配置；建立時只有 1 個入口：那顆按鈕在把手的位置，入口變多時把手接手同一點、直排右緣照舊離 moodle 欄 12px；入口圖示的退路（`icon` 讀得到只畫它、讀不到改畫 `iconKey`、再沒有呼叫 `drawIcon`、三者都沒有不畫不拋錯）。植入「不鏡射」「方格固定 3 欄」「relayout 不保 home」「提示框一律放下面」「放開不重判方向」「欄號不鏡射」「選了不存檔」「選單開著仍顯示提示框」「`icon` 讀不到不退回」時各有條目會紅。
     - rev22：TileGrid 載入自檢（facade 未發布、VirtualList 缺席、原生 ISPanel 缺席）與旗標；每列格數扣 12px 預留、格寬平均分、內容高、`resize` 重算（剛好與差 1px）；`setItems` 清掉超出範圍的游標、保留範圍內的；方向鍵（左右跨列、第一格不動回 false、上下保持欄位、最後一列較短落在最後一格、最後一列再往下回 false）、Home／End、PgUp／PgDn、沒有游標時的第一個鍵、其他鍵不處理；Enter／Space／小鍵盤 Enter 的 `onPick` 參數與次數、沒有游標先落第一格、沒有格子；游標移動捲到那格、`scrollToIndex`（最後一列、已可見不動、部分可見、超出範圍）、滾輪一列、捲動容器祖先 `scrollTo`；滑鼠（點卡片、空隙三邊、最後一列空位、捲軸區、軌道跳頁）；`focusRect`（卡片、整格捲出 nil、部分可見裁切、沒有游標 nil）；繪製（預設深色 theme 有 `card` 且顏色和 `surface` 不同（不透明黑視窗上看得見，2026-10-21 實機卡片隱形的回歸）、淺色也有、卡片底用 `card`、consumer 覆寫的 `card` 優先、沒有 `card` 退回 `well`、選取 `selected`＋唯一的 `accent` 框、hover 沒有框、只畫可見列、drawTile 參數與重用 state、stencil 成對、捲到底的列）；提示（只問一次、每幀走 updateTooltip、提示框在卡片下方、換到沒有提示的格收掉、空隙與離開不問、`setItems` 後重問）；`focusLabel` 與退回 `label`；Focus 接線（kind=button＋label、鍵盤右／下／Enter、手把方向與 A、`Focus.render` 只框游標格、部分捲出裁在元件內、整格捲出框住整個元件、最後一列往下移到下一個目標）；50 輪零配置。
     - rev23：ModOptionsBackup 照載本機原版 `ModOptions.lua`／`luautils.lua`＋記憶體檔案系統（寫入一開就截斷、三種行尾）。載入後旗標與 `EveryOneMinute` 處理器；沒有設定檔與備份不建任何檔；檔案裡都有時 `ModOptions.ini` 一個位元組不動、備份只收本 MOD 會存的選項並照註冊順序、內容沒變不寫；對照原版沒有選項時 save 清成 0 byte，之後補回 7 種型別並由原版 load 套上、別的 MOD 不在範圍；部分遺失只補缺的、原本的行原樣在前；黏行（原版對照讀不到）補回單獨行；改了型別的不補也丟出備份、沒註冊的不補但留在備份、之後才加的選項再呼叫一次就補；舊 combobox 行算有、`.selected` 遷移訊號照舊；寫入被丟時寫回原內容；每分鐘跟上新值、不到 2 秒不讀檔、設定檔變空或不見不動備份；參數不對與讀檔拋錯回 nil 不拋錯；檔名只留英數與底線；全程零 log。違規證明：拿掉補回、黏行算有、不看型別、丟掉沒註冊的行、寫完不比對、不節流、沒內容也建檔、兩處 pcall、檔案值被備份蓋掉，各至少一項轉紅（2026-10-23）。
+    - rev24：WhatsNew 每一場重新 dofile＋記憶體檔案系統（一開就截斷、三種行尾、讀檔拋錯），`getActivatedMods`／`getModInfoByID`／`getTextOrNull`／`PZAPI.ModOptions` stub，真實 Toast。載入後旗標、選項頁勾選框（預設打開）、只掛 `OnGameStart`；第一次只記不跳（框架自己、登記的、`require=` 有框架的去空白與反斜線，別的不記）；spec 驗證；下一場 5 秒內不放、依序一則一則放、標題與停留、放出才寫紀錄、放完拿掉 `OnTick`；看過不跳、不重寫；降版不跳；畫面滿或有排隊時等、不進佇列；選項關掉只記、再打開不補跳、遊戲中關掉剩下的只記；內文鍵查不到不跳不改紀錄、補上後照跳；內文最多 3 行、通知紀錄是全文；紀錄雜行與重寫；讀檔拋錯；沒有 Toast 不掛能力；零 log。違規證明：新安裝也跳、不等上一則消失、畫面滿或有排隊也放、降版也跳、放出不寫紀錄、忽略選項、`require=` 不去空白、id 不去反斜線、停留 5 秒、進場就放、只畫 1 行、查不到內文照放、框架自己不先記、沒有 Toast 也翻旗標，各至少一項轉紅（2026-10-24）。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

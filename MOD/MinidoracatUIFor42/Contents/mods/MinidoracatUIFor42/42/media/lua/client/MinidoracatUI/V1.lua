@@ -846,7 +846,9 @@ MinidoracatUI.v1 = {
     --         theme token card（方格卡片底，深色白 0.04、淺色黑 0.04；以前沒有 card 的卡片用 well）
     -- rev 23：UI.ModOptionsBackup.protect(options)：consumer 自己的 PZAPI.ModOptions 設定的備份與逐筆補回
     --         （ModOptionsBackup.lua，modOptionsBackup；設定檔被原版清空或黏行時補回，不改原版函式）
-    API_REVISION = 23,
+    -- rev 24：UI.WhatsNew.register(spec)：MOD 更新後第一次進遊戲跳一則更新概要（WhatsNew.lua，whatsNew；
+    --         紀錄在 Zomboid/Lua/MinidoracatUI/WhatsNew.ini，同時只放一則、不進 Toast 佇列）
+    API_REVISION = 24,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -891,6 +893,7 @@ MinidoracatUI.v1 = {
         toastHistory = false,     -- rev 21：通知紀錄視窗、Dock 入口與移動模式（Widgets/ToastHistory.lua）
         tileGrid = false,         -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua）
         modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua）
+        whatsNew = false,         -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua）
     },
     Theme = Theme,
     Skin = Skin,

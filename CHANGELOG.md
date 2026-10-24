@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **家族 MOD 更新後，遊戲裡會告訴你改了什麼**：MOD 更新後第一次進遊戲，右上角會跳一則用你的語言寫的更新重點。一次只跳一則，每則停 10 秒，不會擠掉其他通知；同一次更新只跳一次，剛訂閱的 MOD 不跳。不想看的話，到「選項 → 模組 → Minidoracat 家族介面」取消勾選「顯示 MOD 更新概要」。各家族 MOD 從之後有寫更新重點的版本開始跳。
+
+> 技術要點：新 API `UI.WhatsNew.register({ modId, since, text, name })`（`API_REVISION` 24、`CAPABILITIES.whatsNew`，需要 Toast），consumer 在檔案載入時登記；`since` 是這段概要所屬的版本，`text`／`name` 是翻譯鍵。框架在 `Zomboid/Lua/MinidoracatUI/WhatsNew.ini` 記每個 MOD 最後看過的概要版本：沒有紀錄的只記不跳，比紀錄新的才跳。進遊戲 5 秒後開始，上一則消失、通知欄沒有排隊時才放下一則，真的放出去才寫紀錄。不印 log。
+
 ## [42.21.0-0.15.1] - 2026-10-23
 
 ### 新增
