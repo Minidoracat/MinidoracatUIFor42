@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **挑選物品時可以一次勾選多種**：用到本函式庫的 MOD 可以讓挑選物品的畫面改成勾選模式：每列前面有勾選框，點一下勾選、再點一下取消，底下顯示已選幾項，按「完成」一次加入；有數量上限時，選滿後再勾不會加進去，計數字會變色提醒。用到這個功能的 MOD 也要更新到接上它的版本才會出現，原本點一下就選定的挑選畫面不變。
+
+> 技術要點：`UI.ItemPicker.new` 新增選用欄位 `multi = true`、`maxPicks`、`onPickMany(target, recs, picker)`、`doneTitle`，以及 `picker:open(picked)`（預先勾好的 fullType 陣列）與 `picker:done()`（`API_REVISION` 25、`CAPABILITIES.itemPickerMulti`）。`recs` 依勾選先後，取自 consumer 的 `items()`，找不到退回 `universe().byType`。沒帶 `multi` 的呼叫面與行為與 rev 24 相同。
+
 ## [42.21.0-0.16.0] - 2026-10-24
 
 ### 新增

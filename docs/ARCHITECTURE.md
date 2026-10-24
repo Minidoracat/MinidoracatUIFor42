@@ -48,9 +48,9 @@ graph LR
 MinidoracatUI.v1 = {
     VERSION      = "0.5.0",   -- 發布字串，僅供顯示（定版 commit 時才與 modversion 同步）
     API_MAJOR    = 1,          -- 不相容變更 → 開新 MOD ID，此值永不 +1
-    API_REVISION = 24,         -- additive 變更單調遞增；consumer 宣告最低需求
+    API_REVISION = 25,         -- additive 變更單調遞增；consumer 宣告最低需求
                                -- rev 1：首發｜rev 2：Icons｜rev 3：painters/assets｜rev 4：art icons｜rev 5：Toast maxLines｜rev 6：導覽圖示｜rev 7：現代控制元件｜rev 8：車輛／標記圖示＋ColorPicker｜rev 9：Slider（ColorPicker 的 R/G/B 改滑桿）｜rev 10：Focus 鍵盤＋手把焦點｜rev 11：收編 Economy 的日期／表格／篩選列／物品挑選／候選輸入＋共用基礎（Text.fit、Skin.arrow、chip Button、TextField 尺寸與 clearButton、theme.alpha）｜rev 12：textDisabled 停用對比、Tabs 停用、焦點說明位置 captionSide、FilterBar 的 dateToggle／kindsDropdown／sortInHeader｜rev 13：家族工具列 Dock（§3.16）｜rev 14：Dropdown（§3.17）、12 個幾何圖示（§3.6）、onAccent／titleText／titleMuted token（§3.2）、Button／Window 的 Texture 圖示與 Button:setIcon（§3.7）｜rev 15：可選圓角（Skin 半徑形狀 round3／6／10／20、Skin.shapeOf、theme 的 radius／controlRadius／buttonShape／font，§3.2、§3.3）｜rev 16：ScrollPanel 捲動容器（§3.18）、UI.Text.wrap（§3.4）、TextField:setInvalid（§3.7）、control:focusLabel() 與 Focus 的捲動容器接線（§3.10）｜rev 17：NavList 分組側欄導覽（§3.19）、SliderRow 標籤＋滑桿＋數值列（§3.20）、Preview 效果預覽框（§3.21）、Checkbox／Slider 的 tooltip（§3.7）、斷行禁則補全形 ％ ～ 與日文小寫假名、長音（§3.4）、watch／zone 圖示（§3.6）、scrollTo 與焦點框可見判定看 focusRect（§3.10、§3.18）｜rev 18：warning token（§3.2）、斷行禁則補法文標點前後與數字和中日韓單位之間的空白（§3.4）、Window／Dialog 的 opaque 不透明本體（§3.7）與跟著它的彈出清單（opaquePopup）、Skin.solidFill（§3.3）｜rev 19：Toast 標題換行，最多兩行（§3.4）｜rev 20：ItemPicker 宇宙的 name 含車輛零件的車型（§3.14）｜rev 21：Toast 右上固定一欄與玩家位置、紀錄、預設 5 秒與游標暫停；通知紀錄視窗、移動模式與 Dock 入口（toastHistory）；bell 圖示（§3.4、§3.6、§3.16）
-                               -- ｜rev 22：TileGrid 方格清單（§3.22）、card token（§3.2）｜rev 23：ModOptionsBackup 設定備份與逐筆補回（§3.23）｜rev 24：WhatsNew 更新概要通知（§3.24）
+                               -- ｜rev 22：TileGrid 方格清單（§3.22）、card token（§3.2）｜rev 23：ModOptionsBackup 設定備份與逐筆補回（§3.23）｜rev 24：WhatsNew 更新概要通知（§3.24）｜rev 25：ItemPicker 多選模式（§3.14）
     CAPABILITIES = {           -- 功能探測（分期發布的相容手段）
         theme        = true,
         skin         = true,
@@ -93,6 +93,7 @@ MinidoracatUI.v1 = {
         tileGrid     = false,  -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua；另需 virtualList，Focus 選用）
         modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua；不需要任何 widget）
         whatsNew     = false,  -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua；另需 toast）
+        itemPickerMulti = false, -- rev 25：ItemPicker 多選模式（Widgets/ItemPicker.lua，與 itemPicker 同檔）
     },
     Theme = <module>,
     Skin  = <module>,          -- 正式繪製 API（fill/border/dot/fits/toggle/slider/arrow），adapter 直接取用（§3.3）
@@ -202,6 +203,13 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 --           text = "UI_MinidoracatMiniMap_WhatsNew",
 --       })
 --   end
+-- rev 25 ItemPicker 多選逐旗標探測；舊框架收到 opts.multi 只是忽略（照單選：點一列就關閉並回呼 onPick），
+-- 旗標缺席時一次加一種（沿用單選挑選器逐一加入），不要帶 multi 開挑選器：
+--   local canMulti = ok and UI.API_REVISION >= 25 and UI.CAPABILITIES.itemPickerMulti
+--   if canMulti then
+--       picker = UI.ItemPicker.new({ …, multi = true, maxPicks = 9, onPickMany = onPickMany })
+--       picker:open(alreadyPicked)   -- fullType 陣列：預先勾好
+--   end
 -- ok == false → 走 adapter 的直角退回，不帶半套狀態運行
 ```
 
@@ -223,7 +231,7 @@ local ok = UI ~= nil and UI.API_MAJOR == 1 and UI.API_REVISION >= 1
 | `Widgets/DatePicker.lua` | rev 11 | `UI.Date`／`UI.DateField`／`UI.DatePicker`（§3.11）；自行 pcall require Controls（缺席即 return）與 Focus（選用），`CAPABILITIES.datePicker` |
 | `Widgets/Table.lua` | rev 11 | `UI.Table`／`UI.TableHeader`（§3.12）；需要 `UI.Text` 與 `Skin.arrow`，自行 pcall require VirtualList（缺席即 return），`CAPABILITIES.table` |
 | `Widgets/FilterBar.lua` | rev 11 | `UI.FilterBar`（§3.13）；自行 pcall require Controls、DatePicker（任一缺席即 return）與 Focus（選用），`CAPABILITIES.filterBar` |
-| `Widgets/ItemPicker.lua` | rev 11 | `UI.ItemPicker`（§3.14）；自行 pcall require Controls、Table（任一缺席即 return）與 Focus（選用），`CAPABILITIES.itemPicker` |
+| `Widgets/ItemPicker.lua` | rev 11 | `UI.ItemPicker`（§3.14）；自行 pcall require Controls、Table（任一缺席即 return）與 Focus（選用），`CAPABILITIES.itemPicker`（rev 20 起另翻 `itemPickerVehicleClass`、rev 25 起另翻 `itemPickerMulti`） |
 | `Widgets/Autocomplete.lua` | rev 11 | `UI.Autocomplete`（§3.15）；自行 pcall require Controls（缺席即 return）與 Focus（選用），`CAPABILITIES.autocomplete` |
 | `Widgets/Dock.lua` | rev 13 | `UI.Dock` 家族工具列（§3.16）；需要原生 `ISPanel`／`ISButton`，自行 pcall require Focus（選用：缺席時快捷鍵只切換收合），`CAPABILITIES.dock` |
 | `Widgets/Dropdown.lua` | rev 14 | `UI.Dropdown` 下拉選單（§3.17）；基底只用原生 `ISButton`（不需要 Controls），自行 pcall require Focus（選用：缺席時只能用滑鼠），`CAPABILITIES.dropdown` |
@@ -656,7 +664,7 @@ local bar = UI.FilterBar.new{
 
 **不做的事**：bar 不是元素（沒有自己的底或裁切）；不擁有傳輸與狀態持久化；不提供通用下拉選單元件（rev 12 的類型下拉只服務類型；其他下拉用 `addControl` 接使用端的）；不做多鍵排序；關鍵字只比一個欄位的子字串，不做模糊比對。
 
-### 3.14 ItemPicker 物品挑選疊層（API rev 11；rev 20 擴充）
+### 3.14 ItemPicker 物品挑選疊層（API rev 11；rev 20、rev 25 擴充）
 
 `Widgets/ItemPicker.lua`，`CAPABILITIES.itemPicker`。收編 Economy `ECItemPicker` 的通用部分；英文名索引、上架政策、索引載入提示留在 consumer，以 `items`／`filter`／`revision`／`note` 注入。需要 Controls 與 Table，Focus 選用。
 
@@ -664,8 +672,9 @@ local bar = UI.FilterBar.new{
 |---|---|---|
 | 物品宇宙 | `UI.ItemPicker.universe() → { items = { record, ... }, byType = { [fullType] = record } }` | 本 session 載入的全部物品 script（原版與 MOD），record＝`{ fullType, name, category, script, search }`；整個 session 共用，**consumer 唯讀** |
 | 疊層 | `UI.ItemPicker.new{ x?, y?, width?, height?, theme?, font?, title?, placeholder?, items?, filter?, revision?, note?, maxResults?=200, target?, onPick, onCancel? }` → picker（已 `initialise()` 的 ISPanel，建立時隱藏、尚未 addChild） | `items()`→array（預設 `universe().items`；record 至少要有 `fullType`／`name`／`category`／`search`，選用 `original`＝右側淡字、`script`＝圖示來源）；`filter(rec)`→bool；`revision()`→any（開著時值變了就重搜）；`note()`→string｜nil（提示列前綴） |
-| 方法 | `open()`、`close()`、`isOpen()`、`cancel()`、`resize(w, h)`、`keyboardTargets()`、`dispose()` | |
-| 回呼 | `onPick(target, rec, picker)`、`onCancel(target, picker)` | 疊層**先關再回呼**，只一次 |
+| 方法 | `open(picked?)`、`done()`、`close()`、`isOpen()`、`cancel()`、`resize(w, h)`、`keyboardTargets()`、`dispose()` | `picked`／`done()` 只在多選模式有作用（rev 25，見下方「多選模式」） |
+| 回呼 | `onPick(target, rec, picker)`、`onCancel(target, picker)`；多選 `onPickMany(target, recs, picker)` | 疊層**先關再回呼**，只一次 |
+| 多選（rev 25，`CAPABILITIES.itemPickerMulti`） | `new` 的選用欄位 `multi = true`、`maxPicks?`（整數 ≥ 1；nil＝不限）、`onPickMany`、`doneTitle?`（預設 `IGUI_MinidoracatUI_ItemPicker_Done`） | `multi` 不為 `true` 時這幾個欄位全部忽略，畫面與行為與 rev 24 相同 |
 
 **行為契約**
 - **宇宙**：`getScriptManager():getAllItems()` 逐筆 pcall 讀取，跳過 `isHidden()`／`getObsolete()`；`name`＝`getItemName`（rev 20 起，`CAPABILITIES.itemPickerVehicleClass`：車輛零件依腳本 `VehicleType` 接上車型，與原版背包同名；rev 11–19 是 `getItemNameFromFullType`，三種車型同名；失敗退 fullType）、`category`＝`getDisplayCategory()`（空白退 `"Item"`）、`search`＝`lower(name .. " " .. fullType)`。不排序（數千筆，排序交給 consumer）。**空結果不快取**：script manager 還沒準備好時不讓 session 永遠拿到空宇宙。
@@ -673,11 +682,18 @@ local bar = UI.FilterBar.new{
 - **結果列**（`UI.Table`，兩行高）：物品圖示（`getNormalTexture()`；record 沒帶 script 時 `FindItem`；照原圖比例畫進方框、置中，同 §3.7 的 Texture 圖示；取不到或繪製失敗記 `false`，session 內不再重試）、名稱、`original`（與名稱不同時畫在右側淡字）、第二行 `fullType / 類別`（類別以原版 `IGUI_ItemCat_<cat>` 翻譯，查無原字）；截字與幾何在綁定時算好，render 只畫。
 - **疊層**：背板**不透明、不乘 `theme.alpha`**（只對著自己讀，不透出底下的列），內卡片與框乘 alpha；背板吃掉所有傳到它的滑鼠事件（子元件先問，搜尋框與清單照常）。`open()` 清空搜尋並把鍵盤焦點放到搜尋框；`close()` 取消輸入焦點；點列、Enter、手把 A 都走 `choose`：已關閉時不回呼，同一次點擊或 Enter 的第二個來源不會選兩次。「取消」chip＝`cancel()`。`dispose()` 關閉並放掉回呼與列。
 
-**焦點／手把接線**：`keyboardTargets()` 開著時回快取的 `{ 搜尋框 entry, 結果 list, 取消鈕 }`，關著回空陣列；`open`／`close` 都 `Focus.invalidate(root)`。放在框架 Window 裡時，consumer 覆寫 `win.keyboardTargets`：`picker:isOpen()` 時回 `picker:keyboardTargets()`，否則回 `Focus.collectTargets(win)`——疊層開著時頁面的控制項不該被 Tab 到。
+**焦點／手把接線**：`keyboardTargets()` 開著時回快取的 `{ 搜尋框 entry, 結果 list, 取消鈕 }`（多選是 `{ 搜尋框, 清單, 完成鈕, 取消鈕 }`），關著回空陣列；`open`／`close` 都 `Focus.invalidate(root)`。放在框架 Window 裡時，consumer 覆寫 `win.keyboardTargets`：`picker:isOpen()` 時回 `picker:keyboardTargets()`，否則回 `Focus.collectTargets(win)`——疊層開著時頁面的控制項不該被 Tab 到。
+
+**多選模式**（rev 25，`multi = true`；consumer 探測 `UI.API_REVISION >= 25 and UI.CAPABILITIES.itemPickerMulti`）
+- **勾選**：`choose(rec)`（點列、Enter、手把 A）改成切換該列勾選、疊層不關；已達 `maxPicks` 時不勾新列（列維持未勾），計數字改 `warning` 色（自訂 theme 沒有就 `errorText`），之後勾或取消任一列就恢復。勾選狀態是 set（fullType → true）＋勾選先後的陣列；搜尋重建清單不清勾選。
+- **畫面**：每列在圖示前畫 14px 勾選框（`border` 框，勾選時框內 `accent` 實心方塊，不只靠顏色），框與圖示、名稱的幾何在綁定時算好；底部一列左邊計數（`maxPicks` 有值用 `IGUI_MinidoracatUI_ItemPicker_PickedMax`「已選 %1／%2 項」，否則 `IGUI_MinidoracatUI_ItemPicker_Picked`「已選 %1 項」），右邊 primary「完成」鈕；清單高度扣掉這一列。計數字只在勾選或寬度變動時重組，prerender／render 不配置 table、不組字串。
+- **`open(picked)`**：每次開啟都以 `picked`（fullType 陣列）重設勾選，沒給就清空；非字串與重複略過，超過 `maxPicks` 截斷。已開著時呼叫不做事（同單選）。
+- **`done()`**（＝「完成」鈕）：疊層開著才做；先關閉，再以勾選先後的 record 陣列呼叫一次 `onPickMany`（沒有勾選時是空陣列）。record 取自 `items()`（consumer 自己的 record），找不到時退回 `universe().byType`，仍找不到就略過；不套 `filter`。
+- **`cancel()`**：照舊關閉＋`onCancel`，勾選作廢。單選模式的 `open(picked)` 忽略參數、`done()` 不做事。
 
 **使用端契約**：picker 在頁面所有內容之後才 `addChild`（畫在最上層），並在頁面 resize 時 `picker:resize(w, h)` 成整頁大小；自己的 record 需要英文名或政策欄位時，用 `universe()` 的 record 建出自己的陣列交給 `items`（不要改寫共用 record）。
 
-**不做的事**：不做英文名索引、上架／交易政策、排序、多選或數量輸入；不自成視窗（是頁面內的疊層）；不快取搜尋結果以外的狀態。
+**不做的事**：不做英文名索引、上架／交易政策、排序或數量輸入；不自成視窗（是頁面內的疊層）；不快取搜尋結果與多選勾選以外的狀態。
 
 ### 3.15 Autocomplete 非同步候選輸入框（API rev 11）
 
@@ -968,6 +984,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 | API rev 22 方格清單（**開發中**） | `UI.TileGrid`（§3.22）：固定格高方格、12px 捲軸預留、選取框與 hover、鍵盤與手把游標、hover 提示、focusRect 不出元件 | `scripts/test_rev22.lua`（見 §7）；Safehouse 物品搜尋面板接用並實機驗證（滑鼠、鍵盤、手把、捲動中的焦點框、提示）後定版 |
 | API rev 23 設定備份（**開發中**） | `UI.ModOptionsBackup.protect`（§3.23）：consumer 自己的 `PZAPI.ModOptions` 設定被原版清空或黏行時逐筆補回、遊戲中每分鐘跟上備份 | `scripts/test_rev23.lua`（見 §7）；MiniMap 接用並以 E2E（單人與多人，沒有 Fixes）實機驗證清空後補回後定版 |
 | API rev 24 更新概要通知（**開發中**） | `UI.WhatsNew.register`（§3.24）：MOD 更新後第一次進遊戲跳一則更新概要、同時只放一則、不進 Toast 佇列，紀錄在 `Zomboid/Lua/MinidoracatUI/WhatsNew.ini`，玩家可在選項關掉 | `scripts/test_rev24.lua`（見 §7）；ui-e2e 實機：預先寫好舊紀錄並登記示範概要，進遊戲 5 秒後右上角出現、紀錄更新，再進一次不跳 |
+| API rev 25 挑選器多選（**開發中**） | ItemPicker 的 `multi`／`maxPicks`／`onPickMany`／`doneTitle`、`open(picked)`、`done()`：列首勾選框、底部計數＋完成鈕、達上限拒勾、勾選不因搜尋清掉（§3.14） | `scripts/test_rev25.lua`（見 §7）；Economy 求購單「也接受」清單接用（旗標缺席時退回一次加一種），實機以滑鼠、鍵盤、手把勾選與完成後定版 |
 
 首發 Workshop 在 v0.1 完成即可（照 AGENTS.md 發布流程）；每期 `API_REVISION` +1 並更新 `CAPABILITIES`。
 
@@ -1001,7 +1018,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
   - rev 9 Slider：原生基底缺席時 `slider` 維持 false；step 以 min 為基準量化與夾限、點擊跳值只回呼一次、拖曳 setCapture 成對（出界仍收 move、放開後不再跟隨）、同值不觸發、silent、滾輪步進與預設 step、disabled 不回應且拖曳中停用解除 capture、format 文字寬度只量一次。
   - rev 10 Focus：Tab 依閱讀順序走、隱藏元件不算、Shift+Tab 以原始按住狀態讀；落在輸入框交出原生文字焦點、在框內 Tab 經 onOtherKey 離開並交還，同一次按住在下一幀不再走第二格（引擎時序模型）、極短點按不請引擎吞鍵、框內 Enter 放手後不被同一次按住重新聚焦且只吞實際按住的 Enter；press／release 都消耗且按住結束後不再認領；Enter 按鈕一次、Space 切換開關、清單方向鍵只呼叫 onHighlight、Enter 呼叫 onSelect、onKey 先拿鍵；點一下方向鍵在每幀 repeat 下只走一列、按住過延遲才連續；分頁右鍵、滑桿右鍵；有焦點框 Esc 收框並消耗、沒有焦點框 Enter／Esc 不消耗；滑鼠 onFocus 不畫框；背景 root 不搶 Tab；Ctrl+C 以框架通知回報；手把開窗接手、下移跳過輸入框文字焦點、清單到邊移出、A 先問 onFocusKey、A、LB、B 關窗還原（原焦點隱藏時還給角色）；Dialog 手把預設「確認」（開窗那一幀還沒進 UIManager 清單也一樣）、A／B 與焦點還原、關掉後下一次輸入回到開啟它的按鈕（手把與鍵盤）、鍵盤 Tab 到取消後 Enter 按取消、無焦點框 Enter 仍確認、輸入框 Enter 確認不漏給後面視窗；焦點下的按鈕被移出目標清單時 Enter 不按它而是搬框；螢幕鍵盤開著時視窗被關（鍵盤一起關、焦點還原、不聚焦看不見的輸入框）；開窗前焦點所在視窗已隱藏時還給角色；自動目標重用同一組 table。
   - 情境十九 rev 11 共用基礎：`Text.fit`（放得下原樣、二分截字、不切開多位元組字元、放不下 `"..."` 回空字串）、`Skin.arrow` 幾何與方向、chip 的 active／hover／按下疊層、Button 依寬度截字與自動 tooltip（手動 tooltip 不被覆寫、`setTooltip(nil)` 交回自動、寬度恢復收掉）、TextField placeholder 依寬度截字與自動 tooltip（同 Button 的四條規則、每幀不重新量測）、TextField `setWidth`／`setHeight` 重排內層與 `clearButton`、`theme.alpha` 乘在 chrome 不乘在文字。
-  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`、`scripts/test_rev22.lua`、`scripts/test_rev23.lua` 與 `scripts/test_rev24.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
+  - **切片載入器**（`smoke_harness.lua` 檔尾）：依序 `loadfile` `scripts/test_rev11_{date,table,filter,itempicker,autocomplete}.lua`、`scripts/test_rev12.lua`、`scripts/test_wrap.lua`、`scripts/test_rev13_dock.lua`、`scripts/test_rev14.lua`、`scripts/test_rev14_dropdown.lua`、`scripts/test_rev15.lua`、`scripts/test_rev16.lua`、`scripts/test_rev17.lua`、`scripts/test_rev18.lua`、`scripts/test_rev19.lua`、`scripts/test_rev20.lua`、`scripts/test_rev21.lua`、`scripts/test_rev21_dock.lua`、`scripts/test_rev22.lua`、`scripts/test_rev23.lua`、`scripts/test_rev24.lua` 與 `scripts/test_rev25.lua`，以 `ctx`（`check`、`nearly`、`UI`、`MOD_LUA`、時鐘與共用鍵盤／手把 stub 等，契約見 loader 上方註解）呼叫；每檔 `return` 自己實際執行的斷言條數，不符、檔案不存在或執行錯誤各記一筆失敗但不中止其他切片。切片斷言不算進 `EXPECTED_ASSERTIONS`（該值只守情境一～十九）。各切片涵蓋：
     - date：`UI.Date` 曆法（含 1970 年前、閏年、非法輸入）、DateField 回呼次數與失焦正規化、月曆開關／選日／外部點擊、導覽年份夾限與 chip 焦點停靠快取、鍵盤（Tab、方向鍵跨月、PgUp／PgDn、Home、Delete、連發節奏）、`close(scope)`、手把借焦點與歸還、零配置。
     - table：`Table.new` 的 create／bind／unbind 與勾子、`rowBackground` 三態與 `lit`、TextCell 截字／token／muted 刪除線／提亮與快取失效、`layoutColumns` 五段讓出順序與預算不超出、TableHeader 點擊回 key／nil、`live=false` 不回呼、排序箭頭。
     - filter：`setKinds`／`syncKinds`（順序、沒變回 false、丟掉已選）、多選「全部」與 extra、`apply`（關鍵字、類型、日期界線、穩定排序、分頁夾限）、每個動作回呼一次並重設頁碼、類型翻頁與精簡切換、`field=nil` 只保存狀態、焦點描述重用與繪製。
@@ -1025,6 +1042,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
     - rev22：TileGrid 載入自檢（facade 未發布、VirtualList 缺席、原生 ISPanel 缺席）與旗標；每列格數扣 12px 預留、格寬平均分、內容高、`resize` 重算（剛好與差 1px）；`setItems` 清掉超出範圍的游標、保留範圍內的；方向鍵（左右跨列、第一格不動回 false、上下保持欄位、最後一列較短落在最後一格、最後一列再往下回 false）、Home／End、PgUp／PgDn、沒有游標時的第一個鍵、其他鍵不處理；Enter／Space／小鍵盤 Enter 的 `onPick` 參數與次數、沒有游標先落第一格、沒有格子；游標移動捲到那格、`scrollToIndex`（最後一列、已可見不動、部分可見、超出範圍）、滾輪一列、捲動容器祖先 `scrollTo`；滑鼠（點卡片、空隙三邊、最後一列空位、捲軸區、軌道跳頁）；`focusRect`（卡片、整格捲出 nil、部分可見裁切、沒有游標 nil）；繪製（預設深色 theme 有 `card` 且顏色和 `surface` 不同（不透明黑視窗上看得見，2026-10-21 實機卡片隱形的回歸）、淺色也有、卡片底用 `card`、consumer 覆寫的 `card` 優先、沒有 `card` 退回 `well`、選取 `selected`＋唯一的 `accent` 框、hover 沒有框、只畫可見列、drawTile 參數與重用 state、stencil 成對、捲到底的列）；提示（只問一次、每幀走 updateTooltip、提示框在卡片下方、換到沒有提示的格收掉、空隙與離開不問、`setItems` 後重問）；`focusLabel` 與退回 `label`；Focus 接線（kind=button＋label、鍵盤右／下／Enter、手把方向與 A、`Focus.render` 只框游標格、部分捲出裁在元件內、整格捲出框住整個元件、最後一列往下移到下一個目標）；50 輪零配置。
     - rev23：ModOptionsBackup 照載本機原版 `ModOptions.lua`／`luautils.lua`＋記憶體檔案系統（寫入一開就截斷、三種行尾）。載入後旗標與 `EveryOneMinute` 處理器；沒有設定檔與備份不建任何檔；檔案裡都有時 `ModOptions.ini` 一個位元組不動、備份只收本 MOD 會存的選項並照註冊順序、內容沒變不寫；對照原版沒有選項時 save 清成 0 byte，之後補回 7 種型別並由原版 load 套上、別的 MOD 不在範圍；部分遺失只補缺的、原本的行原樣在前；黏行（原版對照讀不到）補回單獨行；改了型別的不補也丟出備份、沒註冊的不補但留在備份、之後才加的選項再呼叫一次就補；舊 combobox 行算有、`.selected` 遷移訊號照舊；寫入被丟時寫回原內容；每分鐘跟上新值、不到 2 秒不讀檔、設定檔變空或不見不動備份；參數不對與讀檔拋錯回 nil 不拋錯；檔名只留英數與底線；全程零 log。違規證明：拿掉補回、黏行算有、不看型別、丟掉沒註冊的行、寫完不比對、不節流、沒內容也建檔、兩處 pcall、檔案值被備份蓋掉，各至少一項轉紅（2026-10-23）。
     - rev24：WhatsNew 每一場重新 dofile＋記憶體檔案系統（一開就截斷、三種行尾、讀檔拋錯），`getActivatedMods`／`getModInfoByID`／`getTextOrNull`／`PZAPI.ModOptions` stub，真實 Toast。載入後旗標、選項頁勾選框（預設打開）、只掛 `OnGameStart`；第一次只記不跳（框架自己、登記的、`require=` 有框架的去空白與反斜線，別的不記）；spec 驗證；下一場 5 秒內不放、依序一則一則放、標題與停留、放出才寫紀錄、放完拿掉 `OnTick`；看過不跳、不重寫；降版不跳；畫面滿或有排隊時等、不進佇列；選項關掉只記、再打開不補跳、遊戲中關掉剩下的只記；內文鍵查不到不跳不改紀錄、補上後照跳；內文最多 3 行、通知紀錄是全文；紀錄雜行與重寫；讀檔拋錯；沒有 Toast 不掛能力；零 log。違規證明：新安裝也跳、不等上一則消失、畫面滿或有排隊也放、降版也跳、放出不寫紀錄、忽略選項、`require=` 不去空白、id 不去反斜線、停留 5 秒、進場就放、只畫 1 行、查不到內文照放、框架自己不先記、沒有 Toast 也翻旗標，各至少一項轉紅（2026-10-24）。
+    - rev25：ItemPicker 重新 dofile（帶參數的 `getText`、自己的宇宙 stub）。`API_REVISION` 25 與 `itemPickerMulti`；多選的焦點目標四個（搜尋框、清單、完成鈕、取消鈕）、底部完成鈕貼卡片下緣且清單扣掉這一列、`doneTitle`；點列切換勾選不關閉、再點取消、達 `maxPicks` 拒勾並畫 `warning` 色、取消一列解除警示；搜尋重建不清勾選；列首勾選框（勾了才有 `accent` 實心方塊）；完成鈕先關再回呼一次、recs 依勾選先後且是 consumer 的 record、關著時 `done()` 不回呼；`open(picked)` 的重複／非字串略過與截斷、退回 `universe().byType` 與略過找不到的、每次開啟重設、開著時再 open 不重設；取消作廢勾選且不回呼 `onPickMany`；`maxPicks` 非法＝不限與 `Picked` 計數、`dispose` 放掉 `onPickMany`；`multi` 不為 true 時版面、焦點目標、列幾何、`done()`、`choose` 都同單選；多選 prerender＋列 render 50 輪零配置。違規證明：多選 choose 也關閉、rebuild 清勾選、done 先回呼再關、open 不截斷、open 不去重、done 只看宇宙、cancel 不作廢、不擋上限、prerender 每幀組字、不翻旗標、焦點目標漏完成鈕、勾選框不畫實心，各至少一項轉紅（2026-10-24）。
 - `scripts/verify_mod.py`：涵蓋靜態掃描、皮膚與圖示驗證、圖表匯入相容性及 Lua 煙霧測試。後者另守住原生置頂選項、通知遞補置頂，以及首次／捲動綁定失敗後可刷新恢復。本機缺 Pillow 時用 `uv run --with pillow scripts/verify_mod.py`，SKIP 不算完成；原生 GPU 視覺仍須實機確認。
 - 下游 consumer 的測試以同層 repo 相對路徑（或 `MUI_LUA`）載入本框架 V1.lua；缺框架時一律 SKIP-not-PASS。
 - 實機：每期完成定義都含遊戲內實測；MP 路徑在 dedicated（`getTexture` 回 null 環境）至少驗一次退回。

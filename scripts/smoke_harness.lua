@@ -1042,7 +1042,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 24, "API_REVISION 進到 24")
+    check(UI.API_REVISION == 25, "API_REVISION 進到 25")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -1059,8 +1059,8 @@ do
         and UI.CAPABILITIES.opaquePopup == false and UI.CAPABILITIES.itemPickerVehicleClass == false
         and UI.CAPABILITIES.toastHistory == false and UI.CAPABILITIES.tileGrid == false
         and UI.CAPABILITIES.modOptionsBackup == false and UI.CAPABILITIES.whatsNew == false
-        and UI.CAPABILITIES.textWrap == true,
-        "rev 7～18、20～24 能力在模組檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
+        and UI.CAPABILITIES.itemPickerMulti == false and UI.CAPABILITIES.textWrap == true,
+        "rev 7～18、20～25 能力在模組檔載入前誠實標 false（textWrap 隨 Toast require 的 TextWrap 已掛上）")
 
     local saved = MinidoracatUI
     MinidoracatUI = nil
@@ -2047,8 +2047,8 @@ end
   scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua、scripts/test_rev14_dropdown.lua、
   scripts/test_rev15.lua、scripts/test_rev16.lua、scripts/test_rev17.lua、scripts/test_rev18.lua、scripts/test_rev19.lua、
   scripts/test_rev20.lua、scripts/test_rev21.lua、scripts/test_rev21_dock.lua、scripts/test_rev22.lua、scripts/test_rev23.lua、
-  scripts/test_rev24.lua 與 scripts/test_tooltip.lua；
-  檔案不存在記一筆失敗（二十二個切片都已落地）。
+  scripts/test_rev24.lua、scripts/test_rev25.lua 與 scripts/test_tooltip.lua；
+  檔案不存在記一筆失敗（二十三個切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2095,7 +2095,7 @@ local sliceCtx = {
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
     "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock",
-    "rev22", "rev23", "rev24", "tooltip" }) do
+    "rev22", "rev23", "rev24", "rev25", "tooltip" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

@@ -848,7 +848,9 @@ MinidoracatUI.v1 = {
     --         （ModOptionsBackup.lua，modOptionsBackup；設定檔被原版清空或黏行時補回，不改原版函式）
     -- rev 24：UI.WhatsNew.register(spec)：MOD 更新後第一次進遊戲跳一則更新概要（WhatsNew.lua，whatsNew；
     --         紀錄在 Zomboid/Lua/MinidoracatUI/WhatsNew.ini，同時只放一則、不進 Toast 佇列）
-    API_REVISION = 24,
+    -- rev 25：ItemPicker 多選模式（opts.multi／maxPicks／onPickMany／doneTitle、open(picked)、done()；
+    --         Widgets/ItemPicker.lua，itemPickerMulti；沒帶 multi 時與 rev 24 相同）
+    API_REVISION = 25,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -894,6 +896,7 @@ MinidoracatUI.v1 = {
         tileGrid = false,         -- rev 22：UI.TileGrid 方格清單（Widgets/TileGrid.lua）
         modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua）
         whatsNew = false,         -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua）
+        itemPickerMulti = false,  -- rev 25：ItemPicker 多選模式（Widgets/ItemPicker.lua，與 itemPicker 同檔）
     },
     Theme = Theme,
     Skin = Skin,
