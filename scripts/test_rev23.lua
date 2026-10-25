@@ -30,7 +30,7 @@ local saved = { getFileReader = getFileReader, getFileWriter = getFileWriter, PZ
     Events = Events, print = print }
 local prints = 0
 
-local disk, writes = {}, {}
+local disk, writes, reads = {}, {}, {} -- reads：檔名 → getFileReader 開了幾次
 local dropWrite = {} -- 檔名 → 下一次寫入這個檔時靜默丟掉內容
 local ALLOWED = { ini = true, cfg = true, txt = true, log = true, json = true }
 getFileWriter = function(name, create, append)
@@ -48,6 +48,7 @@ end
 local readerThrows = false
 getFileReader = function(name, create)
     if readerThrows then error("disk read failed") end
+    reads[name] = (reads[name] or 0) + 1
     local data = disk[name]
     if data == nil then
         if not create then return nil end
@@ -287,7 +288,8 @@ do
     check(disk[BK] == bk, "寫入被丟：備份不動")
 end
 
--- 9. 遊戲中每分鐘跟上這一場改的值（至少隔 2 秒真實時間）
+-- 9. 遊戲中每分鐘跟上這一場改的值：兩次讀檔至少隔 60 秒真實時間（一天 1 小時的伺服器，遊戲 1 分鐘是真實 2.5 秒）；
+--    備份寫入失敗時，設定檔沒再變也照樣重試
 do
     disk[MAIN] = goodFile
     disk[BK] = nil
@@ -303,20 +305,32 @@ do
     check(has(disk[BK], "slider|MineMod|s|33"), "改了值並存檔後，下一次每分鐘處理把備份跟上")
     o.dict.s.value = 44
     PZAPI.ModOptions:save()
-    ctx.advance(1000)
+    local mainReads = reads[MAIN]
+    for _ = 1, 23 do
+        ctx.advance(2500)
+        runTick()
+    end
+    check(reads[MAIN] == mainReads and not has(disk[BK], "slider|MineMod|s|44"),
+        "之後 57.5 秒（遊戲 23 分鐘）都不讀檔")
+    ctx.advance(2500)
     runTick()
-    check(has(disk[BK], "slider|MineMod|s|33") and not has(disk[BK], "slider|MineMod|s|44"),
-        "距上次不到 2 秒：不讀檔")
-    ctx.advance(1500)
+    check(has(disk[BK], "slider|MineMod|s|44"), "滿 60 秒：跟上新值")
+    o.dict.s.value = 55
+    PZAPI.ModOptions:save()
+    dropWrite[BK] = true
+    ctx.advance(60000)
     runTick()
-    check(has(disk[BK], "slider|MineMod|s|44"), "過了 2 秒：跟上新值")
+    check(has(disk[BK], "slider|MineMod|s|44"), "備份寫入被丟：備份留著 44")
+    ctx.advance(60000)
+    runTick()
+    check(has(disk[BK], "slider|MineMod|s|55"), "設定檔沒再變，下一次照樣重試：跟上 55")
     local bk = disk[BK]
     local bkWrites = writes[BK]
     disk[MAIN] = ""
-    ctx.advance(5000)
+    ctx.advance(60000)
     runTick()
     disk[MAIN] = nil
-    ctx.advance(5000)
+    ctx.advance(60000)
     runTick()
     check(disk[BK] == bk and writes[BK] == bkWrites, "設定檔變空或不見：備份不動")
 end
@@ -359,7 +373,51 @@ do
     check(disk["MinidoracatUI/ModOptions_Weird_Mod____x.ini"] ~= nil, "MOD ID 的非英數字元換成底線")
 end
 
+-- 13. 每分鐘處理的工作量（2026-10-25 實測 138 個 MOD 的組合每 2.5 秒卡 22-29 ms：每個 protect 過的 MOD 各切一次整份
+--     檔案）：檔案沒變只讀檔比對；有變整份只切一次，protect 的 MOD 多幾個也不多切。量本模組執行的行數（line hook），
+--     不量時間：harness 跑在標準 Lua，速度和 Kahlua 不同
+do
+    local SRC = "@" .. ctx.MOD_LUA .. "ModOptionsBackup.lua"
+    local function moduleLines(fn)
+        local n = 0
+        debug.sethook(function()
+            if debug.getinfo(2, "S").source == SRC then n = n + 1 end
+        end, "l")
+        fn()
+        debug.sethook()
+        return n
+    end
+    local buf = {}
+    for i = 1, 480 do buf[#buf + 1] = "tickbox|Other" .. (i % 40) .. "|opt" .. i .. "|true\r\n" end
+    for m = 1, 5 do
+        for k = 1, 4 do buf[#buf + 1] = "tickbox|Mod" .. m .. "|o" .. k .. "|true\r\n" end
+    end
+    local FILE, LINES = table.concat(buf), #buf
+    -- protect n 個 MOD、跑掉 protect 之後那一次（一定重做），回傳檔案多一行之後那一次執行的行數
+    local function changedTick(n)
+        disk, writes = { [MAIN] = FILE }, {}
+        session()
+        for m = 1, n do
+            local o = PZAPI.ModOptions:create("Mod" .. m, "M")
+            for k = 1, 4 do o:addTickBox("o" .. k, "x", false) end
+            protect(o)
+        end
+        ctx.advance(60000)
+        runTick()
+        disk[MAIN] = disk[MAIN] .. "tickbox|Other0|late|true\r\n"
+        ctx.advance(60000)
+        return moduleLines(runTick)
+    end
+    local one, five = changedTick(1), changedTick(5)
+    ctx.advance(60000)
+    local unchanged = moduleLines(runTick)
+    check(unchanged <= 10 * LINES,
+        string.format("檔案沒變：只讀檔比對（%d 行設定，執行 %d 行程式，上限每行 10）", LINES, unchanged))
+    check(five < 1.5 * one,
+        string.format("檔案有變：整份只切一次（5 個 MOD 執行 %d 行、1 個 %d 行，上限 1.5 倍）", five, one))
+end
+
 check(prints == 0, "全程零 log")
 
 for k, v in pairs(saved) do _G[k] = v end
-return 36
+return 40

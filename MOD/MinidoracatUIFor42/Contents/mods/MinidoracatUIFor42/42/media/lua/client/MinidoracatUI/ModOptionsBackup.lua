@@ -18,7 +18,8 @@
 --      最後一行為準，同原版 load），檔案裡沒有的選項留上一份備份的行；改了型別的舊行丟掉（不會補回），還沒註冊的
 --      選項（之後才加，或已刪除）的行留在檔尾，等它註冊再補。內容沒變不寫，沒有任何一行時不建檔。
 --   3. 遊戲中 EveryOneMinute（間隔至少 MIN_INTERVAL_MS 真實時間）讀一次 ModOptions.ini，照第 2 步更新每個 protect
---      過的備份：這一場改的設定，之後被清空時補回的也是新值。檔案讀不到時不動備份。
+--      過的備份：這一場改的設定，之後被清空時補回的也是新值。檔案讀不到時不動備份；內容和上次每個備份都跟上時一樣
+--      就到此為止。有變時整份只切一次行，再把各 MOD 自己的行分給它。
 --   零 log：回傳值給 consumer 自己決定記不記。
 -- 本檔只能寫 ASCII 字面值（Kahlua 把字串字面值逐字截成一個位元組）。
 
@@ -30,11 +31,13 @@ local Backup = {}
 
 local MAIN = "ModOptions.ini"
 local BACKUP_PREFIX = "MinidoracatUI/ModOptions_"
-local MIN_INTERVAL_MS = 2000
+-- 遊戲 1 分鐘只有真實幾秒（原版預設一天 1.5 小時＝3.75 秒，一天 1 小時＝2.5 秒）；間隔只決定備份多久跟上這一場的改動
+local MIN_INTERVAL_MS = 60000
 
 local entries = {} -- modID -> { options = ..., name = 備份檔名, lines = 備份內容（nil＝沒有備份檔） }
 local order = {}   -- modID，依第一次 protect 的順序
 local lastTick = nil
+local seen = nil  -- 每個備份都已跟上的 ModOptions.ini 內容；nil＝下次每分鐘處理一定重做
 
 local function fields(line)
     local t = {}
@@ -101,9 +104,28 @@ local function ownLines(options, lines)
     return own
 end
 
-local function refresh(entry, fileLines)
+-- fileLines 裡 protect 過的 MOD 自己的行（第 3 欄有值、不超過 4 欄）：modID -> { 行, ... }（照檔案順序）
+local function group(fileLines)
+    local out = {}
+    if fileLines == nil then return out end
+    for i = 1, #fileLines do
+        local t = fields(fileLines[i])
+        if t[3] ~= nil and #t <= 4 and entries[t[2]] ~= nil then
+            local own = out[t[2]]
+            if own == nil then
+                own = {}
+                out[t[2]] = own
+            end
+            own[#own + 1] = fileLines[i]
+        end
+    end
+    return out
+end
+
+-- modLines＝ModOptions.ini 裡本 MOD 的行（group 的一項，nil＝沒有）；備份已跟上（沒變或寫入成功）回 true
+local function refresh(entry, modLines)
     local options = entry.options
-    local fileOwn, oldOwn = ownLines(options, fileLines), ownLines(options, entry.lines)
+    local fileOwn, oldOwn = ownLines(options, modLines), ownLines(options, entry.lines)
     local nextLines = {}
     local data = options.data
     for i = 1, #data do
@@ -124,10 +146,12 @@ local function refresh(entry, fileLines)
             end
         end
     end
-    if #nextLines == 0 or same(old, nextLines) then return end
+    if #nextLines == 0 or same(old, nextLines) then return true end
     if writeVerified(entry.name, nextLines, old) then
         entry.lines = nextLines
+        return true
     end
+    return false
 end
 
 local function protectInner(options)
@@ -140,16 +164,13 @@ local function protectInner(options)
         order[#order + 1] = modID
     end
     entry.options = options
+    seen = nil -- 只有這個 MOD 跟上了現在的檔案
 
     local fileLines = readLines(MAIN)
+    local modLines = group(fileLines)[modID] or {}
     local present = {}
-    if fileLines ~= nil then
-        for i = 1, #fileLines do
-            local t = fields(fileLines[i])
-            if t[2] == modID and t[3] ~= nil and #t <= 4 then
-                present[t[3]] = true
-            end
-        end
+    for i = 1, #modLines do
+        present[fields(modLines[i])[3]] = true
     end
     local saved = ownLines(options, entry.lines)
     local add = {}
@@ -169,11 +190,11 @@ local function protectInner(options)
         end
         for i = 1, #add do nextLines[#nextLines + 1] = add[i] end
         if writeVerified(MAIN, nextLines, fileLines) then
-            fileLines = nextLines
+            for i = 1, #add do modLines[#modLines + 1] = add[i] end
             restored = #add
         end
     end
-    refresh(entry, fileLines)
+    refresh(entry, modLines)
     return restored
 end
 
@@ -189,10 +210,15 @@ end
 
 local function refreshAll()
     local fileLines = readLines(MAIN)
-    if fileLines == nil then return end
+    if fileLines == nil or same(fileLines, seen) then return end
+    seen = nil
+    local byMod = group(fileLines)
+    local ok = true
     for i = 1, #order do
-        refresh(entries[order[i]], fileLines)
+        local modID = order[i]
+        if not refresh(entries[modID], byMod[modID]) then ok = false end
     end
+    if ok then seen = fileLines end
 end
 
 local function tick()
@@ -203,9 +229,9 @@ local function tick()
     pcall(refreshAll)
 end
 
--- 只給測試用：清掉 protect 過的清單與節流時間（不作為 production API）
+-- 只給測試用：清掉 protect 過的清單、節流時間與上次讀到的內容（不作為 production API）
 function Backup._resetForTests()
-    entries, order, lastTick = {}, {}, nil
+    entries, order, lastTick, seen = {}, {}, nil, nil
 end
 
 if Events and Events.EveryOneMinute and Events.EveryOneMinute.Add then
