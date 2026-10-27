@@ -758,6 +758,7 @@ local ac = UI.Autocomplete.new{ x?, y?, width?, theme?, font?, placeholder?, max
 | Pack & Throw（原 VehicleCapsule） | `packthrow` | 50 |
 | Safehouse | `safehouse` | 60 |
 | Quests & Achievements | `quest` | 70 |
+| Build Anything（MinidoracatBuilderFor42） | `builder` | 80 |
 | DevProfiler | `devprofiler` | 90 |
 | 框架：通知紀錄（rev 21，`Widgets/ToastHistory.lua`） | `toasthistory` | 100 |
 
