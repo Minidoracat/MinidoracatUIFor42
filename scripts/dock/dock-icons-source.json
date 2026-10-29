@@ -62,6 +62,30 @@
           "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
           "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
         }
+      },
+      {
+        "path": "scripts/dock/dock-icons-builder-sheet-1.webp",
+        "md5": "5ad90939a48802ce6744d98d26f11e8f",
+        "size": "1254x1254 RGBA, 2x2 cells: hammer+saw (red handle read as a letter 'D' at 28 px, dropped), toolbox / planks+hammer+nails (muddy at 28 px, dropped), trowel+bricks",
+        "input": "scripts/dock/dock-icons-style-ref.webp (Image 1)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框、偏暖的低飽和配色、微斜 3/4 視角）畫四個遊戲工具列用的「自由建造」圖示，畫面切成 2×2 四個等大的格子，每格正中央一個：左上＝一把羊角鎚和一把手鋸交叉成 X 形（鎚子：亮銀色鎚頭、淺棕色木柄；手鋸：亮銀色鋸片帶鋸齒、紅色木握把）；右上＝一個紅色金屬工具箱，蓋子半開，箱口露出一支羊角鎚的木柄和一支螺絲起子；左下＝三塊交疊的淺色木板堆，上面斜放一把羊角鎚，旁邊散著三四根亮銀色鐵釘；右下＝一把三角形泥刀（亮銀色刀面、淺棕色木柄），斜靠在兩三塊疊起來的紅磚上。四個圖示不要任何文字、數字或字母，也不要畫房子。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；亮部要夠亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚；形狀簡單、輪廓清楚。",
+          "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
+      },
+      {
+        "path": "scripts/dock/dock-icons-builder-sheet-2.webp",
+        "md5": "63499d037a8479983bdd2bf691973c41",
+        "size": "1254x1254 RGBA, 2x2 cells: hammer+saw (wood handle), hammer+level / lone hammer (spare), hammer on plank (weak at 28 px, dropped); Builder shipped top-left (hammer + saw, user picked A on 2026-10-29)",
+        "input": "scripts/dock/dock-icons-style-ref.webp (Image 1)",
+        "prompt": {
+          "subject": "以 Image 1 的畫風（末日生存遊戲 Project Zomboid 的物品圖示：手繪上色、寫實但簡化、明顯的深色外框、偏暖的低飽和配色、微斜 3/4 視角）畫四個遊戲工具列用的「自由建造」圖示，畫面切成 2×2 四個等大的格子，每格正中央一個：左上＝一把羊角鎚和一把手鋸交叉成 X 形；鎚子是亮銀色鎚頭、淺棕色木柄；手鋸的鋸片是明亮的淺銀色、鋸齒清楚，握把是淺棕色木頭、實心的手槍式握把（握把上只有一個小小的握孔，不要做成字母形狀）；右上＝一把羊角鎚和一支亮黃色木框水平儀交叉成 X 形（水平儀中間一個綠色氣泡窗，鎚子亮銀色鎚頭、淺棕色木柄）；左下＝一把大的羊角鎚單獨斜放，鎚頭亮銀色、木柄淺棕色，形狀簡單；右下＝一把羊角鎚斜放在一塊淺色木板上，沒有釘子、沒有其他雜物。四個圖示不要任何文字、數字或字母，也不要畫房子。",
+          "style": "和 Image 1 同一套畫法、同樣的外框粗細與光源（左上方）；亮部要夠亮，縮小到 28 像素、放在近乎全黑的工具列上仍然清楚；形狀簡單、輪廓清楚、細節少。",
+          "composition": "每個圖示置中在自己那一格，四周留至少 18% 的空白，四個圖示大小一致；格子之間不要畫分隔線或邊框。",
+          "scene": "背景完全透明；沒有地面、沒有投影、沒有雜點。"
+        }
       }
     ]
   },
@@ -80,7 +104,8 @@
     "MinidoracatMiniMapFor42/MOD/MinidoracatMiniMapFor42/Contents/mods/MinidoracatMiniMapFor42/42/media/ui/minimap_toggle.png": "0b5826e0f8268085e3210efea0aaef2f",
     "MinidoracatNoticeBoardFor42/MOD/MinidoracatNoticeBoardFor42/Contents/mods/MinidoracatNoticeBoardFor42/42/media/ui/NoticeBoard/nb_megaphone.png": "33a65a0f93c2a753aa71c9e37ab2b9ff",
     "MinidoracatMiniMapWatchFor42/MOD/MinidoracatMiniMapWatchFor42/Contents/mods/MinidoracatMiniMapWatchFor42/42/media/ui/MinidoracatWatch/dock_battery_shell.png": "fff3d7690081749344e428d7edd2e708",
-    "MinidoracatEconomyFor42/MOD/MinidoracatEconomyFor42/Contents/mods/MinidoracatEconomyFor42/42/media/ui/MinidoracatEconomy/dock_pouch.png": "0b4604d3681e642d1bf300d1f1e90614"
+    "MinidoracatEconomyFor42/MOD/MinidoracatEconomyFor42/Contents/mods/MinidoracatEconomyFor42/42/media/ui/MinidoracatEconomy/dock_pouch.png": "0b4604d3681e642d1bf300d1f1e90614",
+    "MinidoracatBuilderFor42/MOD/MinidoracatBuilderFor42/Contents/mods/MinidoracatBuilderFor42/42/media/ui/MinidoracatBuilder/dock_build.png": "c1683d6aa050f3196f8541359ca30c1a"
   },
   "kept_as_is": "PackThrow item texture (same as the inventory item), Dock handle mascot. Economy's currency coin currency_survivor.png also stays: it is the currency icon; only the toolbar and float button moved to dock_pouch.png"
 }
