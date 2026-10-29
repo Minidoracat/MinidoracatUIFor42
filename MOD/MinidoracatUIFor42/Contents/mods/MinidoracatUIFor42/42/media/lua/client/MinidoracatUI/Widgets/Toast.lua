@@ -41,6 +41,7 @@ local Toast = ISPanel:derive("MinidoracatUIToast")
 
 local WIDTH = 300
 local HEIGHT = 56
+local BOTTOM_PAD = 6 -- 有標題時最後一行的框到框底至少留這麼多（大字級才用到，見 _create）
 local SCREEN_MARGIN = 16
 local STACK_TOP = 60
 local STACK_GAP = 8
@@ -462,7 +463,14 @@ function Toast._create(entry)
     local lines = wrapText(entry.message, WIDTH - 16, entry.maxLines)
     -- 標題與訊息同一套斷行（斷行模組缺席時一樣退回單行截字），多出的標題行算進高度
     local titleLines = entry.title ~= nil and wrapText(tostring(entry.title), WIDTH - 16, TITLE_LINES) or nil
-    local height = HEIGHT + fontHeight * (#lines - 1 + (titleLines and #titleLines - 1 or 0))
+    -- 有標題：標題從 7 起、訊息再空 3、最後一行下面至少 BOTTOM_PAD。字高 <= 20（原版字級 1、2 與 CatLang 的
+    -- 拉丁字型）時舊公式（HEIGHT＋多出的行）比較高，照舊、外觀不變；它只留了 2 行 16px 的空間，字級 3（26px）
+    -- 以上最後一行會壓在下框上。沒標題的訊息置中，舊公式到字級 5（38px）都放得下。
+    local height = HEIGHT + fontHeight * (#lines - 1)
+    if titleLines then
+        local rows = #titleLines + #lines
+        height = fontHeight * rows + math.max(HEIGHT - 2 * fontHeight, 10 + BOTTOM_PAD)
+    end
     local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, height)
     o.background = false
     o.alwaysOnTop = true

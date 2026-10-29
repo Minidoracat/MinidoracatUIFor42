@@ -773,6 +773,45 @@ do
     check(promoted.y == last.y + last.height + 8 and #promoted.lines == 3,
         "待顯示的多行通知遞補在單行通知之後")
 
+    -- 大字級：遊戲選項字型大小 3 的 NewSmall 是 26px（4 是 33、5 是 38；CatLang 中文字型 3 是 25）。每一行字的框
+    -- （y＋字高）都要在框底上方，最後一行不壓下框；字高 ≤20（原版字級 1、2 與 CatLang 的拉丁字型）高度和以前一樣。
+    local keepTM = getTextManager
+    local words = "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii"
+    local shapes = {
+        { name = "標題＋單行", opts = { title = "T", message = "m" }, old16 = 56 },
+        { name = "標題＋三行", opts = { title = "T", message = long, maxLines = 3 }, old16 = 56 + 16 * 2 },
+        { name = "兩行標題＋兩行", opts = { title = words, message = words, maxLines = 2 }, old16 = 56 + 16 * 2 },
+        { name = "無標題單行", opts = { message = "m" }, old16 = 56 },
+        { name = "無標題三行", opts = { message = long, maxLines = 3 }, old16 = 56 + 16 * 2 },
+    }
+    local function measure(fh, opts)
+        getTextManager = function()
+            local tm = keepTM()
+            tm.getFontHeight = function() return fh end
+            return tm
+        end
+        Toast._resetForTests()
+        local t = Toast.show(opts)
+        nowMs = nowMs + 300
+        t:prerender()
+        getTextManager = keepTM
+        local bottom = 0
+        for _, d in ipairs(t.texts) do bottom = math.max(bottom, d.y + fh) end
+        return t, t.height - bottom
+    end
+    for _, fh in ipairs({ 16, 20, 25, 26, 33, 38 }) do
+        for _, s in ipairs(shapes) do
+            local t, gap = measure(fh, s.opts)
+            check(gap >= 4, ("字高 %d %s：最後一行的框在框底上方（剩 %s px）"):format(fh, s.name, gap))
+            if fh == 16 then
+                check(t.height == s.old16, ("字高 16 %s：高度和以前一樣（%s）"):format(s.name, t.height))
+            end
+        end
+    end
+    local catlang = measure(20, shapes[1].opts)
+    check(catlang.height == 56, "字高 20（CatLang 拉丁字型）標題＋單行仍是 56")
+    Toast._resetForTests()
+
     -- 不收滑鼠：置頂通知若吞點擊，蓋到的原版速度鈕（放開才觸發）會點不到。wantMouseEvents
     -- 在 instantiate 時同步成 Java consumeMouseEvents（ISUIElement.lua:1004）；右鍵在 Lua 回 nil
     -- 時引擎一律吞掉（UIElement.java:1513-1515,1583-1585），必須明確回 false。
@@ -2123,7 +2162,7 @@ end
 -- 條數守門（家族慣例，同 test_nbpanel）：整段情境被 `if false then` 包掉或誤刪時，
 -- 數字會變小但不會有任何東西紅。加測試把這個數字一起改大（改小要說得出刪了什麼）。
 -- rev 11 切片檔的斷言由各檔 return 的條數自己守，不算在這裡。
-local EXPECTED_ASSERTIONS = 407
+local EXPECTED_ASSERTIONS = 443
 print()
 if assertionCount - sliceAssertions ~= EXPECTED_ASSERTIONS then
     print("斷言條數不符：預期 " .. EXPECTED_ASSERTIONS .. "、實際 " .. (assertionCount - sliceAssertions)
