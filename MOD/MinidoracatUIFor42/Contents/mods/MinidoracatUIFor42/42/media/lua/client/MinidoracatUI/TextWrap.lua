@@ -5,13 +5,13 @@
 --
 -- TextWrap.cut(text, maxWidth, font) → line, rest
 --   貪婪斷行：二分找最長放得下的前綴（MeasureStringX 量 O(log n) 次）。截點能斷就在截點斷，
---   不能斷才往回找最近的斷點；整段都沒有斷點（比行寬長的拉丁單字）就在截點硬切。
---   能斷＝截點任一側是空白，或任一側是中日韓字（含全形標點與補充平面字），而且
---   右側不是行首禁則字（，。、」）等）、左側不是行尾禁則字（「（等）。
+--   不能斷才往回找最近的斷點；整段都沒有斷點（比行寬長的拉丁單字或韓文詞）就在截點硬切。
+--   能斷＝截點任一側是空白，或任一側是中日文字（含全形標點與補充平面字），而且
+--   右側不是行首禁則字（，。、」）等）、左側不是行尾禁則字（「（等）。諺文音節不算：韓文只在空白斷。
 --   法文標點的空白（rev 18）不是斷點：空白後面緊接 : ; ! ? 右書名號，或前面緊接左書名號（U+00BB／U+00AB），
 --   否則「Interferences : 0」會把「: 0」斷到下一行行首。不換行空白 U+00A0 本來就不是斷點。
 --   數字與中日韓單位之間的空白（rev 18）也不是斷點：空白前面是 ASCII 數字（「1,000」「3.5」的最後一位，或「80%」），
---   後面是中日韓字，否則「已領取 1 件」會斷成行尾「1」、行首「件」。
+--   後面是中日文字或諺文音節，否則「已領取 1 件」會斷成行尾「1」、行首「件」。
 --   截點落在這兩種空白上就往回找上一個斷點，整段都沒有就照舊硬切（數字加單位本身比行寬長時照舊在空白斷）。
 --   line 去掉行尾空白、rest 去掉開頭空白；text 整段放得下時回 text, ""。
 --   連一個字都放不下時照樣放一個字，呼叫端的迴圈一定會前進。
@@ -22,8 +22,8 @@
 --   font 省略＝UIFont.Small；text 非字串以 tostring 轉。快取超過 WRAP_CACHE_MAX 筆整個清掉重來。
 -- TextWrap.tooltip(owner, text, maxLineWidth) → 給 ISToolTip.description 的字串
 --   原版 ISToolTip 的說明是 rich text，只在空白斷行（ISRichTextPanel:paginate，ISRichTextPanel.lua:456-502），
---   沒有空白的中日文一行到底。含中日韓字、又比原版行寬（maxLineWidth × 字高／15，ISToolTip.lua:189-192）寬的
---   說明，用同一套 lines 以 ISToolTip.GetFont() 斷好，再以 " <LINE> " 接起來；其餘（拉丁、西里爾、放得下的、
+--   沒有空白的中日文一行到底。含中日文字、又比原版行寬（maxLineWidth × 字高／15，ISToolTip.lua:189-192）寬的
+--   說明，用同一套 lines 以 ISToolTip.GetFont() 斷好，再以 " <LINE> " 接起來；其餘（拉丁、西里爾、韓文、放得下的、
 --   已含 "\n" 或 "<LINE>" 的）原樣回傳。結果快取在 owner 的 _tipWrap* 欄位：文字、字型、行寬都沒變就直接回。
 -- TextWrap.fixTooltip(el)
 --   接在原版 ISButton:updateTooltip（或 ISTextEntryBox:prerender）之後：原版把 tooltip 原文寫進 description 的
@@ -76,10 +76,16 @@ local NO_END = set({
 local FRENCH_SPACE_BEFORE = set({ 0x21, 0x3A, 0x3B, 0x3F, 0xBB }) -- ! : ; ? 右書名號
 local FRENCH_SPACE_AFTER = 0xAB -- 左書名號
 
--- 中日韓表意字與符號、假名、注音、諺文音節、全形字、補充平面字：兩側都可以斷
+-- 中日文表意字與符號、假名、注音、全形字、補充平面字：兩側都可以斷
 local function ideographic(c)
-    return (c >= 0x2E80 and c <= 0x9FFF) or (c >= 0xAC00 and c <= 0xD7AF) or (c >= 0xF900 and c <= 0xFAFF)
+    return (c >= 0x2E80 and c <= 0x9FFF) or (c >= 0xF900 and c <= 0xFAFF)
         or (c >= 0xFE30 and c <= 0xFE4F) or (c >= 0xFF00 and c <= 0xFFEF) or c >= ASTRAL
+end
+
+-- 諺文音節不算表意字：韓文詞與詞之間有空白，只在空白斷（同 CSS word-break: keep-all），
+-- 整個詞比行寬長才和拉丁長單字一樣在截點硬切。只在「數字與單位」的空白黏住時當單位（「3 개」）
+local function hangul(c)
+    return c >= 0xAC00 and c <= 0xD7AF
 end
 
 -- n 退到字元邊界：前 n 個 unit 不切開一個字
@@ -125,7 +131,7 @@ end
 
 -- 第 n 個 unit 前後的那段空白黏住兩側、不是斷點：
 --   法文標點（rev 18）：往前跳過空白是左書名號，或往後跳過空白是 : ; ! ? 右書名號
---   數字與單位（rev 18）：往前跳過空白是 ASCII 數字（或數字後的 %），往後跳過空白是中日韓字（「1 件」「80% 機率」）。
+--   數字與單位（rev 18）：往前跳過空白是 ASCII 數字（或數字後的 %），往後跳過空白是中日韓字（「1 件」「80% 機率」「3 개」）。
 --   前一字只看最後一個 unit：多位元組字的最後一個 unit 不會落在 ASCII 範圍
 local function gluedSpace(s, n)
     local i = n
@@ -150,7 +156,7 @@ local function gluedSpace(s, n)
     if left == PERCENT and i > 1 then
         left = string.byte(s, i - 1)
     end
-    return left >= 0x30 and left <= 0x39 and ideographic(right)
+    return left >= 0x30 and left <= 0x39 and (ideographic(right) or hangul(right))
 end
 
 -- 能不能在第 n 個 unit 之後斷行（n 是字元邊界，後面還有字）
@@ -254,7 +260,7 @@ local function wrap(text, maxWidth, font)
     return lines
 end
 
--- 原版沒有空白可斷的字：中日韓字（含補充平面字）。多位元組 UTF-8 的後續位元組 codeAt 回 0x80-0xBF，不會誤判
+-- 原版沒有空白可斷的字：中日文字（含補充平面字；韓文有空白，交給原版）。多位元組 UTF-8 的後續位元組 codeAt 回 0x80-0xBF，不會誤判
 local function hasIdeograph(s)
     for i = 1, string.len(s) do
         if ideographic(codeAt(s, i)) then

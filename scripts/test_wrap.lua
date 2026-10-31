@@ -118,8 +118,28 @@ check(same(wrap("提高 80% 成功率", 70), { "提高", "80% 成功率" }), "�
 check(same(wrap("1,000 倖存幣", 45), { "1,000", "倖存幣" }), "數字加單位本身比行寬長：沒有別的斷點，照舊在空白斷")
 check(same(wrap("Received 1 item", 70), { "Received 1", "item" }), "英文不受影響：數字後的空白接拉丁字照常可斷")
 
+-- 韓文只在空白斷（CSS word-break: keep-all）：諺文音節不像中日文字逐字斷（Tesla KO 實機「공급하／지 않습니다」）
+local ko = "충전 케이블이 꽂혀 있으면 공급하지 않습니다"
+check(same(wrap(ko, 130), { "충전 케이블이 꽂혀", "있으면 공급하지", "않습니다" }),
+    "韓文：截點落在詞中間就退到前一個空白（不是「있으면 공급하지 않／습니다」）")
+local koBad = {}
+for w = 56, 320 do -- 56＝最長的詞（4 字）：每個寬度都不必硬切
+    local got = wrap(ko, w)
+    local fit = true
+    for _, l in ipairs(got) do
+        if width(l) > w then fit = false end
+    end
+    if table.concat(got, " ") ~= ko or not fit then koBad[#koBad + 1] = w end
+end
+check(#koBad == 0, "韓文：行寬 56–320 每一種都只在空白斷、每行不超過行寬"
+    .. (#koBad > 0 and ("（失敗寬度：" .. table.concat(koBad, " ") .. "）") or ""))
+check(same(wrap("모든 설정을초기화합니다", 70), { "모든", "설정을초기", "화합니다" }),
+    "韓文的詞比行寬長：先在前面的空白斷，整個詞放不下才在截點逐字切（同拉丁長單字）")
+check(same(wrap("보상으로 아이템 3 개를 받았습니다", 130), { "보상으로 아이템", "3 개를 받았습니다" }),
+    "韓文的數字與單位之間的空白照舊黏住（「3 개」不拆開，同「1 件」）")
+
 UI.Dialog.close(last)
 UI.Toast._resetForTests()
 getTextManager = keepTextManager
 
-return 18
+return 22

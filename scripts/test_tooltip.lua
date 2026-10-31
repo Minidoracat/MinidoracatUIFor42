@@ -103,6 +103,12 @@ ru._mouseOver = true
 ru:prerender()
 check(width(EN) > LIMIT and en.tooltipUI.description == EN and width(RU) > LIMIT and ru.tooltipUI.description == RU,
     "Button 的英文、Slider 的俄文：比行寬長也照原樣交給原版（原版在空白換行）")
+local KO = "켜기: 맵 워치를 소매 위에 차서 재킷이나 스웨터를 입어도 보입니다. 끄기: 바닐라 시계처럼 긴 소매에 가려집니다."
+local ko = UI.Checkbox.new{ x = 0, y = 0, label = "K", tooltip = KO }
+ko._mouseOver = true
+ko:prerender()
+check(width(KO) > LIMIT and ko.tooltipUI.description == KO,
+    "Checkbox 的韓文說明：比行寬長也照原樣交給原版（韓文有空白，原版只在空白斷，不會切在詞中間）")
 
 local marked = "第一行說明文字比較短 <LINE> 第二行說明文字很長很長很長很長很長很長很長很長很長很長很長很長"
 local nl = "第一行說明文字比較短\n第二行說明文字很長很長很長很長很長很長很長很長很長很長很長很長"
@@ -166,4 +172,4 @@ TW.lines = keepLines
 ISToolTip = keepToolTip
 getTextManager = keepTextManager
 
-return 12
+return 13
