@@ -117,7 +117,7 @@ MinidoracatUI.v1 = {
 - consumer 樣板：
 
 ```lua
--- PZ 的 require 不保證回傳值（原版 Lua 全樹零取值用例）——一律走全域取用：
+-- facade 只以唯一全域 MinidoracatUI.v1 發布（V1.lua 全部初始化成功才賦值，失敗就沒有）——一律走全域取用：
 if not (MinidoracatUI and MinidoracatUI.v1) then
     pcall(require, "MinidoracatUI/V1")  -- 防禦：正式環境靠 mod.info require= 已先載
 end
