@@ -288,6 +288,15 @@ if Events and Events.OnGameStart and Events.OnGameStart.Add and Events.OnTick th
     Events.OnGameStart.Add(onGameStart)
 end
 
+-- 框架自己的更新概要（設計稿 ui-whatsnew-1024：框架自己也登記）。發版時寫了新概要才把 since 改成本版，
+-- 並改每個語言的 IGUI_MinidoracatUI_WhatsNew_Note；四欄寫字面值：release_train.py ready 用 regex 讀這段。
+WhatsNew.register({
+    modId = "MinidoracatUIFor42",
+    since = "0.17.5",
+    name = "UI_optionscreen_binding_MinidoracatUI",
+    text = "IGUI_MinidoracatUI_WhatsNew_Note",
+})
+
 UI.WhatsNew = WhatsNew
 UI.CAPABILITIES.whatsNew = true
 

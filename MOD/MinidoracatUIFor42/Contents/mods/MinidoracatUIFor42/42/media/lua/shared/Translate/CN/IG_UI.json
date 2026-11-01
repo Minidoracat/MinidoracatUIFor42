@@ -69,6 +69,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "%1 %2 更新要点",
     "IGUI_MinidoracatUI_WhatsNew_Option": "显示 MOD 更新概要",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "MOD 更新后第一次进游戏，右上角会弹出一则更新要点。关闭后不弹出；之后再打开，也不会补弹以前的。",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "用「显示/隐藏交互界面」隐藏界面时，家族工具栏现在会一起隐藏。这个键默认没有设置，要先在游戏选项里设置。",
     "IGUI_MinidoracatUI_Placer_Sample": "通知会出现在这里",
     "IGUI_MinidoracatUI_Placer_Hint": "拖动方框移动位置，方向键微调。Enter 完成，Esc 取消。",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "用十字键移动方框。A 完成，B 取消。",

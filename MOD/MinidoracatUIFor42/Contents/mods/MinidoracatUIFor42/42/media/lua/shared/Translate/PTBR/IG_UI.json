@@ -69,6 +69,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "Novidades: %1 %2",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Mostrar as novidades dos mods",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Quando um mod é atualizado, na primeira vez que você entra no jogo aparece uma vez, no canto superior direito, uma nota curta com as mudanças. Quando desativado, nada aparece, e ao reativar as notas antigas não são mostradas.",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "“Alternar UI” agora também esconde a barra da família de mods. Não tem tecla padrão.",
     "IGUI_MinidoracatUI_Placer_Sample": "As notificações aparecem aqui",
     "IGUI_MinidoracatUI_Placer_Hint": "Arraste a caixa para movê-la. Use as setas para ajustar. Enter para concluir, Esc para cancelar.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Use o direcional para mover a caixa. A para concluir, B para cancelar.",

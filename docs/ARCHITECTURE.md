@@ -942,6 +942,7 @@ rev 21 起框架自己登記一個入口（通知紀錄，玩家可在「選項 
 
 **行為契約**
 - **登記時機與寫法**：consumer 在檔案載入時呼叫（早於 `OnGameStart`；之後才登記的下一場才算）。發布列車 `release_train.py ready` 以 regex 讀這段，四欄一律寫字面字串、寫在同一個 `register({ … })` 裡（樣板見 §2）。發版寫了新概要才把 `since` 改成本版；沒改就不跳。
+- **框架自己**：登記寫在 `WhatsNew.lua` 檔尾（名稱鍵 `UI_optionscreen_binding_MinidoracatUI`、內文鍵 `IGUI_MinidoracatUI_WhatsNew_Note`），寫法同上一條。框架發版要跳就改 `since` 與每個語言的內文；不跳就留著舊的 `since`，`ready` 加 `--no-whatsnew`。第一段是 0.17.5（2026-11-02，玩家回報的「切換顯示介面」藏不住工具列）。
 - **紀錄**：`Zomboid/Lua/MinidoracatUI/WhatsNew.ini`，一行一個 MOD「`modId=版本`」，值是這台電腦最後看過的概要版本；空值＝見過這個 MOD、它還沒有概要。框架是唯一寫入者，整檔重寫（`getFileWriter` 一開就截斷）。讀檔時註解、沒有 id、沒有等號的行略過，同一個 id 以第一行為準。
 - **判斷**（每次 `OnGameStart`，每個 MOD 一次）：沒有這一行＝新安裝，只記不跳；剛升到 rev 24 時大家也都沒有紀錄，所以框架自己與 `require=` 有本框架的 MOD（`getActivatedMods`＋`getModInfoByID(id):getRequire()`；引擎已去掉反斜線、沒去空白，`ChooseGameInfo.java:224`）就算沒登記也先記一行空值，它之後的第一段概要才跳得出來。登記的 `since` 比紀錄新（逐段比數字）才跳；看過了、降版、內文鍵查不到（`getTextOrNull` 回 nil）都不跳，也不改紀錄。翻譯先載英文再用玩家語言蓋過去（`Translator.java:340-353`），只寫英文的 MOD 照樣顯示英文。
 - **放出**：`OnGameStart` 在載入畫面按下「點擊開始」之後才觸發（`IngameState.java:766`）；多人進服後伺服器的 MOD 才載入，所以不在主選單做。`START_DELAY_MS` 後開始，每 `POLL_MS` 看一次：上一則概要還在畫面上、`Toast.pending` 不是空的、或 `Toast.active` 已有 `MAX_VISIBLE` 則就等——概要不進 Toast 佇列，不會擠掉別的 MOD 的通知。標題 `IGUI_MinidoracatUI_WhatsNew_Title`（MOD 名稱、概要版本），內文最多 `MAX_LINES` 行，停 `HOLD_MS`（游標停在上面時照 §3.4 暫停），完整內文照樣進通知紀錄。真的放出去才寫紀錄；玩家中途離開，剩下的下一場再放。佇列空了就拿掉 `OnTick`。

@@ -69,6 +69,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "Novedades de %1 %2",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Mostrar las novedades de los mods",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Cuando un mod se actualiza, la primera vez que entras a la partida aparece una vez, arriba a la derecha, una nota breve con los cambios. Si está desactivado, no aparece, y al volver a activarlo no se muestran notas anteriores.",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "«Mostrar Interfaz de Usuario» ahora también oculta la barra de la familia de mods. No tiene tecla por defecto.",
     "IGUI_MinidoracatUI_Placer_Sample": "Las notificaciones aparecen aquí",
     "IGUI_MinidoracatUI_Placer_Hint": "Arrastra el recuadro para moverlo. Ajusta con las flechas. Enter para terminar, Esc para cancelar.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Usa la cruceta para mover el recuadro. A para terminar, B para cancelar.",

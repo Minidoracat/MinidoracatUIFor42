@@ -69,6 +69,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "%1 %2 の更新内容",
     "IGUI_MinidoracatUI_WhatsNew_Option": "MOD の更新内容を表示",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "MOD の更新後、初めてゲームに入ったときに右上へ更新内容を一度だけ表示します。オフにすると表示しません。あとでオンに戻しても、以前の更新内容は表示しません。",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "「UIの切り替え」でUIを隠すと、ファミリーツールバーも一緒に隠れるようになりました。初期状態ではキーが未設定なので、先にオプションで設定してください。",
     "IGUI_MinidoracatUI_Placer_Sample": "ここに通知が表示されます",
     "IGUI_MinidoracatUI_Placer_Hint": "枠をドラッグして移動、矢印キーで微調整。Enter で完了、Esc でキャンセル。",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "十字キーで枠を移動。A で完了、B でキャンセル。",
