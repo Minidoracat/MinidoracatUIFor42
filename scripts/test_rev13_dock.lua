@@ -228,6 +228,26 @@ D.register(spec("b", 20))
 tick()
 ok(p.visible and ids(p) == "a,c,b", "隱藏中也輪詢：入口回來 Dock 重新顯示")
 
+-- ---------- 別人藏起（原版「切換顯示介面」，ISUIHandler.lua:5-28） ----------
+-- 原版把 UI 清單裡看得到的元件 setVisible(false) 並記下，再按一次照記錄 setVisible(true)。輪詢只恢復 Dock 自己藏的，
+-- 否則 POLL_MS 內就把工具列打開（2026-11-02 Workshop 回報：截圖時隱藏介面，收合的吉祥物還在）
+p:setVisible(false)
+tick()
+tick()
+ok(not p.visible, "原版藏起所有介面：輪詢不把 Dock 打開")
+D.unregister("a")
+D.unregister("b")
+avail.c = false
+tick()
+avail.c = true
+D.register(spec("a", 10))
+D.register(spec("b", 20))
+tick()
+ok(not p.visible, "藏著時入口全沒了又回來：照樣不打開，等藏的人還原")
+p:setVisible(true)
+tick()
+ok(p.visible and ids(p) == "a,c,b", "原版還原：Dock 照常顯示、入口不變")
+
 -- ---------- 預設位置與 clamp ----------
 local function defaultX(opt, font)
     moodleOpt, fontOpt = opt, font or 1
@@ -544,6 +564,13 @@ p:prerender()
 ok(F.root ~= p and p.collapsed, "別的視窗接手焦點：工作階段結束、恢復收合")
 win:setVisible(false)
 F.clear()
+handlers.OnKeyPressed(52)
+local inSession = F.root == p and not p.collapsed
+p:setVisible(false) -- 原版切換顯示介面
+tick()
+ok(inSession and F.root ~= p and p.collapsed and not p.visible,
+    "鍵盤工作階段中被原版藏起：交還焦點、恢復收合，面板留著藏")
+p:setVisible(true)
 
 -- ---------- 手把入口（世界右鍵選單） ----------
 local setTests = 0
@@ -632,4 +659,4 @@ ISPanel.drawTextureScaled, ISPanel.drawTextureAllPoint = keep.drawTextureScaled,
 ISPanel.drawTextureScaledUniform, SandboxVars = keep.drawTextureScaledUniform, keep.SandboxVars
 K.KEY_PERIOD = keep.KEY_PERIOD
 
-return 72
+return 76

@@ -23,6 +23,10 @@
 -- Default position: left of the vanilla moodle column (MoodlesUI.getTextureSizeForOption,
 -- MoodlesUI.java:72-86; column x = screenW - (10 + size), UIManager.java:417).
 --
+-- Visibility: poll (OnTick, every POLL_MS) shows the dock again only after a hide of its own (no entries,
+-- no player 0). A hide by someone else -- vanilla Toggle UI or the Esc menu, ISUIHandler.setVisibleAllUI
+-- (ISUIHandler.lua:5-28) -- stays until they restore it; meanwhile poll only ends a focus session.
+--
 -- Keyboard: keyBinding MinidoracatUI_Dock. Pressing it expands (remembering a collapsed state)
 -- and makes the dock a UI.Focus root: arrows move between entries as laid out on screen, Enter
 -- activates, Esc gives focus back and re-collapses. Pressing it again gives focus back. Without UI.Focus
@@ -883,7 +887,10 @@ end
 local function hide(p)
     hideTip(p)
     endFocus(p)
-    if p:getIsVisible() then p:setVisible(false) end
+    if p:getIsVisible() then
+        p:setVisible(false)
+        p._selfHidden = true -- poll undoes only a hide of our own
+    end
 end
 
 local function avoidRect()
@@ -935,8 +942,11 @@ local function poll(force)
     end
     if #shown == 0 then
         hide(panel)
-    elseif not panel:getIsVisible() then
+    elseif panel._selfHidden then
+        panel._selfHidden = nil
         panel:setVisible(true)
+    elseif not panel:getIsVisible() then
+        endFocus(panel) -- hidden by someone else (vanilla Toggle UI, Esc menu): they restore it
     end
 end
 
