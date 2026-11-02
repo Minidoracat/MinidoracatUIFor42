@@ -850,7 +850,9 @@ MinidoracatUI.v1 = {
     --         紀錄在 Zomboid/Lua/MinidoracatUI/WhatsNew.ini，同時只放一則、不進 Toast 佇列）
     -- rev 25：ItemPicker 多選模式（opts.multi／maxPicks／onPickMany／doneTitle、open(picked)、done()；
     --         Widgets/ItemPicker.lua，itemPickerMulti；沒帶 multi 時與 rev 24 相同）
-    API_REVISION = 25,
+    -- rev 26：Dialog.show 的 opts.modal = false（不鋪全螢幕遮罩、不吃滑鼠，Enter 只在焦點框亮著時收）與
+    --         opts.anchor = "mouse"（框的中心對準游標；夾到下緣時放到游標上方）（Widgets/Window.lua，dialogModeless）
+    API_REVISION = 26,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -897,6 +899,7 @@ MinidoracatUI.v1 = {
         modOptionsBackup = false, -- rev 23：UI.ModOptionsBackup 設定備份與逐筆補回（ModOptionsBackup.lua）
         whatsNew = false,         -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua）
         itemPickerMulti = false,  -- rev 25：ItemPicker 多選模式（Widgets/ItemPicker.lua，與 itemPicker 同檔）
+        dialogModeless = false,   -- rev 26：Dialog.show 的 opts.modal／anchor（Widgets/Window.lua，與 dialog 同檔）
     },
     Theme = Theme,
     Skin = Skin,

@@ -36,8 +36,8 @@ getScriptManager = function()
 end
 
 dofile(ctx.MOD_LUA .. "Widgets/ItemPicker.lua")
-check(UI.API_REVISION == 25 and UI.CAPABILITIES.itemPicker == true and UI.CAPABILITIES.itemPickerMulti == true,
-    "API_REVISION 是 25，載入成功後 itemPickerMulti 與 itemPicker 一起翻 true")
+check(UI.API_REVISION >= 25 and UI.CAPABILITIES.itemPicker == true and UI.CAPABILITIES.itemPickerMulti == true,
+    "API_REVISION >= 25，載入成功後 itemPickerMulti 與 itemPicker 一起翻 true")
 local uni = UI.ItemPicker.universe()
 
 -- consumer 自己的 record（多帶 tag，宇宙的 record 沒有）

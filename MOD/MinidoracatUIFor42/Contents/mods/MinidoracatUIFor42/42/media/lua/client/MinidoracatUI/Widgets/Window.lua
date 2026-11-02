@@ -23,6 +23,10 @@
 -- theme.alpha——視窗疊在別的視窗上時底下的字完全看不到（CAPABILITIES.opaqueWindow）。標題列的
 -- surfaceTitle 疊層、邊框照舊。子元件畫在不透明本體上，不必各自改；Dialog.show 同樣收 opaque。
 -- 視窗裡控制項開出的彈出清單（Dropdown 等）開啟時看所在頂層視窗的 opaque，跟著不透明（opaquePopup）。
+--
+-- rev 26：Dialog.show 的 opts.modal＝false 不鋪 guard（滑鼠照常給遊戲：攻擊、瞄準），Enter 只在焦點框
+-- 亮著時收；opts.anchor＝"mouse" 框的中心對準游標、夾在畫面內，夾到下緣時放到游標上方
+-- （CAPABILITIES.dialogModeless）。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
     pcall(require, "MinidoracatUI/V1")
@@ -438,6 +442,7 @@ local BUTTON_MIN_WIDTH = 80
 local BUTTON_GAP = 8
 local MAX_WRAP_UNITS = 4096
 local GUARD_COLOR = { r = 0, g = 0, b = 0, a = 0.5 }
+local ANCHOR_GAP = 10 -- anchor = "mouse" 改放到游標上方時，框的下緣與游標的距離
 
 local KEY_ESCAPE = Keyboard and Keyboard.KEY_ESCAPE or 1
 local KEY_ENTER = Keyboard and Keyboard.KEY_RETURN or 28
@@ -446,7 +451,7 @@ local KEY_NUMPAD_ENTER = Keyboard and Keyboard.KEY_NUMPADENTER or 156
 local Dialog = {}
 local current = nil
 
--- 全螢幕 guard：吃掉所有滑鼠事件、半透明黑底
+-- 全螢幕 guard：吃掉所有滑鼠事件、半透明黑底（只有模態框有；rev 26 的 opts.modal = false 不建）
 local Guard = ISPanel:derive("MinidoracatUIDialogGuard")
 
 function Guard:prerender()
@@ -485,7 +490,8 @@ local function wrapText(text, maxWidth, font)
     return TextWrap.lines(string.sub(text or "", 1, MAX_WRAP_UNITS), maxWidth, font)
 end
 
--- 唯一收尾路徑：按鈕、關閉鈕、Enter/Esc、Dialog.close 全走這裡；_done 保證只回呼一次
+-- 唯一收尾路徑：按鈕、關閉鈕、Enter/Esc、Dialog.close 全走這裡；_done 保證只回呼一次。
+-- current 先清成 nil、視窗先收掉再回呼：consumer 會在 onResult 裡開下一個框，新框要記成 current
 local function finish(dialog, ok)
     if dialog._done then
         return
@@ -500,23 +506,41 @@ local function finish(dialog, ok)
         dialog._input._entry:unfocus()
     end
     dialog:setVisible(false)
-    dialog._guard:setVisible(false)
-    dialog._guard:removeFromUIManager()
+    local guard = dialog._guard
+    if guard then
+        guard:setVisible(false)
+        guard:removeFromUIManager()
+    end
     dialog:removeFromUIManager()
     if dialog._onResult then
         dialog._onResult(ok, text)
     end
 end
 
+-- 焦點框亮在這個框的控制項上時回那個控制項（滑鼠點出來、不畫框的焦點不算）
+local function litControl(dialog)
+    if not (Focus and Focus.root == dialog) then
+        return nil
+    end
+    local c = Focus.focused()
+    if c ~= nil and Focus.isKeyboardFocused(c) then
+        return c
+    end
+    return nil
+end
+
 local DialogWindow = Window:derive("MinidoracatUIDialog")
 
 -- 按下與放開配對才算：避免「consumer 在 Enter 按下時開窗、放開瞬間就被確認」。
 -- 其他鍵交給 Focus（Tab 在按鈕與輸入框之間走）。
+-- 非模態（rev 26）：Enter 只在按下時焦點框亮著才收，否則整次按鍵（按下、按住、放開）都交給遊戲——
+-- Enter 是原版開聊天的鍵（keyBinding.lua:320-321），框不擋操作時玩家可能正要打字。每次按下都重新判定，
+-- 沒收到的放開（例如被上層元件消耗）不會讓之後的 Enter 被吃掉。
 function DialogWindow:onKeyPress(key)
     if key == KEY_ESCAPE then
         self._escDown = true
     elseif key == KEY_ENTER or key == KEY_NUMPAD_ENTER then
-        self._enterDown = true
+        self._enterDown = self._modal or litControl(self) ~= nil
     elseif Focus then
         Focus.onKeyPress(self, key)
     end
@@ -526,11 +550,12 @@ function DialogWindow:onKeyRelease(key)
     if key == KEY_ESCAPE and self._escDown then
         finish(self, false)
     elseif (key == KEY_ENTER or key == KEY_NUMPAD_ENTER) and self._enterDown then
-        -- 焦點框在某顆按鈕上（例如 Tab 到「取消」）時 Enter 按那一顆；沒有焦點框＝確認
-        local c = Focus and Focus.root == self and Focus.focused() or nil
-        if c ~= nil and c ~= self._confirm and Focus.isKeyboardFocused(c) and c.forceClick then
+        -- 焦點框在某顆按鈕上（例如 Tab 到「取消」）時 Enter 按那一顆；沒有焦點框時模態框＝確認，
+        -- 非模態框不做事（按下時亮著、放開前框不見了）
+        local c = litControl(self)
+        if c ~= nil and c ~= self._confirm and c.forceClick then
             c:forceClick()
-        else
+        elseif self._modal or c ~= nil then
             finish(self, true)
         end
     elseif Focus then
@@ -539,10 +564,13 @@ function DialogWindow:onKeyRelease(key)
 end
 
 -- 關閉後仍須消耗同一個 key（UIElement.java:2211-2213 先 onKeyRelease 再 isKeyConsumed），
--- 否則同一個 Esc 會再關掉後面的視窗——不看 visible
+-- 否則同一個 Esc 會再關掉後面的視窗——不看 visible。非模態的 Enter 照按下時的判定，按下與放開一致
 function DialogWindow:isKeyConsumed(key)
-    if key == KEY_ESCAPE or key == KEY_ENTER or key == KEY_NUMPAD_ENTER then
+    if key == KEY_ESCAPE then
         return true
+    end
+    if key == KEY_ENTER or key == KEY_NUMPAD_ENTER then
+        return self._modal or self._enterDown == true
     end
     return Focus ~= nil and Focus.isKeyConsumed(self, key)
 end
@@ -554,7 +582,9 @@ function Dialog.close(dialog, ok)
 end
 
 -- opts: title, text, confirmText, cancelText?, danger?, input={text?,placeholder?,onlyNumbers?}?,
---       width?, theme?, font?, onResult(ok, inputText)?, opaque?（rev 18，同 Window.new）
+--       width?, theme?, font?, onResult(ok, inputText)?, opaque?（rev 18，同 Window.new）,
+--       modal?（rev 26：預設 true；false＝不鋪 guard、Enter 只在焦點框亮著時收）,
+--       anchor?（rev 26：nil＝畫面置中；"mouse"＝框的中心對準游標）
 -- 回傳 dialog（Window 實例，已 addToUIManager）。同時只允許一個：新開先以 cancel 關掉舊的。
 function Dialog.show(opts)
     opts = opts or {}
@@ -576,15 +606,27 @@ function Dialog.show(opts)
         height = height + inputH + DIALOG_PAD
     end
     local sw, sh = getCore():getScreenWidth(), getCore():getScreenHeight()
+    local x, y = math.floor((sw - width) / 2), math.floor((sh - height) / 2)
+    if opts.anchor == "mouse" then
+        -- 讀全域 getMouseX／Y（不快取成 local）。夾回畫面在這裡先算：每幀的 clampToScreen 只保證在畫面內，
+        -- 夾到下緣時游標會落在按鈕列，consumer 連著開的第二個框被同一次雙擊按掉；這時放到游標上方
+        local mx, my = math.floor(getMouseX()), math.floor(getMouseY())
+        x = math.max(0, math.min(mx - math.floor(width / 2), sw - width))
+        y = math.max(0, math.min(my - math.floor(height / 2), sh - height))
+        if my >= y + height - DIALOG_PAD - buttonH then
+            y = math.max(0, math.min(my - height - ANCHOR_GAP, sh - height))
+        end
+    end
 
     local dialog
     dialog = newWindow(DialogWindow, {
-        x = math.floor((sw - width) / 2), y = math.floor((sh - height) / 2),
+        x = x, y = y,
         width = width, height = height,
         title = opts.title, theme = theme, font = font, closable = true, opaque = opts.opaque,
         onClose = function() finish(dialog, false) end,
     })
     dialog._onResult = opts.onResult
+    dialog._modal = opts.modal ~= false
     dialog:setWantKeyEvents(true)
 
     local body = ISPanel.new(Body, DIALOG_PAD, titleH + DIALOG_PAD, innerW, #lines * fontH)
@@ -634,15 +676,16 @@ function Dialog.show(opts)
         dialog._cancel = cancel
     end
 
-    local guard = ISPanel.new(Guard, 0, 0, sw, sh)
-    guard.background = false
-    guard:initialise()
-    dialog._guard = guard
-
     -- 置頂層級：guard 與視窗都是 alwaysOnTop，UIManager 依加入順序穩定排序（UIManager.java:544-556），
     -- 視窗後加所以在 guard 之上；setter 必須在實例化（addToUIManager）後呼叫
-    guard:addToUIManager()
-    guard:setAlwaysOnTop(true)
+    if dialog._modal then
+        local guard = ISPanel.new(Guard, 0, 0, sw, sh)
+        guard.background = false
+        guard:initialise()
+        dialog._guard = guard
+        guard:addToUIManager()
+        guard:setAlwaysOnTop(true)
+    end
     dialog:addToUIManager()
     dialog:setAlwaysOnTop(true)
     current = dialog
@@ -658,5 +701,6 @@ end
 
 UI.Dialog = Dialog
 UI.CAPABILITIES.dialog = true
+UI.CAPABILITIES.dialogModeless = true -- rev 26：Dialog.show 的 opts.modal／anchor
 
 return Window

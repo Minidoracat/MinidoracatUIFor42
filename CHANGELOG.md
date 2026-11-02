@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [42.21.0-0.18.0] - 2026-11-03
+
+### 新增
+
+- **確認框可以不擋住遊戲**：用到本函式庫的 MOD 可以把確認框改成「不擋操作」：畫面不再變暗，框開著時照樣可以用滑鼠攻擊、瞄準，框開在滑鼠游標旁邊、不蓋住畫面中央的角色。框靠近畫面下緣時會開在游標上方，連著跳出第二個框時不會被同一次點擊按掉。這種框開著時，Enter 鍵照常給遊戲（例如開聊天）；要用鍵盤回答時按 Tab 選按鈕再按 Enter，或按 Esc 取消。用到這個功能的 MOD 也要更新到接上它的版本才會改變，其他確認框的外觀與操作不變。
+
+> 技術要點：`UI.Dialog.show` 新增選用欄位 `modal`（預設 true；`false`＝不建全螢幕遮罩、`dialog._guard` 是 nil）與 `anchor`（`"mouse"`＝框的中心對準 `getMouseX()`／`getMouseY()`，夾在畫面內；夾到下緣時游標會落在按鈕列，改放到游標上方）（`API_REVISION` 26、`CAPABILITIES.dialogModeless`）。非模態時 Enter／NumpadEnter 只在按下時焦點框亮著才收並消耗，否則按下與放開都不消耗；Esc 照舊取消並消耗；方向鍵在焦點框沒亮時不消耗，Tab 照一般視窗把焦點框帶進框。手把（A／B）與模態框的行為不變。探測寫法：`ui.CAPABILITIES.dialog and ui.CAPABILITIES.dialogModeless`。
+
 ## [42.21.0-0.17.5] - 2026-11-02
 
 ### 修正
