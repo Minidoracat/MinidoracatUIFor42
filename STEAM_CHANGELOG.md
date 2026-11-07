@@ -1,7 +1,14 @@
-[h1]Minidoracat UI Library for B42 42.21.0-0.18.0[/h1]
-[i]2026-11-03[/i]
+[h1]Minidoracat UI Library for B42 42.21.0-0.18.1[/h1]
+[i]2026-11-08[/i]
 
-[h3]✨ 新增[/h3]
+[b]English summary[/b]
 [list]
-[*] [b]確認框可以不擋住遊戲[/b]：用到本函式庫的 MOD 可以把確認框改成「不擋操作」：畫面不再變暗，框開著時照樣可以用滑鼠攻擊、瞄準，框開在滑鼠游標旁邊、不蓋住畫面中央的角色。框靠近畫面下緣時會開在游標上方，連著跳出第二個框時不會被同一次點擊按掉。這種框開著時，Enter 鍵照常給遊戲（例如開聊天）；要用鍵盤回答時按 Tab 選按鈕再按 Enter，或按 Esc 取消。用到這個功能的 MOD 也要更新到接上它的版本才會改變，其他確認框的外觀與操作不變。
+[*] Fixed: if another mod hides the family toolbar and never shows it again, the toolbar now comes back by itself within a second. Before this, it stayed hidden until you rejoined the game.
+[*] The toolbar still hides together with the rest of the UI when you press the game's Toggle UI key or open the Esc menu.
+[*] Mods that use this library need no update for this fix.
+[/list]
+
+[h3]🔧 修正[/h3]
+[list]
+[*] [b]家族工具列被別的 MOD 藏起來後，要重新進遊戲才回來[/b]：有些 MOD 會自己把畫面上的介面藏起來，事後卻沒有讓它們顯示回來。0.17.5 起，家族工具列遇到這種情況會一直藏著，要重新進入遊戲或重新連線伺服器才回來。現在工具列會在不到一秒內自己回來。用遊戲的「切換顯示介面」按鍵或開 Esc 選單時，工具列照舊跟其他介面一起藏起、一起回來。
 [/list]
