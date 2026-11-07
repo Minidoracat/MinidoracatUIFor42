@@ -23,9 +23,10 @@
 -- Default position: left of the vanilla moodle column (MoodlesUI.getTextureSizeForOption,
 -- MoodlesUI.java:72-86; column x = screenW - (10 + size), UIManager.java:417).
 --
--- Visibility: poll (OnTick, every POLL_MS) shows the dock again only after a hide of its own (no entries,
--- no player 0). A hide by someone else -- vanilla Toggle UI or the Esc menu, ISUIHandler.setVisibleAllUI
--- (ISUIHandler.lua:5-28) -- stays until they restore it; meanwhile poll only ends a focus session.
+-- Visibility: poll (OnTick, every POLL_MS) shows the dock again after a hide of its own (no entries,
+-- no player 0). A hide by vanilla -- Toggle UI, the Esc menu or any ISUIHandler.setVisibleAllUI(false),
+-- which lists what it hid and shows it again -- stays until vanilla restores it; meanwhile poll only ends a
+-- focus session. Any other hide (a mod calling setVisible(false)) is undone by the next poll.
 --
 -- Keyboard: keyBinding MinidoracatUI_Dock. Pressing it expands (remembering a collapsed state)
 -- and makes the dock a UI.Focus root: arrows move between entries as laid out on screen, Enter
@@ -921,6 +922,28 @@ local function createPanel()
     return p
 end
 
+local function listed(list, key)
+    if type(list) ~= "table" then return false end
+    for i = 1, #list do
+        if list[i] == key then return true end
+    end
+    return false
+end
+
+local function javaKey(p) return p.javaObject:toString() end
+
+-- Vanilla hides every visible UI element, lists each one's toString() and later shows the listed ones again
+-- (ISUIHandler.lua:5-33 for Toggle UI, the Esc menu and other mods; CoopCharacterCreation.lua:229-252).
+-- ISLayoutManager.lua:66-70 reads the list the same way. While Toggle UI is off or a list has the dock,
+-- vanilla will show it again; any other hide may never be undone.
+local function heldByVanilla(p)
+    if ISUIHandler and ISUIHandler.allUIVisible == false then return true end
+    local ok, key = pcall(javaKey, p)
+    if not ok then return false end
+    return listed(ISUIHandler and ISUIHandler.visibleUI, key)
+        or listed(CoopCharacterCreation and CoopCharacterCreation.visibleUI, key)
+end
+
 local function poll(force)
     local now = getTimestampMs()
     if not (force or dirty or now >= nextPoll) then return end
@@ -946,7 +969,9 @@ local function poll(force)
         panel._selfHidden = nil
         panel:setVisible(true)
     elseif not panel:getIsVisible() then
-        endFocus(panel) -- hidden by someone else (vanilla Toggle UI, Esc menu): they restore it
+        endFocus(panel)
+        -- hidden by someone else: wait while vanilla holds it, otherwise show it again (Workshop report 2026-11-05)
+        if not heldByVanilla(panel) then panel:setVisible(true) end
     end
 end
 

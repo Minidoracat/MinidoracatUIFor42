@@ -11,7 +11,7 @@ local keep = {
     getKeyName = getKeyName, JoypadState = JoypadState, ISWorldObjectContextMenu = ISWorldObjectContextMenu,
     drawTextureScaled = ISPanel.drawTextureScaled, drawTextureAllPoint = ISPanel.drawTextureAllPoint,
     drawTextureScaledUniform = ISPanel.drawTextureScaledUniform, SandboxVars = SandboxVars,
-    KEY_PERIOD = K.KEY_PERIOD,
+    KEY_PERIOD = K.KEY_PERIOD, ISUIHandler = ISUIHandler, CoopCharacterCreation = CoopCharacterCreation,
 }
 
 local screenW, screenH, moodleOpt, fontOpt = 1920, 1080, 1, 1
@@ -228,13 +228,18 @@ D.register(spec("b", 20))
 tick()
 ok(p.visible and ids(p) == "a,c,b", "隱藏中也輪詢：入口回來 Dock 重新顯示")
 
--- ---------- 別人藏起（原版「切換顯示介面」，ISUIHandler.lua:5-28） ----------
--- 原版把 UI 清單裡看得到的元件 setVisible(false) 並記下，再按一次照記錄 setVisible(true)。輪詢只恢復 Dock 自己藏的，
--- 否則 POLL_MS 內就把工具列打開（2026-11-02 Workshop 回報：截圖時隱藏介面，收合的吉祥物還在）
+-- ---------- 別人藏起 ----------
+-- 原版（切換顯示介面、Esc 選單，ISUIHandler.lua:5-33；分割畫面建角，CoopCharacterCreation.lua:229-252）把看得到的
+-- 元件 setVisible(false)、把各自的 toString() 記進清單，之後照清單 setVisible(true)。清單有 Dock 或切換顯示介面關著時，
+-- 輪詢等原版還原（2026-11-02 Workshop 回報：截圖時隱藏介面，收合的吉祥物還在）；其他藏法下一次輪詢就打開
+-- （2026-11-05 Workshop 回報：開過面板後，工具列要重新進服才回來）
+local KEY = "MinidoracatUIDock"
+p.javaObject.toString = function() return KEY end
+ISUIHandler = { allUIVisible = true, visibleUI = { "ISEquippedItem", KEY } }
 p:setVisible(false)
 tick()
 tick()
-ok(not p.visible, "原版藏起所有介面：輪詢不把 Dock 打開")
+ok(not p.visible, "原版藏起所有介面（清單有 Dock）：輪詢不把 Dock 打開")
 D.unregister("a")
 D.unregister("b")
 avail.c = false
@@ -243,10 +248,31 @@ avail.c = true
 D.register(spec("a", 10))
 D.register(spec("b", 20))
 tick()
-ok(not p.visible, "藏著時入口全沒了又回來：照樣不打開，等藏的人還原")
+ok(not p.visible, "藏著時入口全沒了又回來：照樣不打開，等原版還原")
 p:setVisible(true)
+ISUIHandler.visibleUI = {}
 tick()
 ok(p.visible and ids(p) == "a,c,b", "原版還原：Dock 照常顯示、入口不變")
+ISUIHandler.allUIVisible = false
+p:setVisible(false)
+tick()
+ok(not p.visible, "切換顯示介面關著（清單沒有 Dock）：照樣等")
+ISUIHandler.allUIVisible = true
+tick()
+ok(p.visible, "切換顯示介面打開、原版沒還原 Dock：下一次輪詢打開")
+CoopCharacterCreation = { visibleUI = { KEY } }
+p:setVisible(false)
+tick()
+ok(not p.visible, "分割畫面建角的清單有 Dock：照樣等")
+CoopCharacterCreation = nil
+ISUIHandler.visibleUI = { "ISEquippedItem" }
+tick()
+ok(p.visible, "別的 MOD 直接藏起（原版清單沒有 Dock）：下一次輪詢就打開")
+p.javaObject.toString = nil
+p:setVisible(false)
+tick()
+ok(p.visible, "讀不到 toString：當成沒人記著，照樣打開、不拋錯")
+ISUIHandler.visibleUI = {}
 
 -- ---------- 預設位置與 clamp ----------
 local function defaultX(opt, font)
@@ -566,10 +592,12 @@ win:setVisible(false)
 F.clear()
 handlers.OnKeyPressed(52)
 local inSession = F.root == p and not p.collapsed
-p:setVisible(false) -- 原版切換顯示介面
+ISUIHandler.allUIVisible = false -- 原版切換顯示介面
+p:setVisible(false)
 tick()
 ok(inSession and F.root ~= p and p.collapsed and not p.visible,
     "鍵盤工作階段中被原版藏起：交還焦點、恢復收合，面板留著藏")
+ISUIHandler.allUIVisible = true
 p:setVisible(true)
 
 -- ---------- 手把入口（世界右鍵選單） ----------
@@ -657,6 +685,6 @@ Events, keyBinding, ISLayoutManager, ISToolTip = keep.Events, keep.keyBinding, k
 getKeyName, JoypadState, ISWorldObjectContextMenu = keep.getKeyName, keep.JoypadState, keep.ISWorldObjectContextMenu
 ISPanel.drawTextureScaled, ISPanel.drawTextureAllPoint = keep.drawTextureScaled, keep.drawTextureAllPoint
 ISPanel.drawTextureScaledUniform, SandboxVars = keep.drawTextureScaledUniform, keep.SandboxVars
-K.KEY_PERIOD = keep.KEY_PERIOD
+K.KEY_PERIOD, ISUIHandler, CoopCharacterCreation = keep.KEY_PERIOD, keep.ISUIHandler, keep.CoopCharacterCreation
 
-return 76
+return 81
