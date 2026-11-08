@@ -167,9 +167,32 @@ inPlain:prerender()
 check(inSolid.tooltipUI.backgroundColor.a == 1 and inPlain.tooltipUI.backgroundColor.a == 0,
     "不透明視窗裡的說明框底改成不透明；半透明視窗的照原版")
 
+-- 原版 ISTextEntryBox 的說明框跟著游標（followMouse、沒有 desiredX）：每幀先被放在相對 entry 的游標座標＋23
+-- （ISTextEntryBox.lua:223-224），ISToolTip:render 才搬到游標右下 32、10（ISToolTip.lua:68-69），底色在搬之前就畫了。
+-- 不透明視窗裡底色 a＝1，沒先搬好就在畫面左上畫出一塊黑（2026-11-08 Safehouse 地契頁）
+local function tipStub(t)
+    t.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
+    t.setX = function(self, v) self.x = v end
+    t.setY = function(self, v) self.y = v end
+    return t
+end
+local solidField = UI.TextField.new{ x = 200, y = 400, width = 52 }
+solid:addChild(solidField)
+solidField:setTooltip(CH)
+local se = solidField._entry
+se._mouseOver = true
+ctx.setMouse(460, 470)
+se.tooltipUI = tipStub({ followMouse = true, description = se.tooltip, x = 43, y = 32 })
+solidField:render()
+check(se.tooltipUI.backgroundColor.a == 1 and se.tooltipUI.x == 460 + 32 and se.tooltipUI.y == 470 + 10,
+    "不透明視窗的 TextField：說明框在底色畫之前就搬到游標右下（render 要放的位置），不留在相對座標")
+inSolid.tooltipUI = tipStub({ followMouse = true, desiredX = 15, desiredY = 90, x = 15, y = 90 })
+inSolid:prerender()
+check(inSolid.tooltipUI.x == 15 and inSolid.tooltipUI.y == 90, "有 desiredX 的說明框（原版 ISButton 放在元件下方）不搬")
+
 ISButton.updateTooltip = keepUpdate
 TW.lines = keepLines
 ISToolTip = keepToolTip
 getTextManager = keepTextManager
 
-return 13
+return 15

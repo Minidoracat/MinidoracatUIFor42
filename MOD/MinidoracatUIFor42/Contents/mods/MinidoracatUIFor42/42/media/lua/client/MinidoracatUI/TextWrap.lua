@@ -30,6 +30,7 @@
 --   那些幀（hover 或手把焦點），換成 tooltip 斷好行的版本，maxLineWidth 照原版 300。el.tooltip 本身不動（Focus 說明讀原文）。
 --   所在頂層視窗 opaque（rev 18 opts.opaque）時說明框也不透明（同 opaquePopup）：原版 ISToolTip 的底是
 --   backgroundColor（每個實例自己的表，a 預設 0）再疊一層 a 0.7 的深色（ISToolTip.lua:64,99,351），把 a 改成 1。
+--   跟著游標的說明框（原版 ISTextEntryBox 的）同時先搬到 ISToolTip:render 要放的位置，底色才畫在說明框底下。
 --
 -- 截點一律落在字元邊界：Kahlua 字串是 UTF-16 code unit（不切開 surrogate pair），harness 的
 -- 標準 Lua 是 UTF-8 位元組（不切開多位元組字）；字元模型的判斷同 V1.lua 的 Text.fit。
@@ -272,6 +273,7 @@ end
 
 local TIP_FONT_BASE = 15 -- ISToolTip:layoutContents 的 widthScale＝字高／15（ISToolTip.lua:189）
 local BUTTON_TIP_WIDTH = 300 -- ISButton:updateTooltip 單行說明的 maxLineWidth（ISButton.lua:326-330）
+local FOLLOW_DX, FOLLOW_DY = 32, 10 -- ISToolTip:render 把跟著游標的說明框放在游標右下這麼遠（ISToolTip.lua:68-69）
 
 function TextWrap.tooltip(owner, text, maxLineWidth)
     if type(text) ~= "string" then
@@ -306,6 +308,13 @@ function TextWrap.fixTooltip(el)
     local tip, text = el.tooltipUI, el.tooltip
     if tip ~= nil and type(text) == "string" and (el:isMouseOver() or el.joypadFocused) then
         tip.description = TextWrap.tooltip(el, text, BUTTON_TIP_WIDTH)
+        -- 跟著游標的說明框（沒有 desiredX：原版 ISTextEntryBox）由 ISToolTip:render 才搬到游標右下（ISToolTip.lua:68-79），
+        -- 底色卻在搬之前由 prerender 畫（:64）；原版 entry 每幀放的是相對 entry 的游標座標＋23（ISTextEntryBox.lua:223-224）。
+        -- 先搬到 render 要放的位置：底色改成不透明時才會落在說明框底下，不會在畫面左上多畫一塊黑
+        if tip.followMouse and tip.desiredX == nil then
+            tip:setX(getMouseX() + FOLLOW_DX)
+            tip:setY(getMouseY() + FOLLOW_DY)
+        end
         local bg = tip.backgroundColor
         if bg ~= nil and bg.a ~= 1 and opaqueRoot(el) then
             bg.a = 1
