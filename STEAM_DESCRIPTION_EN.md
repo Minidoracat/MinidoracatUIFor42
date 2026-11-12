@@ -5,7 +5,7 @@
 
 A [b]required UI library[/b] shared by Minidoracat mods. It [b]adds no gameplay content by itself[/b]; everything you see comes from the mods that depend on it.
 
-✨ [b]Family toolbar[/b]: the buttons of all family mods sit in one collapsible vertical strip; press the "." key to open it.
+✨ [b]Family toolbar[/b]: the buttons of all family mods sit in one collapsible vertical strip; press the "." key to open it. Right-click its handle to make it translucent while idle and to choose which buttons it shows.
 
 ✨ [b]Settings protection[/b]: when the game wipes mod settings (for example after pressing Apply in the main-menu options), family mods that use this library put their own settings back the next time you play.
 
@@ -34,7 +34,7 @@ Place it [b]above every mod that depends on it[/b] in your mod list. On multipla
 [h2]⚠️ Where to report problems[/h2]
 This page only covers the library itself. If a map doesn't show, a feature misbehaves or an error pops up, please report it on [b]that mod's page[/b] (e.g. mod maps missing on the minimap → MiniMap or MOD Maps page); errors from other authors' mods go to those authors. Not sure which mod it is? Ask on Discord with your console.txt.
 
-🛠️ [b]For mod developers:[/b] theme palettes, rounded skins, shared icons, windows and controls, virtual lists and the versioned API are documented with the source on [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url].
+🛠️ [b]For mod developers:[/b] theme palettes, rounded skins, shared icons, windows and controls, virtual lists and the versioned API are documented with the source on [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url]. Mods by other authors can add their own button to the toolbar: see the [url=https://github.com/Minidoracat/MinidoracatUIFor42/blob/main/docs/DOCK_API.md]toolbar guide[/url].
 
 [h2]🔗 More Minidoracat mods[/h2]
 All my mods are in the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat Mods for B42 collection[/url] — pick what you need.

@@ -150,7 +150,7 @@ fail("BOM / CRLF（42/media 下）", bad) if bad else ok("BOM / CRLF（42/media 
 # 刻意不含 printf 旗標字元（-+空白#0）：含空白旗標會讓「50% done」的「% d」被解析成
 # 合法指令而漏抓——翻譯實務上只會出現簡單的 %s/%d/%.1f，罕見旗標用法交給豁免清單
 PRINTF_RE = re.compile(r"%\d*(?:\.\d+)?[sdifuxXcqgGeE]")
-PCT_N_RE = re.compile(r"%[1-9]")
+PCT_N_RE = re.compile(r"%%|%([1-9])")  # 由左到右切（同引擎 Translator.java:170）："%%100" 是 %% 加 100，不是 %1
 
 
 def find_bare_pct(value, tolerant):
@@ -209,9 +209,8 @@ for m in MEDIA_DIRS:
             for l, d in datas.items():
                 for k, v in d.items():
                     ev = en.get(k)
-                    if l != "EN" and isinstance(ev, str) and isinstance(v, str) and (
-                            sorted(PCT_N_RE.findall(v)) != sorted(PCT_N_RE.findall(ev))
-                            or v.count("%%") != ev.count("%%")):
+                    if l != "EN" and isinstance(ev, str) and isinstance(v, str) and \
+                            sorted(PCT_N_RE.findall(v)) != sorted(PCT_N_RE.findall(ev)):
                         pctdiff.append(f"{l}/{n} 的 {k}")
     if broken:
         fail("翻譯 JSON 可解析", broken)

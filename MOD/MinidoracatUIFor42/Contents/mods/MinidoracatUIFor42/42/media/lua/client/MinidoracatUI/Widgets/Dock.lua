@@ -8,6 +8,11 @@
 -- The server picks the handle picture (sandbox MinidoracatUI.DockHandle): the mascot, Spiffo or an arrow.
 -- Entries grow toward the screen centre: the handle stays at the end nearest the screen edge, and changing
 -- layout, collapsing or entries coming and going never moves it (see "layout" below).
+-- rev 27: the player can make the idle dock translucent (ModOptions "dockOpacity"; full again under the
+-- cursor, while dragging, with the menu open or in a focus session; badges, dots and the warn frame never
+-- fade) and hide entries (Zomboid/Lua/MinidoracatUI/Dock.ini). While the player hides an entry the handle
+-- stays, even over 0 or 1 visible entries, so the settings stay reachable. Widgets/DockSettings.lua is the
+-- window for both (optional: without it the handle menu still has layout and opacity).
 --
 -- Proven pieces reused from Widgets/FloatButton.lua (same constants and semantics):
 --   * setCapture drag with an absolute-mouse 4px threshold; pressing the handle or any entry
@@ -30,7 +35,8 @@
 --
 -- Keyboard: keyBinding MinidoracatUI_Dock. Pressing it expands (remembering a collapsed state)
 -- and makes the dock a UI.Focus root: arrows move between entries as laid out on screen, Enter
--- activates, Esc gives focus back and re-collapses. Pressing it again gives focus back. Without UI.Focus
+-- activates, Esc gives focus back and re-collapses. The handle is the stop next to the first entry (rev 27):
+-- Enter on it opens the settings window. Pressing it again gives focus back. Without UI.Focus
 -- the key only toggles collapse. Joypad: "open family toolbar" in the world context menu (joypad players
 -- only) hands joypad focus to the dock; B gives it back; activating an entry gives it back first.
 --
@@ -53,6 +59,8 @@ local Focus = UI.Focus -- optional: without it the hotkey only toggles collapse
 local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap") -- optional: without it CJK tips stay one long line
 TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.tooltip and TextWrap or nil
 local Skin, Icons = UI.Skin, UI.Icons
+local settingsOK, Settings = pcall(require, "MinidoracatUI/Widgets/DockSettings") -- optional: the settings window
+Settings = settingsOK and type(Settings) == "table" and Settings.open and Settings or nil
 
 local Dock = {}
 local DockPanel = ISPanel:derive("MinidoracatUIDock")
@@ -85,10 +93,21 @@ local HANDLE_MASCOT, HANDLE_SPIFFO, HANDLE_ARROW = 1, 2, 3 -- sandbox Minidoraca
 local LAYOUT_COLUMN, LAYOUT_ROW, LAYOUT_GRID = 1, 2, 3 -- also the ModOptions combobox indexes
 local OPTIONS_ID = "MinidoracatUIFor42" -- the framework's Options -> MODS page (shared with ToastHistory.lua)
 local OPTION_LAYOUT = "dockLayout"
+local OPTION_OPACITY = "dockOpacity"
+local OPACITY = { 1, 0.75, 0.5, 0.25 } -- ModOptions combobox index -> idle opacity
+local PREFS_FILE = "MinidoracatUI/Dock.ini" -- under Zomboid/Lua: one "hidden=<id>" line per entry the player hid
+local PREFS_HEADER = "# MinidoracatUI toolbar: entries the player hid. Written by the UI library."
 
 local records = {} -- id -> { spec, button, tex, badgeN, badgeText, badgeW }
 local sorted = {}  -- every record, (order, id)
-local shown = {}   -- available records, same order; rebuilt in place
+local shown = {}   -- available records the player did not hide, same order; rebuilt in place
+local listed = {}  -- available records, hidden ones included (the settings window's rows)
+local hidden, hiddenOrder, hiddenLoaded = {}, {}, false -- id -> true/false; ids in file order; read once
+local hiddenCount = 0 -- available entries the player hid
+local listRev = 0 -- changes whenever `listed` or a hidden flag changes
+local idleAlpha = 1 -- the player's idle opacity
+local alpha = 1 -- what this frame draws with: idleAlpha, or 1 while the dock is in use
+local prefsIO = nil -- Dock.ini reader or writer in use (closed even when a read or write throws)
 local panel = nil
 local dirty = true
 local nextPoll = 0
@@ -96,6 +115,7 @@ local mascotProbed, mascotSleep, mascotAwake = false, nil, nil
 local spiffoProbed, spiffoTex, spiffoScale = false, nil, 1
 local fontH = nil
 local endFocus -- forward: entry activation ends a joypad session before calling onClick
+local openSettings -- forward: the handle menu and the handle's keyboard activation open the settings window
 
 -- ---------- consumer callbacks (pcall; an error counts as nil/false) ----------
 
@@ -136,21 +156,28 @@ end
 
 -- ---------- registry ----------
 
-local function optional(v, kind)
-    return v == nil or type(v) == kind
+-- nil = fine; otherwise what is wrong with an optional field
+local function optional(spec, key, kind)
+    local v = spec[key]
+    if v == nil or type(v) == kind then return nil end
+    return key .. " must be a " .. kind
 end
 
-local function valid(spec)
-    if type(spec) ~= "table" or type(spec.id) ~= "string" or spec.id == "" then return false end
-    if type(spec.order) ~= "number" or type(spec.label) ~= "function" or type(spec.onClick) ~= "function" then
-        return false
+-- nil = a valid spec; otherwise the reason register returns next to false (rev 27; English, for mod authors)
+local function invalidReason(spec)
+    if type(spec) ~= "table" then return "spec must be a table" end
+    if type(spec.id) ~= "string" or spec.id == "" then return "id must be a non-empty string" end
+    if type(spec.order) ~= "number" then return "order must be a number" end
+    if type(spec.label) ~= "function" then return "label must be a function" end
+    if type(spec.onClick) ~= "function" then return "onClick must be a function" end
+    if spec.icon == nil and spec.iconKey == nil and spec.drawIcon == nil then
+        return "icon, iconKey or drawIcon is required"
     end
-    if spec.icon == nil and spec.iconKey == nil and spec.drawIcon == nil then return false end
-    return optional(spec.icon, "string") and optional(spec.iconKey, "string")
-        and optional(spec.drawIcon, "function") and optional(spec.bind, "string")
-        and optional(spec.getStatus, "function") and optional(spec.onRightClick, "function")
-        and optional(spec.isActive, "function") and optional(spec.getState, "function")
-        and optional(spec.getBadge, "function") and optional(spec.isAvailable, "function")
+    return optional(spec, "icon", "string") or optional(spec, "iconKey", "string")
+        or optional(spec, "drawIcon", "function") or optional(spec, "bind", "string")
+        or optional(spec, "getStatus", "function") or optional(spec, "onRightClick", "function")
+        or optional(spec, "isActive", "function") or optional(spec, "getState", "function")
+        or optional(spec, "getBadge", "function") or optional(spec, "isAvailable", "function")
 end
 
 local function before(a, b)
@@ -171,16 +198,93 @@ local function resort()
     end
 end
 
--- rebuild `shown` in place; true = the visible set or its order changed
+-- ---------- entries the player hid (Dock.ini; the framework is the only writer, whole file each time) ----------
+-- Ids of mods that are not loaded right now stay in the file. An id with a line break cannot be stored.
+
+local function readPrefs()
+    prefsIO = getFileReader(PREFS_FILE, false)
+    if not prefsIO then return end
+    while true do
+        local line = prefsIO:readLine()
+        if line == nil then break end
+        local id = string.match(line, "^hidden=(.-)\r?$")
+        if id and id ~= "" and hidden[id] == nil then
+            hidden[id] = true
+            hiddenOrder[#hiddenOrder + 1] = id
+        end
+    end
+end
+
+local function writePrefs()
+    prefsIO = getFileWriter(PREFS_FILE, true, false)
+    if not prefsIO then return end
+    prefsIO:write(PREFS_HEADER .. "\r\n")
+    for i = 1, #hiddenOrder do
+        local id = hiddenOrder[i]
+        if hidden[id] and not string.find(id, "[\r\n]") then prefsIO:write("hidden=" .. id .. "\r\n") end
+    end
+end
+
+local function closePrefs()
+    if prefsIO then pcall(prefsIO.close, prefsIO) end
+    prefsIO = nil
+end
+
+local function loadHidden()
+    hiddenLoaded = true
+    pcall(readPrefs)
+    closePrefs()
+end
+
+-- false keeps the id's place in hiddenOrder; the next poll re-evaluates and lays out
+local function setHidden(id, value)
+    value = value == true
+    if (hidden[id] == true) == value then return end
+    if hidden[id] == nil then hiddenOrder[#hiddenOrder + 1] = id end
+    hidden[id] = value
+    listRev = listRev + 1
+    dirty = true
+    pcall(writePrefs)
+    closePrefs()
+end
+
+local function showAll()
+    local changed = false
+    for i = 1, #listed do
+        local id = listed[i].spec.id
+        if hidden[id] then
+            hidden[id] = false
+            changed = true
+        end
+    end
+    if not changed then return end
+    listRev = listRev + 1
+    dirty = true
+    pcall(writePrefs)
+    closePrefs()
+end
+
+-- rebuild `listed` (available) and `shown` (available, not hidden by the player) in place;
+-- true = the visible set, its order or the number of hidden entries changed
 local function evaluate()
-    local n, changed = 0, false
+    if not hiddenLoaded then loadHidden() end
+    local n, m, h, changed = 0, 0, 0, false
     for i = 1, #sorted do
         local rec = sorted[i]
         if truthy(rec.spec.isAvailable, true) then
-            n = n + 1
-            if shown[n] ~= rec then
-                shown[n] = rec
-                changed = true
+            m = m + 1
+            if listed[m] ~= rec then
+                listed[m] = rec
+                listRev = listRev + 1
+            end
+            if hidden[rec.spec.id] then
+                h = h + 1
+            else
+                n = n + 1
+                if shown[n] ~= rec then
+                    shown[n] = rec
+                    changed = true
+                end
             end
         end
     end
@@ -188,7 +292,24 @@ local function evaluate()
         shown[i] = nil
         changed = true
     end
+    for i = #listed, m + 1, -1 do
+        listed[i] = nil
+        listRev = listRev + 1
+    end
+    if h ~= hiddenCount then
+        hiddenCount = h
+        changed = true
+    end
     return changed
+end
+
+-- the handle shows over 2+ entries, and whenever the player hid one (its menu is the way back)
+local function hasHandle()
+    return #shown >= 2 or hiddenCount > 0
+end
+
+local function hasAny()
+    return #shown > 0 or hiddenCount > 0
 end
 
 -- ---------- helpers ----------
@@ -258,6 +379,7 @@ end
 -- once (PZAPI.ModOptions:save, the writer the options screen's Apply uses). Combobox index = LAYOUT_*.
 
 local layoutOption = nil
+local opacityOption = nil
 local layoutLoaded = false
 local applyLayout -- forward: picking a layout re-lays the dock out
 
@@ -267,10 +389,21 @@ local function layoutValue()
     return LAYOUT_COLUMN
 end
 
+-- 1..#OPACITY; anything else counts as 1 (100%)
+local function opacityIndex()
+    local v = opacityOption and opacityOption:getValue()
+    return OPACITY[v] and v or 1
+end
+
+local function syncOpacity()
+    idleAlpha = OPACITY[opacityIndex()]
+end
+
 local function readLayout()
     if not layoutLoaded then
         layoutLoaded = true
         if layoutOption then pcall(PZAPI.ModOptions.load, PZAPI.ModOptions) end
+        syncOpacity()
     end
     return layoutValue()
 end
@@ -284,20 +417,27 @@ local function createOptions()
     combo:addItem("IGUI_MinidoracatUI_Dock_LayoutColumn", true)
     combo:addItem("IGUI_MinidoracatUI_Dock_LayoutRow", false)
     combo:addItem("IGUI_MinidoracatUI_Dock_LayoutGrid", false)
+    local opacity = page:addComboBox(OPTION_OPACITY, "IGUI_MinidoracatUI_Dock_OpacityOption",
+        "IGUI_MinidoracatUI_Dock_Opacity_tooltip")
+    opacity:addItem("IGUI_MinidoracatUI_Dock_Opacity100", true)
+    opacity:addItem("IGUI_MinidoracatUI_Dock_Opacity75", false)
+    opacity:addItem("IGUI_MinidoracatUI_Dock_Opacity50", false)
+    opacity:addItem("IGUI_MinidoracatUI_Dock_Opacity25", false)
     -- Apply writes the picked index into the option before calling apply (MainOptions.lua:3760-3762):
     -- read it, do not reload the ini. Other options on the page chain their apply after this one.
     local previousApply = page.apply
     function page:apply()
         if previousApply then previousApply(self) end
         layoutLoaded = true
+        syncOpacity()
         if panel then applyLayout(panel, layoutValue()) end
     end
-    return combo
+    return combo, opacity
 end
 
 if type(PZAPI) == "table" and type(PZAPI.ModOptions) == "table" and type(PZAPI.ModOptions.create) == "function" then
-    local ok, combo = pcall(createOptions)
-    if ok then layoutOption = combo end
+    local ok, combo, opacity = pcall(createOptions)
+    if ok then layoutOption, opacityOption = combo, opacity end
 end
 
 -- ---------- layout ----------
@@ -353,9 +493,10 @@ local function relayout(p)
         local b = sorted[i].button
         if b then b:setVisible(false) end
     end
-    p.handle:setVisible(n >= 2)
-    if n == 0 then return end -- hidden by the caller
-    if n == 1 then
+    local handle = hasHandle()
+    p.handle:setVisible(handle)
+    if n == 0 and not handle then return end -- hidden by the caller
+    if n == 1 and not handle then
         local rec = shown[1]
         if rec.button == nil then rec.button = newButton(p, rec, activateEntry) end
         local b = rec.button
@@ -371,14 +512,26 @@ local function relayout(p)
         return
     end
     -- (ox, oy): first entry's cell before mirroring; entry i sits at column c, row r from there
+    -- A column or row longer than the screen wraps into more lines (rev 27): other mods may add entries.
     local cols, rows, ox, oy = 1, n, PAD, PAD + CELL + GAP -- column: entries below the handle
-    if p.collapsed then
+    if p.collapsed or n == 0 then
         rows = 0
     elseif p.layout == LAYOUT_ROW then
         cols, rows, ox, oy = n, 1, PAD + CELL + GAP, PAD -- row: entries beside the handle
+        local fit = math.max(1, math.floor((getCore():getScreenWidth() - ox - PAD + GAP) / (CELL + GAP)))
+        if n > fit then
+            rows = math.ceil(n / fit)
+            cols = math.ceil(n / rows)
+        end
     elseif p.layout == LAYOUT_GRID then
         cols = math.ceil(math.sqrt(n)) -- near square: 4 -> 2 columns, 9 -> 3, 10 -> 4 (user decision 2026-10-20)
         rows = math.ceil(n / cols) -- the handle keeps a row of its own above them
+    else
+        local fit = math.max(1, math.floor((getCore():getScreenHeight() - oy - PAD + GAP) / (CELL + GAP)))
+        if n > fit then
+            cols = math.ceil(n / fit)
+            rows = math.ceil(n / cols)
+        end
     end
     p:setWidth(ox + cols * (CELL + GAP) - GAP + PAD)
     p:setHeight(oy + rows * (CELL + GAP) - GAP + PAD)
@@ -438,7 +591,7 @@ local function toggleCollapsed(p)
     setCollapsed(p, not p.collapsed, false)
 end
 
--- ---------- handle right-click menu: layout and reset position (vanilla ISContextMenu) ----------
+-- ---------- handle right-click menu: layout, idle opacity, settings, reset position (vanilla ISContextMenu) ----------
 
 local function pickLayout(p, layout)
     if layoutOption then
@@ -454,6 +607,30 @@ local function resetPosition(p)
     persist()
 end
 
+local function pickOpacity(p, index)
+    if opacityOption then
+        opacityOption:setValue(index)
+        pcall(PZAPI.ModOptions.save, PZAPI.ModOptions)
+    end
+    idleAlpha = OPACITY[index] or 1
+end
+
+local OPACITY_KEYS = { "IGUI_MinidoracatUI_Dock_Opacity100", "IGUI_MinidoracatUI_Dock_Opacity75",
+    "IGUI_MinidoracatUI_Dock_Opacity50", "IGUI_MinidoracatUI_Dock_Opacity25" }
+
+-- idle opacity as a sub-menu, the way the vanilla chat menu lists its own (ISChat.lua:274-287)
+local function addOpacityMenu(p, menu)
+    if type(menu.getNew) ~= "function" or type(menu.addSubMenu) ~= "function" then return end
+    local parent = menu:addOption(getText("IGUI_MinidoracatUI_Dock_Opacity"), p)
+    local sub = menu:getNew(menu)
+    menu:addSubMenu(parent, sub)
+    local current = opacityIndex()
+    for i = 1, #OPACITY_KEYS do
+        local o = sub:addOption(getText(OPACITY_KEYS[i]), p, pickOpacity, i)
+        if i == current then sub:setOptionChecked(o, true) end
+    end
+end
+
 local function openLayoutMenu(p)
     if ISContextMenu == nil or type(ISContextMenu.get) ~= "function" then return end
     local hx, hy = p.handle:getAbsoluteX(), p.handle:getAbsoluteY()
@@ -464,6 +641,8 @@ local function openLayoutMenu(p)
     local current = column
     if p.layout == LAYOUT_ROW then current = row elseif p.layout == LAYOUT_GRID then current = grid end
     menu:setOptionChecked(current, true)
+    addOpacityMenu(p, menu)
+    if Settings then menu:addOption(getText("IGUI_MinidoracatUI_Dock_SettingsMenu"), p, openSettings) end
     menu:addOption(getText("IGUI_MinidoracatUI_Dock_ResetPosition"), p, resetPosition)
     -- beside the handle on the screen-centre side; vanilla keeps the menu on screen (keepOnScreen)
     local x = p._growLeft and (hx - menu.width - GAP) or (hx + CELL + GAP)
@@ -475,7 +654,7 @@ end
 -- ---------- focus sessions (keyboard hotkey / joypad menu) ----------
 
 local function beginFocus(p)
-    if #shown >= 2 and p.collapsed then
+    if hasHandle() and p.collapsed then
         p._wasCollapsed = true
         setCollapsed(p, false, true)
     end
@@ -530,21 +709,31 @@ local function entryTip(rec)
     return text
 end
 
-local function handleTip(p)
+-- focused = the keyboard or joypad ring is on the handle: say what activating it does (the settings window)
+local function handleTip(p, focused)
     local count = tostring(#shown)
-    local hint = getText("IGUI_MinidoracatUI_Dock_HandleHint") -- the right-click menu is otherwise invisible
-    if not p.collapsed then return getText("IGUI_MinidoracatUI_Dock_Collapse", count) .. "\n" .. hint end
-    local text = getText("IGUI_MinidoracatUI_Dock_Expand", count)
-    for i = 1, #shown do
-        local spec = shown[i].spec
-        if pending(badgeOf(spec)) or stateOf(spec) == "warn" then
-            local status = textOf(spec.getStatus)
-            local line = nameOf(spec)
-            if status then line = getText("IGUI_MinidoracatUI_Dock_StatusLine", line, status) end
-            text = text .. "\n" .. line
+    local text
+    if focused then
+        text = getText("IGUI_MinidoracatUI_Dock_Settings")
+    elseif not p.collapsed then
+        text = getText("IGUI_MinidoracatUI_Dock_Collapse", count)
+    else
+        text = getText("IGUI_MinidoracatUI_Dock_Expand", count)
+        for i = 1, #shown do
+            local spec = shown[i].spec
+            if pending(badgeOf(spec)) or stateOf(spec) == "warn" then
+                local status = textOf(spec.getStatus)
+                local line = nameOf(spec)
+                if status then line = getText("IGUI_MinidoracatUI_Dock_StatusLine", line, status) end
+                text = text .. "\n" .. line
+            end
         end
     end
-    return text .. "\n" .. hint
+    if hiddenCount > 0 then
+        text = text .. "\n" .. getText("IGUI_MinidoracatUI_Dock_Hidden", tostring(hiddenCount))
+    end
+    if focused then return text end
+    return text .. "\n" .. getText("IGUI_MinidoracatUI_Dock_HandleHint") -- the right-click menu is otherwise invisible
 end
 
 local function hideTip(p)
@@ -613,7 +802,7 @@ local function updateTip(p)
     local now = getTimestampMs()
     if firstShow or target ~= p._tipFor or now >= (p._tipNextMs or 0) then
         p._tipFor, p._tipNextMs = target, now + TOOLTIP_THROTTLE_MS
-        local text = target._rec and entryTip(target._rec) or handleTip(p)
+        local text = target._rec and entryTip(target._rec) or handleTip(p, not target:isMouseOver())
         tip.description = TextWrap and TextWrap.tooltip(p, text, 300) or text -- CJK pre-wrapped; "\n" text unchanged
         tip.maxLineWidth = string.find(text, "\n", 1, true) and 1000 or 300 -- ISButton.lua:326-330
         if tip.doLayout then pcall(tip.doLayout, tip) end -- size for the new text now, not one frame late
@@ -651,20 +840,20 @@ local function drawBadge(btn, rec, c)
 end
 
 -- icon 讀不到（缺檔、getTexture 回 nil）時改畫 iconKey，再沒有才畫 drawIcon：彩色圖壞掉也不留空格（rev 21）
-local function drawIcon(btn, rec, c)
+-- a = this frame's opacity (rev 27); the consumer's drawIcon gets it as a 5th argument and may ignore it
+local function drawIconAt(el, rec, c, x, y, size, a)
     local spec = rec.spec
-    local off = (btn.width - ICON) / 2
     if spec.icon then
         if rec.tex == nil then rec.tex = loadTexture(spec.icon) end
         if rec.tex then
-            pcall(drawTex, btn, rec.tex, off, off, ICON, 1, 1, 1, 1)
+            pcall(drawTex, el, rec.tex, x, y, size, a, 1, 1, 1)
             return
         end
     end
     if spec.iconKey then
-        Icons.draw(btn, spec.iconKey, off, off, ICON, c.text)
+        Icons.draw(el, spec.iconKey, x, y, size, c.text, a)
     elseif spec.drawIcon then
-        pcall(spec.drawIcon, btn, off, off, ICON)
+        pcall(spec.drawIcon, el, x, y, size, a)
     end
 end
 
@@ -688,8 +877,8 @@ end
 
 -- vanilla item icons are trimmed pack sub-textures: DrawTextureScaledUniform adds their offsets
 -- (UIElement.java:390-410); drawTextureScaled would stretch the trimmed part over the whole frame
-local function drawUniform(el, tex, x, y, scale)
-    el:drawTextureScaledUniform(tex, x, y, scale, 1, 1, 1, 1)
+local function drawUniform(el, tex, x, y, scale, a)
+    el:drawTextureScaledUniform(tex, x, y, scale, a, 1, 1, 1)
 end
 
 -- the server's pick (SandboxVars is the live value on clients too); missing or unknown values draw the mascot
@@ -709,12 +898,12 @@ local function drawHandle(btn, p, c)
         if mascotSleep then
             local off = (w - MASCOT) / 2
             local tex = p.collapsed and mascotSleep or mascotAwake
-            if pcall(drawTex, btn, tex, off, off, MASCOT, 1, 1, 1, 1) then return end
+            if pcall(drawTex, btn, tex, off, off, MASCOT, alpha, 1, 1, 1) then return end
         end
     elseif style == HANDLE_SPIFFO then
         probeSpiffo()
         local off = (w - MASCOT) / 2
-        if spiffoTex and pcall(drawUniform, btn, spiffoTex, off, off, spiffoScale) then return end
+        if spiffoTex and pcall(drawUniform, btn, spiffoTex, off, off, spiffoScale, alpha) then return end
     end
     -- the arrow: picked by the server, or the picture above did not load
     local t = c.text
@@ -723,13 +912,65 @@ local function drawHandle(btn, p, c)
         local off = (w - CHEVRON) / 2
         local ok
         if p.collapsed then
-            ok = pcall(drawTex, btn, chevron, off, off, CHEVRON, t.a or 1, t.r, t.g, t.b)
+            ok = pcall(drawTex, btn, chevron, off, off, CHEVRON, (t.a or 1) * alpha, t.r, t.g, t.b)
         else
-            ok = pcall(drawFlipped, btn, chevron, off, off, CHEVRON, t.r, t.g, t.b, t.a or 1)
+            ok = pcall(drawFlipped, btn, chevron, off, off, CHEVRON, t.r, t.g, t.b, (t.a or 1) * alpha)
         end
         if ok then return end
     end
-    Skin.arrow(btn, math.floor((w - Skin.ARROW_W) / 2), math.floor((h - Skin.ARROW_H) / 2), not p.collapsed, t)
+    Skin.arrow(btn, math.floor((w - Skin.ARROW_W) / 2), math.floor((h - Skin.ARROW_H) / 2), not p.collapsed, t, alpha)
+end
+
+-- ---------- settings window (Widgets/DockSettings.lua, optional): the model it reads and calls ----------
+
+local function modelName(i)
+    local rec = listed[i]
+    return rec and nameOf(rec.spec) or ""
+end
+
+local function modelIsShown(i)
+    local rec = listed[i]
+    return rec ~= nil and not hidden[rec.spec.id]
+end
+
+local function modelSetShown(i, value)
+    local rec = listed[i]
+    if rec then setHidden(rec.spec.id, not value) end
+end
+
+local function modelDrawIcon(el, i, x, y, size)
+    local rec = listed[i]
+    if rec and panel then drawIconAt(el, rec, panel.theme.colors, x, y, size, 1) end
+end
+
+local function modelRect()
+    local p = panel
+    if p == nil then return nil end
+    return p:getAbsoluteX(), p:getAbsoluteY(), p.width, p.height, p._growLeft == true
+end
+
+local settingsModel = {
+    count = function() return #listed end,
+    name = modelName,
+    isShown = modelIsShown,
+    setShown = modelSetShown,
+    showAll = showAll,
+    drawIcon = modelDrawIcon,
+    revision = function() return listRev end,
+    layout = function() return panel and panel.layout or LAYOUT_COLUMN end,
+    setLayout = function(layout) if panel then pickLayout(panel, layout) end end,
+    opacity = opacityIndex,
+    setOpacity = function(index) pickOpacity(panel, index) end,
+    resetPosition = function() if panel then resetPosition(panel) end end,
+    rect = modelRect,
+}
+
+-- the session ends first (as for an entry): the window takes the joypad or the keyboard ring itself
+openSettings = function(p)
+    if Settings == nil then return end
+    local ring = p._kb == true
+    endFocus(p)
+    Settings.open(settingsModel, ring)
 end
 
 function DockButton:prerender()
@@ -742,16 +983,18 @@ function DockButton:prerender()
     end
     local w, h = self.width, self.height
     local spec = self._rec.spec
+    -- rev 27: everything but the warn frame, its chip and the badge fades with the idle opacity
     if truthy(spec.isActive, false) then
-        Skin.fill(self, 0, 0, w, h, c.selected)
+        Skin.fill(self, 0, 0, w, h, c.selected, nil, alpha)
         local a = c.accent
-        self:drawRect(0, 4, ACTIVE_BAR, h - 8, a.a or 1, a.r, a.g, a.b)
+        self:drawRect(0, 4, ACTIVE_BAR, h - 8, (a.a or 1) * alpha, a.r, a.g, a.b)
     end
     if self:isMouseOver() or p._down == self then Skin.fill(self, 0, 0, w, h, c.hover) end
-    drawIcon(self, self._rec, c)
+    local off = (w - ICON) / 2
+    drawIconAt(self, self._rec, c, off, off, ICON, alpha)
     local state = stateOf(spec)
     if state == "on" then
-        Skin.border(self, 0, 0, w, h, c.accent)
+        Skin.border(self, 0, 0, w, h, c.accent, nil, alpha)
     elseif state == "warn" then
         Skin.border(self, 0, 0, w, h, c.errorText)
         drawWarnChip(self, h, c)
@@ -770,11 +1013,32 @@ local function cellAt(col, row)
     return nil
 end
 
+-- the handle as a focus stop (rev 27): toward the entries = the first one, away = the last one (the ring
+-- goes round through the handle). It sits beside the entries in a row layout, above or below them otherwise.
+local function handleFocusKey(p, dc, dr)
+    local n = #shown
+    if n == 0 then return true end
+    local cols, rows = p._cols or 1, p._rows or 1
+    local delta, toward
+    if p.layout == LAYOUT_ROW then
+        delta = dc ~= 0 and dc or (rows == 1 and dr or 0)
+        toward = p._growLeft and -1 or 1
+    else
+        delta = dr ~= 0 and dr or (cols == 1 and dc or 0)
+        toward = p._growUp and -1 or 1
+    end
+    if delta == 0 then return true end
+    local target = shown[delta == toward and 1 or n].button
+    if target then Focus.focusControl(target, true) end
+    return true
+end
+
 -- arrows follow the screen: left/right along a row, up/down along a column, wrapping round at the ends
--- and skipping empty cells; a single line (column or row) takes all four arrows. Keyboard handle() and
--- joypad dirs ask this first.
+-- and skipping empty cells; a single line (column or row) takes all four arrows. Where a step leaves the
+-- entries on the handle's side or wraps round a single line, it lands on the handle when the handle is a
+-- stop (rev 27). Keyboard handle() and joypad dirs ask this first.
 function DockButton:onFocusKey(key)
-    if self._rec == nil or Focus == nil then return false end
+    if Focus == nil then return false end
     local dc, dr = 0, 0
     if key == Keyboard.KEY_LEFT then
         dc = -1
@@ -788,15 +1052,23 @@ function DockButton:onFocusKey(key)
         return false
     end
     local p = self.parent
+    if self._rec == nil then return p ~= nil and handleFocusKey(p, dc, dr) end
     local cols, rows = p and p._cols or 0, p and p._rows or 0
     if cols < 1 or rows < 1 or self._col == nil then return true end
+    local single = cols == 1 or rows == 1
     if cols == 1 then
         dr, dc = dr + dc, 0
     elseif rows == 1 then
         dc, dr = dc + dr, 0
     end
+    local viaHandle = p._handleStop and (single or (p.layout == LAYOUT_ROW and dc ~= 0)
+        or (p.layout ~= LAYOUT_ROW and dr ~= 0))
     local col, row = self._col, self._row
     for _ = 1, cols + rows do
+        if viaHandle and (col + dc < 0 or col + dc >= cols or row + dr < 0 or row + dr >= rows) then
+            Focus.focusControl(p.handle, true)
+            return true
+        end
         col, row = (col + dc) % cols, (row + dr) % rows -- Lua % of a negative is still 0..n-1
         local target = cellAt(col, row)
         if target then
@@ -846,7 +1118,9 @@ local function releaseDock(btn)
         clamp(p)
         persist()
     else
+        p._mouseClick = true -- the handle: a mouse click toggles collapse even during a focus session
         btn:forceClick()
+        p._mouseClick = nil
     end
     return true
 end
@@ -885,9 +1159,19 @@ end
 
 -- ---------- panel ----------
 
+-- the handle's onclick: Enter or A on it during a focus session opens the settings, anything else toggles
+local function handleClick(p)
+    if Settings and (p._kb or p._joy) and not p._mouseClick then
+        openSettings(p)
+    else
+        toggleCollapsed(p)
+    end
+end
+
 local function hide(p)
     hideTip(p)
     endFocus(p)
+    if Settings then Settings.close() end
     if p:getIsVisible() then
         p:setVisible(false)
         p._selfHidden = true -- poll undoes only a hide of our own
@@ -914,7 +1198,7 @@ local function createPanel()
     p:initialise()
     p:addToUIManager()
     p:setAlwaysOnTop(false) -- the Lua field alone does not reach the engine (ARCHITECTURE 3.4)
-    p.handle = newButton(p, nil, toggleCollapsed)
+    p.handle = newButton(p, nil, handleClick)
     panel = p
     if UI.CAPABILITIES.toastAvoid and UI.Toast and UI.Toast.setAvoid then
         UI.Toast.setAvoid(LAYOUT_KEY, avoidRect)
@@ -922,7 +1206,7 @@ local function createPanel()
     return p
 end
 
-local function listed(list, key)
+local function inList(list, key)
     if type(list) ~= "table" then return false end
     for i = 1, #list do
         if list[i] == key then return true end
@@ -940,8 +1224,8 @@ local function heldByVanilla(p)
     if ISUIHandler and ISUIHandler.allUIVisible == false then return true end
     local ok, key = pcall(javaKey, p)
     if not ok then return false end
-    return listed(ISUIHandler and ISUIHandler.visibleUI, key)
-        or listed(CoopCharacterCreation and CoopCharacterCreation.visibleUI, key)
+    return inList(ISUIHandler and ISUIHandler.visibleUI, key)
+        or inList(CoopCharacterCreation and CoopCharacterCreation.visibleUI, key)
 end
 
 local function poll(force)
@@ -963,7 +1247,7 @@ local function poll(force)
         end
         clamp(panel)
     end
-    if #shown == 0 then
+    if not hasAny() then
         hide(panel)
     elseif panel._selfHidden then
         panel._selfHidden = nil
@@ -986,14 +1270,23 @@ function DockPanel:prerender()
     if self._kb and (Focus == nil or Focus.root ~= self) then endFocus(self) end
     if self._joy and not Focus.holdsJoypad(self) then endFocus(self) end
     updateTip(self)
+    -- rev 27: idle opacity, full while the dock is in use (children draw after this, with the same value)
+    alpha = idleAlpha
+    if alpha < 1 then
+        local mx, my = getMouseX() - self:getAbsoluteX(), getMouseY() - self:getAbsoluteY()
+        if self._down or self._kb or self._joy or (self._menu and self._menu:getIsVisible())
+            or (mx >= 0 and my >= 0 and mx < self.width and my < self.height) then
+            alpha = 1
+        end
+    end
     local c = self.theme.colors
-    Skin.fill(self, 0, 0, self.width, self.height, c.surface)
-    Skin.border(self, 0, 0, self.width, self.height, c.border)
+    Skin.fill(self, 0, 0, self.width, self.height, c.surface, nil, alpha)
+    Skin.border(self, 0, 0, self.width, self.height, c.border, nil, alpha)
 end
 
 -- collapsed shell: one dot if anything is pending (counts are never summed), warn frame + chip
 function DockPanel:render()
-    if #shown >= 2 and self.collapsed then
+    if self.collapsed and hasHandle() then
         local anyPending, anyWarn = false, false
         for i = 1, #shown do
             local spec = shown[i].spec
@@ -1030,7 +1323,8 @@ function DockPanel:RestoreLayout(name, layout)
     clamp(self)
 end
 
--- UI.Focus root: one group of the visible entry buttons (the handle is not a target)
+-- UI.Focus root: one group of the visible entry buttons, then the handle when the settings window exists
+-- (rev 27: activating it opens the window; without the window the handle is not a target, as before)
 function DockPanel:keyboardTargets()
     local controls, n = self._focusControls, 0
     for i = 1, #shown do
@@ -1039,6 +1333,11 @@ function DockPanel:keyboardTargets()
             n = n + 1
             controls[n] = b
         end
+    end
+    self._handleStop = Settings ~= nil and self.handle:getIsVisible()
+    if self._handleStop then
+        n = n + 1
+        controls[n] = self.handle
     end
     for i = #controls, n + 1, -1 do controls[i] = nil end
     if n == 0 then return nil end
@@ -1067,8 +1366,10 @@ function DockPanel:onJoypadBeforeDeactivate(joypadData) endFocus(self) end
 
 -- ---------- public API ----------
 
+-- false comes with a second value, the reason (rev 27); older revisions return false alone
 function Dock.register(spec)
-    if not valid(spec) then return false end
+    local reason = invalidReason(spec)
+    if reason then return false, reason end
     local rec = records[spec.id]
     if rec == nil then
         rec = {}
@@ -1086,17 +1387,15 @@ function Dock.unregister(id)
     if rec == nil then return end
     records[id] = nil
     resort()
-    for i = #shown, 1, -1 do
-        if shown[i] == rec then table.remove(shown, i) end
-    end
     if rec.button then
         rec.button:setVisible(false)
         if panel then panel:removeChild(rec.button) end
         rec.button = nil
     end
+    evaluate() -- drops it from `shown` and `listed`, recounts the hidden ones
     if panel then
         relayout(panel)
-        if #shown == 0 then hide(panel) end
+        if not hasAny() then hide(panel) end
     end
     dirty = true
 end
@@ -1115,7 +1414,10 @@ function Dock._resetForTests()
         hideTip(panel)
         panel:removeFromUIManager()
     end
-    records, sorted, shown, panel = {}, {}, {}, nil
+    if Settings then Settings._resetForTests() end
+    records, sorted, shown, listed, panel = {}, {}, {}, {}, nil
+    hidden, hiddenOrder, hiddenLoaded, hiddenCount, listRev = {}, {}, false, 0, 0
+    idleAlpha, alpha = 1, 1
     dirty, nextPoll = true, 0
     mascotProbed, mascotSleep, mascotAwake, fontH = false, nil, nil, nil
     spiffoProbed, spiffoTex, spiffoScale = false, nil, 1
@@ -1143,9 +1445,9 @@ local function onKeyPressed(key)
     local ok, bound = pcall(boundKey)
     if not ok or key ~= bound then return end
     local p = panel
-    if p == nil or not p:getIsVisible() or #shown == 0 then return end
+    if p == nil or not p:getIsVisible() or not hasAny() then return end
     if Focus == nil then
-        if #shown >= 2 then toggleCollapsed(p) end
+        if hasHandle() then toggleCollapsed(p) end
         return
     end
     if p._kb then
@@ -1156,13 +1458,13 @@ local function onKeyPressed(key)
     beginFocus(p)
     p._kb = true
     Focus.onFocus(p)
-    local first = shown[1].button
+    local first = shown[1] and shown[1].button or p.handle -- no visible entry: only the handle (settings)
     if first then Focus.focusControl(first, true) end
 end
 
 local function openForJoypad(playerNum)
     local p = panel
-    if Focus == nil or p == nil or not p:getIsVisible() or #shown == 0 then return end
+    if Focus == nil or p == nil or not p:getIsVisible() or not hasAny() then return end
     endFocus(p) -- a keyboard session, if any
     beginFocus(p)
     p._joy = true
@@ -1175,7 +1477,7 @@ end
 local function onFillWorldMenu(playerNum, context, worldobjects, test)
     if playerNum ~= 0 or Focus == nil then return end
     if not (JoypadState and JoypadState.players and JoypadState.players[playerNum + 1]) then return end
-    if panel == nil or not panel:getIsVisible() or #shown == 0 then return end
+    if panel == nil or not panel:getIsVisible() or not hasAny() then return end
     if test then return ISWorldObjectContextMenu.setTest() end -- ISBBQMenu.lua:9
     context:addOption(getText("IGUI_MinidoracatUI_Dock_Open"), playerNum, openForJoypad)
 end
@@ -1211,5 +1513,6 @@ on("OnResolutionChange", onResolutionChange)
 
 UI.Dock = Dock
 UI.CAPABILITIES.dock = true
+UI.CAPABILITIES.dockPrefs = true -- rev 27: players hide entries and set the idle opacity in the dock itself
 
 return Dock

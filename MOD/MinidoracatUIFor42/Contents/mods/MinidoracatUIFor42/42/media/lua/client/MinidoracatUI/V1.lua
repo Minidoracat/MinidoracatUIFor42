@@ -852,7 +852,10 @@ MinidoracatUI.v1 = {
     --         Widgets/ItemPicker.lua，itemPickerMulti；沒帶 multi 時與 rev 24 相同）
     -- rev 26：Dialog.show 的 opts.modal = false（不鋪全螢幕遮罩、不吃滑鼠，Enter 只在焦點框亮著時收）與
     --         opts.anchor = "mouse"（框的中心對準游標；夾到下緣時放到游標上方）（Widgets/Window.lua，dialogModeless）
-    API_REVISION = 26,
+    -- rev 27：家族工具列的玩家設定（Widgets/Dock.lua＋DockSettings.lua，dockPrefs）：閒置時不透明度、逐個入口顯示／隱藏
+    --         （框架存 Dock.ini，入口不必自己做顯示選項）、設定視窗（鍵盤與手把從把手進去）；Dock.register 失敗時
+    --         多回第二個值（原因字串）；spec.drawIcon 多收第 5 個參數 alpha；直排／橫排超出螢幕時換行
+    API_REVISION = 27,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -900,6 +903,7 @@ MinidoracatUI.v1 = {
         whatsNew = false,         -- rev 24：UI.WhatsNew 更新概要通知（WhatsNew.lua）
         itemPickerMulti = false,  -- rev 25：ItemPicker 多選模式（Widgets/ItemPicker.lua，與 itemPicker 同檔）
         dialogModeless = false,   -- rev 26：Dialog.show 的 opts.modal／anchor（Widgets/Window.lua，與 dialog 同檔）
+        dockPrefs = false,        -- rev 27：工具列的玩家設定：不透明度、入口顯示／隱藏（Widgets/Dock.lua，與 dock 同檔）
     },
     Theme = Theme,
     Skin = Skin,

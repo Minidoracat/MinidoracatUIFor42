@@ -1081,7 +1081,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 26, "API_REVISION 進到 26")
+    check(UI.API_REVISION == 27, "API_REVISION 進到 27")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -2135,7 +2135,7 @@ local sliceCtx = {
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
     "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock",
-    "rev22", "rev23", "rev24", "rev25", "rev26", "tooltip" }) do
+    "rev22", "rev23", "rev24", "rev25", "rev26", "rev27", "tooltip" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

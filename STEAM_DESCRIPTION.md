@@ -5,7 +5,7 @@
 
 Minidoracat 系列 MOD 共用的[b]前置介面函式庫[/b]。本身[b]不新增遊戲內容[/b]，畫面效果都來自依賴它的 MOD。
 
-✨ [b]家族工具列[/b]：家族 MOD 的按鈕收進同一條可收合的直排工具列，按「.」鍵展開。
+✨ [b]家族工具列[/b]：家族 MOD 的按鈕收進同一條可收合的直排工具列，按「.」鍵展開。在把手上按右鍵，可以調整閒置時的不透明度、勾選要顯示哪些按鈕。
 
 ✨ [b]設定保護[/b]：遊戲把 MOD 設定清空（例如在主選單的選項按了套用）時，接上本函式庫的家族 MOD 會在下次進遊戲時補回自己的設定。
 
@@ -34,7 +34,7 @@ MOD 清單中排在[b]所有依賴它的 MOD 之前[/b]。多人伺服器與客�
 [h2]⚠️ 出問題該去哪回報[/h2]
 這頁只處理函式庫本身。地圖不顯示、某個功能不正常或跳錯誤，請到[b]那個 MOD 的頁面[/b]回報（例如小地圖的 MOD 地圖不顯示，請到 MiniMap 或 MOD Maps 頁）；其他作者的 MOD 出錯請找該作者。不確定是哪個 MOD 時，附上 console.txt 到 Discord 詢問。
 
-🛠️ [b]給 MOD 開發者：[/b]主題色票、圓角皮膚、共用圖示、視窗與控制元件、虛擬清單與版本化 API 的說明與原始碼在 [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url]。
+🛠️ [b]給 MOD 開發者：[/b]主題色票、圓角皮膚、共用圖示、視窗與控制元件、虛擬清單與版本化 API 的說明與原始碼在 [url=https://github.com/Minidoracat/MinidoracatUIFor42]GitHub[/url]。其他作者的 MOD 也可以把自己的按鈕加進工具列，寫法見[url=https://github.com/Minidoracat/MinidoracatUIFor42/blob/main/docs/DOCK_API.md]工具列指南（英文）[/url]。
 
 [h2]🔗 Minidoracat 全系列[/h2]
 其他作品都在[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat 全系列收藏[/url]，依需求自選訂閱。

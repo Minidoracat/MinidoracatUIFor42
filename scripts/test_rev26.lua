@@ -55,8 +55,8 @@ local function aboveCursor(d, my)
 end
 
 -- ---------- 旗標 ----------
-check(UI.API_REVISION == 26 and UI.CAPABILITIES.dialog == true and UI.CAPABILITIES.dialogModeless == true,
-    "API_REVISION 是 26，Window 載入成功後 dialogModeless 與 dialog 一起翻 true")
+check(UI.API_REVISION >= 26 and UI.CAPABILITIES.dialog == true and UI.CAPABILITIES.dialogModeless == true,
+    "API_REVISION 至少 26，Window 載入成功後 dialogModeless 與 dialog 一起翻 true")
 
 local saved = MinidoracatUI
 MinidoracatUI = nil
