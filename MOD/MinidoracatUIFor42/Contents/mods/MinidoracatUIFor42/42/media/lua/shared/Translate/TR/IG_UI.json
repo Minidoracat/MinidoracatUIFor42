@@ -83,7 +83,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "%1 %2: Yenilikler",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Mod güncelleme notlarını göster",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Bir mod güncellendikten sonra oyuna ilk girişinizde sağ üstte değişiklikleri anlatan kısa bir not bir kez görünür. Kapalıyken not gösterilmez; yeniden açtığınızda eski notlar gösterilmez.",
-    "IGUI_MinidoracatUI_WhatsNew_Note": "“Arayüzü Aç/Kapat” artık mod ailesi araç çubuğunu da gizliyor. Varsayılan bir tuşu yok.",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "Araç çubuğu boştayken solabilir ve gösterdiği girişleri sen seçersin: tutamaca sağ tıkla, “Araç çubuğu ayarları...”.",
     "IGUI_MinidoracatUI_Placer_Sample": "Bildirimler burada görünür",
     "IGUI_MinidoracatUI_Placer_Hint": "Taşımak için kutuyu sürükleyin, ince ayar için ok tuşlarını kullanın. Bitirmek için Enter, iptal için Esc.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Kutuyu yön tuşlarıyla taşıyın. Bitirmek için A, iptal için B.",
