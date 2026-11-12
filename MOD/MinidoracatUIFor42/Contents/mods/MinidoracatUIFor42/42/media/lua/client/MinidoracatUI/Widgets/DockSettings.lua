@@ -199,11 +199,9 @@ local function create(model)
     w.ddLayout = UI.Dropdown.new({ theme = theme, target = w, onChange = onLayout, selected = model.layout(),
         options = { option(1, "IGUI_MinidoracatUI_Dock_LayoutColumn"), option(2, "IGUI_MinidoracatUI_Dock_LayoutRow"),
             option(3, "IGUI_MinidoracatUI_Dock_LayoutGrid") } })
-    w.ddLayout._focusLabel = w._rowLayout.text
     w.ddOpacity = UI.Dropdown.new({ theme = theme, target = w, onChange = onOpacity, selected = model.opacity(),
         options = { option(1, "IGUI_MinidoracatUI_Dock_Opacity100"), option(2, "IGUI_MinidoracatUI_Dock_Opacity75"),
             option(3, "IGUI_MinidoracatUI_Dock_Opacity50"), option(4, "IGUI_MinidoracatUI_Dock_Opacity25") } })
-    w.ddOpacity._focusLabel = w._rowOpacity.text
     w:addChild(w.ddLayout)
     w:addChild(w.ddOpacity)
     w.scroll = UI.ScrollPanel.new({ width = WIN_W - PAD * 2, height = w._rowH, theme = theme })

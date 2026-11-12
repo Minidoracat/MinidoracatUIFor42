@@ -40,7 +40,8 @@ and your mod works as before.
 The toolbar draws the icon at 28 x 28. Give at least one of these. If you give more, the toolbar uses the
 first one that works, in this sequence:
 
-1. `icon` (string): a texture path in your mod, for example `media/ui/YourMod/icon.png`. It keeps its colours.
+1. `icon` (string): a texture path in your mod, for example `media/ui/YourMod/icon.png`, or the name of a
+   vanilla texture, for example `Item_PlushSpiffo`. It keeps its colours.
    A square PNG with a transparent background works best. The toolbar scales it to 28 x 28.
 2. `iconKey` (string): the key of an icon that the UI Library supplies. It takes the colour of the theme text.
 3. `drawIcon(element, x, y, size, alpha)` (function): you draw the icon yourself, on `element`, in the square
