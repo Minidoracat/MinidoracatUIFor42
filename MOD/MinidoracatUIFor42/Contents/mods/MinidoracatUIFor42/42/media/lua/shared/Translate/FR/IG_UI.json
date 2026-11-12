@@ -83,7 +83,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "Nouveautés : %1 %2",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Afficher les nouveautés des mods",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Après la mise à jour d'un mod, une courte note sur les changements s'affiche une fois en haut à droite lors de votre première partie. Si désactivé, rien ne s'affiche, et le réactiver n'affiche pas les anciennes notes.",
-    "IGUI_MinidoracatUI_WhatsNew_Note": "La barre peut s'estomper au repos et vous choisissez ses entrées : clic droit sur la poignée, « Réglages de la barre... ».",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "Barre : opacité au repos et entrées masquables. Clic droit sur la poignée, « Réglages de la barre... ».",
     "IGUI_MinidoracatUI_Placer_Sample": "Les notifications s'affichent ici",
     "IGUI_MinidoracatUI_Placer_Hint": "Faites glisser le cadre pour le déplacer. Flèches pour affiner. Enter pour terminer, Esc pour annuler.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Utilisez la croix directionnelle pour déplacer le cadre. A pour terminer, B pour annuler.",

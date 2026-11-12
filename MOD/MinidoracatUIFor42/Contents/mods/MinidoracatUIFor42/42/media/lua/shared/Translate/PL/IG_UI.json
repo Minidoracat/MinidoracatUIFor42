@@ -83,7 +83,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "Nowości: %1 %2",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Pokazuj nowości w modach",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Po aktualizacji moda przy pierwszym wejściu do gry w prawym górnym rogu raz pojawi się krótka notka o zmianach. Po wyłączeniu nic się nie pojawia, a ponowne włączenie nie pokazuje starszych notek.",
-    "IGUI_MinidoracatUI_WhatsNew_Note": "Pasek może blednąć w spoczynku, a ty wybierasz jego przyciski: prawy przycisk na uchwycie, „Ustawienia paska...”.",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "Pasek może blednąć w spoczynku i ukrywać przyciski: prawy przycisk na uchwycie, „Ustawienia paska...”.",
     "IGUI_MinidoracatUI_Placer_Sample": "Tu pojawią się powiadomienia",
     "IGUI_MinidoracatUI_Placer_Hint": "Przeciągnij ramkę, aby ją przesunąć. Strzałki — dokładne ustawienie. Enter kończy, Esc anuluje.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Przesuń ramkę krzyżakiem. A kończy, B anuluje.",

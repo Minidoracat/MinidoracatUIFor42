@@ -83,7 +83,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "Neu in %1 %2",
     "IGUI_MinidoracatUI_WhatsNew_Option": "Neuigkeiten der Mods anzeigen",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "Nach einem Mod-Update erscheint beim ersten Spielstart einmal oben rechts eine kurze Notiz zu den Änderungen. Wenn aus, erscheint nichts, und nach dem erneuten Einschalten werden ältere Notizen nicht angezeigt.",
-    "IGUI_MinidoracatUI_WhatsNew_Note": "Die Leiste kann im Ruhezustand verblassen, und du wählst ihre Einträge: Rechtsklick auf den Griff, „Leisteneinstellungen...“.",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "Die Leiste kann verblassen und Einträge verbergen: Rechtsklick auf den Griff, „Leisteneinstellungen...“",
     "IGUI_MinidoracatUI_Placer_Sample": "Hier erscheinen Meldungen",
     "IGUI_MinidoracatUI_Placer_Hint": "Ziehe den Rahmen zum Verschieben, Pfeiltasten zum Feinjustieren. Enter zum Abschließen, Esc zum Abbrechen.",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "Verschiebe den Rahmen mit dem Steuerkreuz. A zum Abschließen, B zum Abbrechen.",
