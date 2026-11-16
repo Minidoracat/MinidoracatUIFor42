@@ -487,6 +487,8 @@ local ICON_FILES = {
     zone         = "mui_icon_zone.png",
     -- rev 21：通知紀錄的 Dock 入口（同一套程序化描邊）
     bell         = "mui_icon_bell.png",
+    -- rev 28：復原（左上箭頭往左、尾巴繞右半圈回到下方；同一套程序化描邊）
+    undo         = "mui_icon_undo.png",
     -- rev 4：art 圖示（AI 生成剪影、scripts/import_icon_sheet.py 轉 32×32 白 glyph；
     -- 非幾何確定性生成，verify 只驗尺寸／純白／透明邊／著墨比例）。地圖符號類
     -- 供 consumer 畫在地圖上與設定視窗同用，同一 key 同一張
@@ -855,7 +857,10 @@ MinidoracatUI.v1 = {
     -- rev 27：家族工具列的玩家設定（Widgets/Dock.lua＋DockSettings.lua，dockPrefs）：閒置時不透明度、逐個入口顯示／隱藏
     --         （框架存 Dock.ini，入口不必自己做顯示選項）、設定視窗（鍵盤與手把從把手進去）；Dock.register 失敗時
     --         多回第二個值（原因字串）；spec.drawIcon 多收第 5 個參數 alpha；直排／橫排超出螢幕時換行
-    API_REVISION = 27,
+    -- rev 28：TextField 的 opts.onTextChange（原生變更當下同步呼叫，可在裡面 setText 擋掉貼上；textFieldSync）、
+    --         NavList 被截字的列滑鼠停留時顯示全名（navListTip）、Tabs 逐項提示 items[i].tooltip／setItemTooltip
+    --         （停用的項也顯示；tabsItemTooltip）；Icons 新增 undo
+    API_REVISION = 28,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -904,6 +909,9 @@ MinidoracatUI.v1 = {
         itemPickerMulti = false,  -- rev 25：ItemPicker 多選模式（Widgets/ItemPicker.lua，與 itemPicker 同檔）
         dialogModeless = false,   -- rev 26：Dialog.show 的 opts.modal／anchor（Widgets/Window.lua，與 dialog 同檔）
         dockPrefs = false,        -- rev 27：工具列的玩家設定：不透明度、入口顯示／隱藏（Widgets/Dock.lua，與 dock 同檔）
+        textFieldSync = false,    -- rev 28：TextField 的 opts.onTextChange 同步回呼（Widgets/Controls.lua）
+        navListTip = false,       -- rev 28：NavList 被截字的列顯示全名提示（Widgets/NavList.lua，與 navList 同檔）
+        tabsItemTooltip = false,  -- rev 28：Tabs 的 items[i].tooltip／setItemTooltip（Widgets/Controls.lua）
     },
     Theme = Theme,
     Skin = Skin,

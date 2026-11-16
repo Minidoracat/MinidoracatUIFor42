@@ -18,6 +18,8 @@
 --   Enter／小鍵盤 Enter／Space／手把 A：在列上＝選取，在開關上＝切換。focusRect() 回目前停點（焦點框只框它，
 --   ScrollPanel:scrollTo 也只捲到它），focusLabel() 只在名稱被截字時回全名；說明位置 `_focusCaptionSide="right"`。
 --   游標移動時請所有捲動容器祖先 scrollTo 自己（＝游標列）。
+-- rev 28（CAPABILITIES.navListTip）：滑鼠停在名稱被截字的列上（不在開關上）時，在列下方用原版提示框顯示全名
+--   （去掉頭尾空白）；標題列、沒被截的列不顯示。focusLabel() 的全名也改成去掉頭尾空白。consumer 不用改。
 -- prerender 零 table／closure 配置（截字只在寬度變時重算、回呼 pcall 傳參）。字串字面值只含 ASCII；本檔沒有自己的顯示文字。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
@@ -53,6 +55,35 @@ end
 
 local function disabledColor(colors)
     return colors.textDisabled or colors.textFaint
+end
+
+-- rev 28：被截字的列的全名提示。同 Controls.lua 的 itemTip（Tabs 逐項提示）：借原版 ISButton:updateTooltip，
+-- nav.tooltip 只在呼叫期間設——留著的話 Focus 的 captionOf 會把滑鼠下那列的全名當成游標列的說明（Focus.lua）。
+-- 提示框放在列下方，放不下改放上方，左右夾在螢幕內（ISToolTip 自己不夾，ISToolTip.lua:67-79）。text＝nil 時收掉。
+local wrapOK, TextWrap = pcall(require, "MinidoracatUI/TextWrap")
+TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap.fixTooltip and TextWrap or nil
+local TIP_GAP = 8 -- 同原版 ISButton:updateTooltip 的 +8
+
+local function rowTip(nav, text, y0, y1)
+    if not (text or nav.tooltipUI) or not (ISButton and ISButton.updateTooltip) then
+        return
+    end
+    nav.tooltip = text
+    ISButton.updateTooltip(nav)
+    if TextWrap then TextWrap.fixTooltip(nav) end
+    nav.tooltip = nil
+    local tip = nav.tooltipUI
+    if text and tip and tip.height == 0 and tip.doLayout then
+        tip:doLayout() -- 剛建的 ISToolTip 寬高是 0，要到它自己的 prerender 才排版；先排好，第一幀就夾得對
+    end
+    if text and tip and tip:getIsVisible() then
+        local ay = nav:getAbsoluteY()
+        local y = ay + y1 + TIP_GAP
+        if y + tip.height > getCore():getScreenHeight() then
+            y = math.max(0, ay + y0 - TIP_GAP - tip.height)
+        end
+        tip:setDesiredPosition(math.max(0, math.min(getMouseX(), getCore():getScreenWidth() - tip.width)), y)
+    end
 end
 
 -- consumer 回呼：pcall 傳參（不建 closure）；出錯或不是布林回 fallback
@@ -254,6 +285,12 @@ function NavList:prerender()
             end
         end
     end
+    local tipRow = hovered and rows[hovered]
+    if tipRow and tipRow.cut and not overSwitch(self, tipRow, self:getMouseX()) then
+        rowTip(self, tipRow.tip, tipRow.y, tipRow.y + tipRow.h)
+    else
+        rowTip(self, nil)
+    end
 end
 
 function NavList:onMouseDown(x, y)
@@ -310,7 +347,8 @@ function NavList:setGroups(groups)
                             if type(sw) ~= "table" or type(sw.get) ~= "function" then
                                 sw = nil
                             end
-                            rows[#rows + 1] = { id = it.id, label = type(it.label) == "string" and it.label or tostring(it.id),
+                            local label = type(it.label) == "string" and it.label or tostring(it.id)
+                            rows[#rows + 1] = { id = it.id, label = label, tip = string.match(label, "^%s*(.-)%s*$"),
                                 icon = it.icon, switch = sw, enabledFn = it.enabled, y = y, h = rowH }
                             y = y + rowH
                         end
@@ -436,7 +474,7 @@ function NavList:focusLabel()
         return nil
     end
     refit(self, row)
-    return row.cut and row.label or nil
+    return row.cut and row.tip or nil -- rev 28：去頭尾空白（consumer 用前置空白當縮排），同滑鼠提示的全名
 end
 
 function NavList.new(opts)
@@ -467,5 +505,6 @@ end
 
 UI.NavList = NavList
 UI.CAPABILITIES.navList = true
+UI.CAPABILITIES.navListTip = ISButton ~= nil and ISButton.updateTooltip ~= nil
 
 return NavList

@@ -3,7 +3,8 @@
 -- ColorPicker 的 R/G/B 改用 Slider；rev 12 停用標籤改 textDisabled、Tabs 可停用（CAPABILITIES.tabsEnabled）；
 -- rev 16 TextField 錯誤狀態 setInvalid／isInvalid（CAPABILITIES.textFieldInvalid）；rev 17 Checkbox／Slider 的
 -- tooltip（CAPABILITIES.controlTooltips）、SliderRow 標籤＋滑桿＋數值列（CAPABILITIES.sliderRow）與 Button 的
--- Texture 圖示染色 iconColor／setIconColor（CAPABILITIES.buttonIconColor）。
+-- Texture 圖示染色 iconColor／setIconColor（CAPABILITIES.buttonIconColor）；rev 28 TextField 同步的 onTextChange
+-- （CAPABILITIES.textFieldSync）與 Tabs 逐項提示 items[i].tooltip／setItemTooltip（CAPABILITIES.tabsItemTooltip）。
 --
 -- 外觀全由框架自繪（theme token＋Skin 圓角，貼圖缺失退直角），原生 class 只當輸入／事件基底：
 --   * Button 以 ISButton 為基底：保留原生 pressed／enable／onclick(target, button)／tooltip／
@@ -110,6 +111,37 @@ local function updateTooltip(el)
         ISButton.updateTooltip(el)
         if TextWrap then TextWrap.fixTooltip(el) end
     end
+end
+
+-- rev 28：元件裡某一項的提示（Tabs 逐項提示；NavList.lua 有同一份）。同 updateTooltip 借原版 ISButton:updateTooltip，
+-- 但 el.tooltip 只在呼叫期間設：留著的話 Focus 的 captionOf 會把滑鼠下那項的提示當成鍵盤焦點的說明（Focus.lua）。
+-- 提示框放在那一項（元素座標 y0..y1）下方，放不下改放上方，左右夾在螢幕內（ISToolTip 自己不夾，ISToolTip.lua:67-79）；
+-- 框的寬高取上一幀排版的結果。text＝nil 時收掉。
+local TIP_GAP = 8 -- 同原版 ISButton:updateTooltip 的 +8
+local function itemTip(el, text, y0, y1)
+    if not (text or el.tooltipUI) then
+        return
+    end
+    el.tooltip = text
+    ISButton.updateTooltip(el)
+    if TextWrap then TextWrap.fixTooltip(el) end
+    el.tooltip = nil
+    local tip = el.tooltipUI
+    if text and tip and tip.height == 0 and tip.doLayout then
+        tip:doLayout() -- 剛建的 ISToolTip 寬高是 0，要到它自己的 prerender 才排版；先排好，第一幀就夾得對
+    end
+    if text and tip and tip:getIsVisible() then
+        local ay = el:getAbsoluteY()
+        local y = ay + y1 + TIP_GAP
+        if y + tip.height > getCore():getScreenHeight() then
+            y = math.max(0, ay + y0 - TIP_GAP - tip.height)
+        end
+        tip:setDesiredPosition(math.max(0, math.min(getMouseX(), getCore():getScreenWidth() - tip.width)), y)
+    end
+end
+
+local function tipText(s)
+    return type(s) == "string" and s ~= "" and s or nil
 end
 
 -- ============================================================
@@ -526,6 +558,25 @@ function TextField:setText(text)
     self._lastText = text
 end
 
+-- rev 28 textFieldSync：原生框內容一變就由 UITextBox2.onTextChange 同步叫到這裡（ISTextEntryBox.lua:19-23 轉給
+-- onTextChangeFunction(target, entry)，target＝本元件）。會觸發的原生路徑：打字（putCharacter）、Backspace／Delete、
+-- 刪掉選取、貼上、清除鈕（clearInput）（UITextBox2.java:826,1198,1215,1230,1255,1306,1318），手把螢幕鍵盤按確認一次
+-- （ISOnScreenKeyboard.lua:444-449）；剪下（cutToClipboard 不叫，:1260-1273）、IME 組字送出、setText，以及 maxLength
+-- 截字與強制大寫（update() 才改字，:398-405，所以回呼拿到的字可能超過 maxLength）不觸發——這些照舊由 onChange 涵蓋。
+-- consumer 在回呼裡 setText 不再觸發回呼、也同步了 onChange 的比對基準；回呼執行中再被觸發不重入。
+-- consumer 的錯誤只由這裡的 pcall 接住（Kahlua 已在內層記過一次堆疊），不再丟：引擎本來就丟掉回傳（UITextBox2.java:847-851），
+-- 再丟只會讓 console 多一組指向框架的堆疊。
+local function entryTextChanged(field, entry)
+    local fn = field.onTextChange
+    if not fn or field._inTextChange then
+        return
+    end
+    local text = entry:getInternalText() or ""
+    field._inTextChange = true
+    pcall(fn, field, text)
+    field._inTextChange = false
+end
+
 -- 外框改尺寸時內層 entry 一起重排（原版 setWidth／setHeight 只動外框）
 function TextField:setWidth(width)
     ISPanel.setWidth(self, width)
@@ -574,8 +625,9 @@ function TextField:setTooltip(text)
 end
 
 -- opts: x, y, width, height?, text?, placeholder?, theme?, font?, onlyNumbers?, maxLength?, clearButton?,
--- onChange?。onChange(field, text)。clearButton＝原生輸入框右側的清除鈕（ISTextEntryBox.lua:101-103
--- → UITextBox2.setClearButton:918）
+-- onChange?, onTextChange?（rev 28）。onChange(field, text)：每幀比對，涵蓋 setText 以外的所有變更（含 IME、剪下）。
+-- onTextChange(field, text)：原生變更當下同步呼叫（見 entryTextChanged），可在裡面 setText 擋掉這次輸入。
+-- clearButton＝原生輸入框右側的清除鈕（ISTextEntryBox.lua:101-103 → UITextBox2.setClearButton:918）
 function TextField.new(opts)
     opts = opts or {}
     local font = opts.font or (opts.theme and opts.theme.font) or UIFont.Small
@@ -609,6 +661,11 @@ function TextField.new(opts)
     end
     if opts.clearButton then
         entry:setClearButton(true)
+    end
+    if opts.onTextChange then
+        o.onTextChange = opts.onTextChange
+        entry.target = o
+        entry.onTextChangeFunction = entryTextChanged
     end
     o._entry = entry
     o._lastText = entry:getInternalText() or text
@@ -800,7 +857,7 @@ local function itemAt(tabs, x)
 end
 
 -- 停用（整列 setEnabled(false) 或單項 setItemEnabled）：標籤 textDisabled、不 hover、點不動；整列停用時
--- chrome 另乘 DISABLED_ALPHA。選中項仍畫底與底線（停用不改選取）
+-- chrome 另乘 DISABLED_ALPHA。選中項仍畫底與底線（停用不改選取）。rev 28：滑鼠下那項有 tooltip 就顯示，停用的項也顯示
 function Tabs:prerender()
     if self.isCollapsed then
         return
@@ -813,7 +870,8 @@ function Tabs:prerender()
     Skin.fill(self, 0, 0, self.width, h, colors.well, shape, ca)
     Skin.border(self, 0, 0, self.width, h, colors.border, shape, ca)
 
-    local hovered = enabled and self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
+    local over = self:isMouseOver() and itemAt(self, self:getMouseX()) or nil
+    local hovered = enabled and over or nil
     local textY = math.floor((h - self._fontH) / 2)
     local items = self._items
     for i = 1, #items do
@@ -837,6 +895,7 @@ function Tabs:prerender()
                 textY, textColor, 1, self.font)
         end
     end
+    itemTip(self, over and over.tooltip, 0, h)
 end
 
 function Tabs:onMouseDown(x, y)
@@ -932,7 +991,15 @@ function Tabs:isItemEnabled(id)
     return item ~= nil and item.enabled
 end
 
--- opts: x, y, width?, height?, items={ {id=, label=}, ... }, selected?, theme?, font?, target?, onSelect?
+-- rev 28 tabsItemTooltip：單項提示（nil 或空字串＝拿掉），滑鼠停在那一項時顯示，停用的項也顯示（例如說明為什麼按不了）
+function Tabs:setItemTooltip(id, text)
+    local item = findItem(self, id)
+    if item then
+        item.tooltip = tipText(text)
+    end
+end
+
+-- opts: x, y, width?, height?, items={ {id=, label=, tooltip?（rev 28）}, ... }, selected?, theme?, font?, target?, onSelect?
 -- onSelect(target, id, tabs)；點已選中的不觸發
 function Tabs.new(opts)
     opts = opts or {}
@@ -951,7 +1018,7 @@ function Tabs.new(opts)
     for i = 1, #source do
         local label = source[i].label or ""
         o._items[i] = { id = source[i].id, label = label, labelWidth = measure(font, label),
-            visible = true, enabled = true, x = 0, width = 0 }
+            visible = true, enabled = true, x = 0, width = 0, tooltip = tipText(source[i].tooltip) }
     end
     o.selected = opts.selected
     o._enabled = true
@@ -1661,5 +1728,7 @@ UI.CAPABILITIES.textFieldInvalid = true
 UI.CAPABILITIES.sliderRow = true
 UI.CAPABILITIES.controlTooltips = true
 UI.CAPABILITIES.buttonIconColor = true
+UI.CAPABILITIES.textFieldSync = true
+UI.CAPABILITIES.tabsItemTooltip = true
 
 return Button

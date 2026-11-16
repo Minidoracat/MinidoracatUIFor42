@@ -12,6 +12,17 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **側欄名稱太長被截掉時，滑鼠停上去看得到全名**：用這個函式庫做的分類側欄（例如設定視窗左邊那一欄），名稱放不下會截成「...」；現在滑鼠停在那一列上，會跳出完整名稱。名稱沒被截的列不會跳。用鍵盤或手把移到那一列時顯示的全名，也不再帶著名稱前面的空白。
+- **分頁也能有說明，按不了的分頁也看得到**：使用這個函式庫的 MOD 可以替每個分頁加一段說明，例如「要先蓋好工作台」。滑鼠停在分頁上就會顯示，暫時按不了的分頁也一樣。
+- **輸入框可以在貼上的當下就擋掉內容**：例如太長的貼上會被立刻清掉，不會留在框裡被再次複製出去。
+- 新增「復原」圖示，供使用這個函式庫的 MOD 使用。
+
+> 技術要點：`API_REVISION` 28，新旗標 `textFieldSync`、`navListTip`、`tabsItemTooltip`。`UI.TextField.new` 的 `opts.onTextChange(field, text)`（建構時給）：原生框內容一變就同步呼叫（打字、Backspace／Delete、貼上、清除鈕、手把螢幕鍵盤確認；剪下、IME 組字送出、`setText`、`maxLength` 截字不觸發，照舊由 `onChange` 涵蓋，所以 `text` 可能比 `maxLength` 長），在回呼裡 `setText` 不再觸發、也不會讓下一幀的 `onChange` 補報；回呼出錯由框架接住、不再往上丟。Tabs 的 `items[i].tooltip` 與 `setItemTooltip(id, text)`（nil 或空字串＝拿掉）。NavList 截字列的全名提示不必改程式；`focusLabel()` 改回去頭尾空白的名稱。Icons 新增 `undo`。既有 consumer 不必改。
+
 ## [42.22.2-0.19.0] - 2026-11-13
 
 ### 新增

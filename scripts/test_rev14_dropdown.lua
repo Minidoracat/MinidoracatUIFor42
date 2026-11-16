@@ -364,15 +364,23 @@ local realCore, realTM = getCore, getTextManager
 local core, tm = realCore(), realTM()
 getCore = function() return core end
 getTextManager = function() return tm end
-sd:prerender() -- 第一幀截字（只在標籤或寬度變時）
-collectgarbage("collect")
-collectgarbage("stop")
-local before = collectgarbage("count")
-for _ = 1, 50 do
+local function frame()
     sd:prerender()
     sd:render()
     p:prerender()
     p:render()
+end
+sd:prerender() -- 第一幀截字（只在標籤或寬度變時）
+collectgarbage("collect")
+collectgarbage("stop")
+-- 同一個迴圈裡先跑一輪再開始量：collect 會縮掉 Lua 的堆疊，第一輪把它長回來（一次性、不是每幀配置；
+-- 迴圈外暖身吸收不掉——迴圈本身多佔幾個暫存器，進 frame() 時的堆疊較深。2026-11-16 rev 28 量到 3,264 bytes）
+local before
+for i = 1, 51 do
+    if i == 2 then
+        before = collectgarbage("count")
+    end
+    frame()
 end
 local grew = collectgarbage("count") - before
 collectgarbage("restart")
