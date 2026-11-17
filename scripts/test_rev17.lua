@@ -288,15 +288,7 @@ local function navRound()
     nav:refresh()
     nav:prerender()
 end
-collectgarbage("collect")
-collectgarbage("stop")
--- 暖身 10 輪再量："bad" 列的開關 get 每次 refresh 都在 pcall 裡出錯，PUC Lua 出錯回復會縮呼叫堆疊、之後再長大，
--- 前幾輪多出的 1.6–5 KB（9950X3D；VM 上沒有，GC 停著也會變少）是 VM 自己的堆疊、不是元件配置（推測），Kahlua 不這樣縮
-for _ = 1, 10 do navRound() end
-local kb = collectgarbage("count")
-for _ = 1, 50 do navRound() end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+local grew = ctx.allocGrowth(navRound)
 getTextManager = keepTM
 nav.drawRect, nav.drawRectBorder, nav.drawText, nav.drawTextureScaled = nil, nil, nil, nil
 nav.drawTextureScaledAspect = nil
@@ -484,13 +476,7 @@ tb:setIconColor(tint)
 tb.drawTextureScaled, tb.drawRect, tb.drawRectBorder, tb.drawText = noop, noop, noop, noop
 tb.drawTextureScaledAspect = noop
 getTextManager = function() return tm end
-collectgarbage("collect")
-collectgarbage("stop")
-tb:prerender()
-kb = collectgarbage("count")
-for _ = 1, 50 do tb:prerender() end
-grew = collectgarbage("count") - kb
-collectgarbage("restart")
+grew = ctx.allocGrowth(function() tb:prerender() end)
 getTextManager = keepTM
 check(grew == 0, "Button 染色 Texture 圖示 prerender 50 輪不配置記憶體")
 
@@ -579,13 +565,7 @@ row:setCap(function() return capV end)
 row:setTooltip("Row tip")
 row.drawText = noop
 getTextManager = function() return tm end
-collectgarbage("collect")
-collectgarbage("stop")
-row:prerender()
-kb = collectgarbage("count")
-for _ = 1, 50 do row:prerender() end
-grew = collectgarbage("count") - kb
-collectgarbage("restart")
+grew = ctx.allocGrowth(function() row:prerender() end)
 getTextManager = keepTM
 row.drawText = nil
 check(grew == 0, "SliderRow prerender（上限函式、tooltip）50 輪不配置記憶體")
@@ -642,13 +622,7 @@ pv.drawRect, pv.drawRectBorder, pv.drawText = noop, noop, noop
 local quiet = function(self, x, y) self:drawRect(x, y, 1, 1, 1, 1, 1, 1) end
 pv:setDraw(quiet)
 getTextManager = function() return tm end
-collectgarbage("collect")
-collectgarbage("stop")
-pv:prerender()
-kb = collectgarbage("count")
-for _ = 1, 50 do pv:prerender() end
-grew = collectgarbage("count") - kb
-collectgarbage("restart")
+grew = ctx.allocGrowth(function() pv:prerender() end)
 getTextManager = keepTM
 check(grew == 0, "Preview prerender（draw、stencil、caption）50 輪不配置記憶體")
 

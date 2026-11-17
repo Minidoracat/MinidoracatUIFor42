@@ -386,16 +386,10 @@ local noop = function() end
 p.drawRect, p.drawRectBorder, p.drawText, p.drawTextCentre = noop, noop, noop, noop
 ctx.advance(1000)
 p:prerender()
-collectgarbage("collect")
-collectgarbage("stop")
-p:prerender()
-local kb = collectgarbage("count")
-for _ = 1, 50 do
+local grew = ctx.allocGrowth(function()
     p:prerender()
     p:render()
-end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+end)
 p.drawRect, p.drawRectBorder, p.drawText, p.drawTextCentre = nil, nil, nil, nil
 h._mouseOver = false
 check(grew == 0, "方格、提示框顯示中：面板 prerender＋render 50 幀不配置記憶體")

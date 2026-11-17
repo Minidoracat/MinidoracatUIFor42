@@ -235,21 +235,12 @@ nav:prerender()
 tabs._mouseOver = true
 ctx.setMouse(110, 110)
 tabs:prerender()
-collectgarbage("collect")
-collectgarbage("stop")
--- 同一個迴圈裡先跑一輪再量：collect 會縮掉 Lua 的堆疊，第一輪會長回來（一次性；同 test_rev14_dropdown.lua）
-local kb
-for i = 1, 51 do
-    if i == 2 then
-        kb = collectgarbage("count")
-    end
+local grew = ctx.allocGrowth(function()
     ctx.setMouse(50, 50)
     nav:prerender()
     ctx.setMouse(110, 110)
     tabs:prerender()
-end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+end)
 getTextManager, getCore = keepTM, keepCore
 check(grew == 0, "NavList／Tabs 提示顯示中 prerender 50 輪不配置記憶體")
 

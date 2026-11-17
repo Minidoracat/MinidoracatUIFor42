@@ -198,13 +198,7 @@ solid.drawRect, solid.drawRectBorder, solid.drawText = noop, noop, noop
 local keepCore = getCore -- stub 每次回新表：量測期間固定成同一張
 local core = keepCore()
 getCore = function() return core end
-collectgarbage("collect")
-collectgarbage("stop")
-solid:prerender()
-local kb = collectgarbage("count")
-for _ = 1, 50 do solid:prerender() end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+local grew = ctx.allocGrowth(function() solid:prerender() end)
 getCore = keepCore
 solid.drawRect, solid.drawRectBorder, solid.drawText = nil, nil, nil
 check(grew == 0, "opaque 視窗 prerender 50 輪不配置記憶體")
@@ -330,13 +324,7 @@ check(nearly(recolored.r, 0.2) and nearly(recolored.g, 0.3) and nearly(recolored
 local function noAlloc(panel)
     local noop2 = function() end
     panel.drawRect, panel.drawRectBorder, panel.drawText = noop2, noop2, noop2
-    collectgarbage("collect")
-    collectgarbage("stop")
-    panel:prerender()
-    local before = collectgarbage("count")
-    for _ = 1, 50 do panel:prerender() end
-    local grown = collectgarbage("count") - before
-    collectgarbage("restart")
+    local grown = ctx.allocGrowth(function() panel:prerender() end)
     panel.drawRect, panel.drawRectBorder, panel.drawText = nil, nil, nil
     return grown
 end

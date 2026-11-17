@@ -368,13 +368,7 @@ local function round()
     zg:focusRect()
     zg:focusLabel()
 end
-collectgarbage("collect")
-collectgarbage("stop")
-round()
-local kb = collectgarbage("count")
-for _ = 1, 50 do round() end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+local grew = ctx.allocGrowth(round)
 check(grew == 0, "prerender＋render（捲軸、hover、提示、drawTile）＋focusRect／focusLabel 50 輪不配置記憶體")
 
 return n

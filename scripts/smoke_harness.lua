@@ -2127,6 +2127,23 @@ end
   切片缺的全域（getTextOrNull、ScriptManager、ISScrollingListBox…）自己在檔內補；暫時換掉的既有全域
   （例如 getTextManager）用完還原。
 ]]
+-- 零配置量測：collect、停 GC，在同一個迴圈裡先跑一輪再量 rounds 輪，回多出的 KB（0＝不配置）。
+-- collect 會縮掉 Lua 的堆疊，第一輪把它長回來；迴圈外暖身吸收不掉（迴圈多佔暫存器，進 fn 時堆疊較深）。
+-- 原因與實例見 ui-dev 知識庫 widgets.md「零配置量測」
+local function allocGrowth(fn, rounds)
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local before
+    for i = 0, rounds or 50 do
+        if i == 1 then
+            before = collectgarbage("count")
+        end
+        fn()
+    end
+    local grew = collectgarbage("count") - before
+    collectgarbage("restart")
+    return grew
+end
 local sliceCtx = {
     check = check, nearly = nearly, UI = UI, MOD_LUA = MOD_LUA, TARGET = TARGET,
     now = function() return nowMs end,
@@ -2136,6 +2153,7 @@ local sliceCtx = {
     held = held, joy = joy, eatKey = eatKey, press = press, nextFrame = nextFrame,
     newElement = newElement,
     clipboard = function() return clip end,
+    allocGrowth = allocGrowth,
 }
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",

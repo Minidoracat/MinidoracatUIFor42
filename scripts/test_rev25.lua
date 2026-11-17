@@ -234,13 +234,7 @@ local function round()
     zp:prerender()
     for i = 1, #cells do cells[i]:render() end
 end
-collectgarbage("collect")
-collectgarbage("stop")
-round()
-local kb = collectgarbage("count")
-for _ = 1, 50 do round() end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+local grew = ctx.allocGrowth(round)
 check(grew == 0, "多選 prerender＋列 render（勾選框、警示色計數）50 輪不配置記憶體")
 zp:dispose()
 

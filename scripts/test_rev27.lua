@@ -527,18 +527,12 @@ ctx.advance(1000)
 p:prerender()
 body:prerender()
 icons:prerender()
-collectgarbage("collect")
-collectgarbage("stop")
-p:prerender()
-local kb = collectgarbage("count")
-for _ = 1, 50 do
+local grew = ctx.allocGrowth(function()
     p:prerender()
     p:render()
     body:prerender()
     icons:prerender()
-end
-local grew = collectgarbage("count") - kb
-collectgarbage("restart")
+end)
 for _, el in ipairs({ p, body, icons }) do el.drawRect, el.drawRectBorder, el.drawText, el.drawTextCentre = nil, nil, nil, nil end
 check(grew == 0, "半透明、有入口被藏起、設定視窗開著：面板與視窗內容 50 幀不配置記憶體")
 

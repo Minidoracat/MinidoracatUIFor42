@@ -280,15 +280,7 @@ local function round()
     tf:prerender()
     wrap("cached text", 40)
 end
-collectgarbage("collect")
-collectgarbage("stop")
-round() -- collect 會收掉 Lua 的 CallInfo 快取：先走一輪，量的是每輪的配置而不是呼叫堆疊重長
-local before = collectgarbage("count")
-for _ = 1, 50 do
-    round()
-end
-local grew = collectgarbage("count") - before
-collectgarbage("restart")
+local grew = ctx.allocGrowth(round)
 getTextManager = keepTM
 panel.drawRect, panel.drawRectBorder = nil, nil
 tf.drawRect, tf.drawRectBorder, tf.drawText = nil, nil, nil

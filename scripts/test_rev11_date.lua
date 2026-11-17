@@ -271,15 +271,10 @@ local realCore, realTM = getCore, getTextManager
 local core, tm = realCore(), realTM()
 getCore = function() return core end
 getTextManager = function() return tm end
-collectgarbage("collect")
-collectgarbage("stop")
-local before = collectgarbage("count")
-for _ = 1, 50 do
+local grew = ctx.allocGrowth(function()
     p:prerender()
     p:render()
-end
-local grew = collectgarbage("count") - before
-collectgarbage("restart")
+end)
 getCore, getTextManager = realCore, realTM
 p.drawRect, p.drawRectBorder, p.drawText, p.drawTextCentre = nil, nil, nil, nil
 check(grew == 0 and p.stops == stops, "popup 的 prerender＋render（含 chip 焦點框與說明）不配置記憶體")
