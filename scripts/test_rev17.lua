@@ -290,10 +290,9 @@ local function navRound()
 end
 collectgarbage("collect")
 collectgarbage("stop")
--- 暖身兩輪：collect 會縮 Lua 呼叫堆疊，hover 列第一次走到 Skin.fill 時堆疊長大一次（9950X3D 上 3392 bytes，
--- VM 上沒有）；那是 VM 的堆疊、不是元件配置，Kahlua 的堆疊預先配好。之後 50 輪才是每幀的穩態
-navRound()
-navRound()
+-- 暖身 10 輪再量："bad" 列的開關 get 每次 refresh 都在 pcall 裡出錯，PUC Lua 出錯回復會縮呼叫堆疊、之後再長大，
+-- 前幾輪多出的 1.6–5 KB（9950X3D；VM 上沒有，GC 停著也會變少）是 VM 自己的堆疊、不是元件配置（推測），Kahlua 不這樣縮
+for _ = 1, 10 do navRound() end
 local kb = collectgarbage("count")
 for _ = 1, 50 do navRound() end
 local grew = collectgarbage("count") - kb
