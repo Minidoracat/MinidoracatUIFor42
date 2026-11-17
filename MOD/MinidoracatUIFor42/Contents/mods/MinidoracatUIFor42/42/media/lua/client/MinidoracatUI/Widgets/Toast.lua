@@ -21,6 +21,10 @@
 -- 排不進佇列被丟掉的也記；紀錄視窗在 ToastHistory.lua（CAPABILITIES.toastHistory）。
 -- 【停留（rev 21）】預設 5 秒；停留階段游標在框內時暫停計時（每幀比 getMouseX/Y，不收滑鼠事件）。
 --
+-- 【寬度（rev 29，CAPABILITIES.toastFontWidth）】跟 NewSmall 字高放大：字高 <= BASE_FONT_H（原版字型大小 1）是 WIDTH，
+-- 再大就照字高比例放寬、多乘 WIDTH_SLACK（各字級字寬不完全跟字高成比例），夾在螢幕寬減兩側邊距以內、不比 WIDTH 窄。
+-- 同一段字在大字級排出的行數不比字型大小 1 多；畫面窄到夾住時照樣截字（完整內容在紀錄）。自動欄右緣不變、往左長。
+--
 -- 動畫座標是小數：Skin 內部會 floor 絕對座標再交給 NinePatchTexture（防抖）。
 
 if not (MinidoracatUI and MinidoracatUI.v1) then
@@ -39,7 +43,9 @@ TextWrap = wrapOK and type(TextWrap) == "table" and TextWrap or nil
 
 local Toast = ISPanel:derive("MinidoracatUIToast")
 
-local WIDTH = 300
+local WIDTH = 300 -- 字高 <= BASE_FONT_H 時的寬（rev 28 以前固定這個寬）
+local BASE_FONT_H = 16 -- 原版字型大小 1 的 NewSmall 字高
+local WIDTH_SLACK = 1.06 -- 同一段字的寬比字高比最多多 4.6%（KO 字型大小 2；12 語真實譯文離線量），留一點餘量
 local HEIGHT = 56
 local BOTTOM_PAD = 6 -- 有標題時最後一行的框到框底至少留這麼多（大字級才用到，見 _create）
 local SCREEN_MARGIN = 16
@@ -75,8 +81,16 @@ Toast.avoid = Toast.avoid or {}
 Toast.history = Toast.history or {}
 Toast.historyCount = Toast.historyCount or 0
 Toast.MAX_HISTORY = MAX_HISTORY
--- rev 21 唯讀常數：移動模式的範例框照一則單行通知畫（ToastHistory.lua）
+-- rev 21 唯讀常數：WIDTH 是字高 <= 16 時的寬（rev 29 起實際寬看 Toast.currentWidth()），HEIGHT 是一則單行通知在預設字級的高
 Toast.WIDTH, Toast.HEIGHT, Toast.STACK_GAP, Toast.MAX_VISIBLE = WIDTH, HEIGHT, STACK_GAP, MAX_VISIBLE
+
+-- rev 29：目前字型下一則通知的寬（見檔頭「寬度」）。每則建立時算一次；換字型大小時原版會重載 Lua。
+function Toast.currentWidth()
+    local fh = getTextManager():getFontHeight(UIFont.NewSmall)
+    if fh <= BASE_FONT_H then return WIDTH end
+    local w = math.floor((WIDTH - 16) * fh / BASE_FONT_H * WIDTH_SLACK) + 16
+    return math.max(WIDTH, math.min(w, getCore():getScreenWidth() - 2 * SCREEN_MARGIN))
+end
 
 local function isHighSurrogate(unit)
     return unit ~= nil and unit >= 55296 and unit <= 56319
@@ -301,7 +315,7 @@ function Toast.stackOrigin(width)
         return a.x, a.y, a.up
     end
     local screenH = getCore():getScreenHeight()
-    local x = columnRight() - width
+    local x = math.max(SCREEN_MARGIN, columnRight() - width) -- 窄畫面＋大字級：左緣不出畫面（寬已夾在螢幕寬內）
     local top = stackTop(x, x + width)
     local clock = UIManager and UIManager.getClock and UIManager.getClock()
     if not (clock and clock:isVisible() and UIManager.getUI():contains(clock)) then
@@ -319,11 +333,11 @@ end
 
 -- ===== rev 21：玩家放的位置（移動模式在 ToastHistory.lua）=====
 
--- 夾回螢幕內（第一則整個看得到）；中心在下半部就往上疊。只在設定或讀回時配置一次。
+-- 夾回螢幕內（第一則整個看得到，寬照目前字型）；中心在下半部就往上疊。只在設定或讀回時配置一次。
 local function clampAnchor(x, y)
     local core = getCore()
     local sw, sh = core:getScreenWidth(), core:getScreenHeight()
-    x = math.max(0, math.min(math.floor(x), sw - WIDTH))
+    x = math.max(0, math.min(math.floor(x), sw - Toast.currentWidth()))
     y = math.max(0, math.min(math.floor(y), sh - HEIGHT))
     return { x = x, y = y, up = y + HEIGHT / 2 > sh / 2 }
 end
@@ -353,15 +367,24 @@ end
 -- 呼叫（ISLayoutManager.lua:6-13,99-113）；layout.ini 依解析度分段，讀回的值是字串。
 local AnchorLayout = {}
 
+-- rev 29 多存 w（存檔當下的通知寬）：讀回時寬度變了，放在右半部的位置保住右緣（往左長），不往右長蓋到 moodle 與 Dock。
+-- 沒有 w 的舊存檔當成 WIDTH（rev 28 以前固定的寬）。
 function AnchorLayout.SaveLayout(target, name, layout)
     local a = Toast.anchor
     layout.x = a and a.x or nil -- 自動位置：這一行只剩名字
     layout.y = a and a.y or nil
+    layout.w = a and Toast.currentWidth() or nil
 end
 
 function AnchorLayout.RestoreLayout(target, name, layout)
     local x, y = tonumber(layout.x), tonumber(layout.y)
-    Toast.anchor = (x and y) and clampAnchor(x, y) or nil
+    if x and y then
+        local was = tonumber(layout.w) or WIDTH
+        if x + was / 2 > getCore():getScreenWidth() / 2 then x = x + was - Toast.currentWidth() end
+        Toast.anchor = clampAnchor(x, y)
+    else
+        Toast.anchor = nil
+    end
 end
 
 local function registerLayout()
@@ -458,11 +481,12 @@ function Toast:onRightMouseDown() return false end
 function Toast:onRightMouseUp() return false end
 
 function Toast._create(entry)
-    local x = getCore():getScreenWidth() + WIDTH
+    local width = Toast.currentWidth()
+    local x = getCore():getScreenWidth() + width
     local fontHeight = getTextManager():getFontHeight(UIFont.NewSmall)
-    local lines = wrapText(entry.message, WIDTH - 16, entry.maxLines)
+    local lines = wrapText(entry.message, width - 16, entry.maxLines)
     -- 標題與訊息同一套斷行（斷行模組缺席時一樣退回單行截字），多出的標題行算進高度
-    local titleLines = entry.title ~= nil and wrapText(tostring(entry.title), WIDTH - 16, TITLE_LINES) or nil
+    local titleLines = entry.title ~= nil and wrapText(tostring(entry.title), width - 16, TITLE_LINES) or nil
     -- 有標題：標題從 7 起、訊息再空 3、最後一行下面至少 BOTTOM_PAD。字高 <= 20（原版字級 1、2 與 CatLang 的
     -- 拉丁字型）時舊公式（HEIGHT＋多出的行）比較高，照舊、外觀不變；它只留了 2 行 16px 的空間，字級 3（26px）
     -- 以上最後一行會壓在下框上。沒標題的訊息置中，舊公式到字級 5（38px）都放得下。
@@ -471,7 +495,7 @@ function Toast._create(entry)
         local rows = #titleLines + #lines
         height = fontHeight * rows + math.max(HEIGHT - 2 * fontHeight, 10 + BOTTOM_PAD)
     end
-    local o = ISPanel.new(Toast, x, STACK_TOP, WIDTH, height)
+    local o = ISPanel.new(Toast, x, STACK_TOP, width, height)
     o.background = false
     o.alwaysOnTop = true
     o.wantMouseEvents = false
@@ -511,5 +535,6 @@ UI.Toast = Toast
 UI.CAPABILITIES.toast = true
 UI.CAPABILITIES.toastAvoid = true
 UI.CAPABILITIES.toastTitleWrap = true
+UI.CAPABILITIES.toastFontWidth = true
 
 return Toast

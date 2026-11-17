@@ -777,12 +777,15 @@ do
     -- （y＋字高）都要在框底上方，最後一行不壓下框；字高 ≤20（原版字級 1、2 與 CatLang 的拉丁字型）高度和以前一樣。
     local keepTM = getTextManager
     local words = "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii"
+    -- rev 29 起框寬跟字高放大（字高 38 時文字寬 714）：樣本要長到字級 5 也排滿行數，才量得到最高的框
+    local longer, wordsX6 = string.rep("A", 300), string.rep(words .. " ", 6)
     local shapes = {
-        { name = "標題＋單行", opts = { title = "T", message = "m" }, old16 = 56 },
-        { name = "標題＋三行", opts = { title = "T", message = long, maxLines = 3 }, old16 = 56 + 16 * 2 },
-        { name = "兩行標題＋兩行", opts = { title = words, message = words, maxLines = 2 }, old16 = 56 + 16 * 2 },
-        { name = "無標題單行", opts = { message = "m" }, old16 = 56 },
-        { name = "無標題三行", opts = { message = long, maxLines = 3 }, old16 = 56 + 16 * 2 },
+        { name = "標題＋單行", opts = { title = "T", message = "m" }, old16 = 56, rows = { 1, 1 } },
+        { name = "標題＋三行", opts = { title = "T", message = longer, maxLines = 3 }, old16 = 56 + 16 * 2, rows = { 1, 3 } },
+        { name = "兩行標題＋兩行", opts = { title = wordsX6, message = wordsX6, maxLines = 2 }, old16 = 56 + 16 * 2,
+            rows = { 2, 2 } },
+        { name = "無標題單行", opts = { message = "m" }, old16 = 56, rows = { 0, 1 } },
+        { name = "無標題三行", opts = { message = longer, maxLines = 3 }, old16 = 56 + 16 * 2, rows = { 0, 3 } },
     }
     local function measure(fh, opts)
         getTextManager = function()
@@ -802,7 +805,8 @@ do
     for _, fh in ipairs({ 16, 20, 25, 26, 33, 38 }) do
         for _, s in ipairs(shapes) do
             local t, gap = measure(fh, s.opts)
-            check(gap >= 4, ("字高 %d %s：最後一行的框在框底上方（剩 %s px）"):format(fh, s.name, gap))
+            check(gap >= 4 and #(t.titleLines or {}) == s.rows[1] and #t.lines == s.rows[2],
+                ("字高 %d %s：排滿 %d＋%d 行，最後一行的框在框底上方（剩 %s px）"):format(fh, s.name, s.rows[1], s.rows[2], gap))
             if fh == 16 then
                 check(t.height == s.old16, ("字高 16 %s：高度和以前一樣（%s）"):format(s.name, t.height))
             end
@@ -1081,7 +1085,7 @@ function ISTextEntryBox:setClearButton(b) self._clearButton = b end
 print("情境九：rev 7 載入自檢（facade 缺席／原生基底缺席／缺 Controls 時旗標維持 false）")
 -- ============================================================
 do
-    check(UI.API_REVISION == 28, "API_REVISION 進到 28")
+    check(UI.API_REVISION == 29, "API_REVISION 進到 29")
     check(UI.CAPABILITIES.controls == false and UI.CAPABILITIES.window == false
         and UI.CAPABILITIES.dialog == false and UI.CAPABILITIES.colorPicker == false
         and UI.CAPABILITIES.slider == false and UI.CAPABILITIES.focus == false
@@ -2088,8 +2092,8 @@ end
   scripts/test_wrap.lua、scripts/test_rev13_dock.lua、scripts/test_rev14.lua、scripts/test_rev14_dropdown.lua、
   scripts/test_rev15.lua、scripts/test_rev16.lua、scripts/test_rev17.lua、scripts/test_rev18.lua、scripts/test_rev19.lua、
   scripts/test_rev20.lua、scripts/test_rev21.lua、scripts/test_rev21_dock.lua、scripts/test_rev22.lua、scripts/test_rev23.lua、
-  scripts/test_rev24.lua、scripts/test_rev25.lua、scripts/test_rev26.lua、scripts/test_rev27.lua、scripts/test_rev28.lua
-  與 scripts/test_tooltip.lua；檔案不存在記一筆失敗（各切片都已落地）。
+  scripts/test_rev24.lua、scripts/test_rev25.lua、scripts/test_rev26.lua、scripts/test_rev27.lua、scripts/test_rev28.lua、
+  scripts/test_rev29.lua 與 scripts/test_tooltip.lua；檔案不存在記一筆失敗（各切片都已落地）。
   檔案寫法：
       local ctx = ...
       local check, UI = ctx.check, ctx.UI
@@ -2136,7 +2140,7 @@ local sliceCtx = {
 local sliceAssertions = 0
 for _, slice in ipairs({ "rev11_date", "rev11_table", "rev11_filter", "rev11_itempicker", "rev11_autocomplete", "rev12", "wrap",
     "rev13_dock", "rev14", "rev14_dropdown", "rev15", "rev16", "rev17", "rev18", "rev19", "rev20", "rev21", "rev21_dock",
-    "rev22", "rev23", "rev24", "rev25", "rev26", "rev27", "rev28", "tooltip" }) do
+    "rev22", "rev23", "rev24", "rev25", "rev26", "rev27", "rev28", "rev29", "tooltip" }) do
     local path = "scripts/test_" .. slice .. ".lua"
     local fh = io.open(path, "rb")
     if not fh then

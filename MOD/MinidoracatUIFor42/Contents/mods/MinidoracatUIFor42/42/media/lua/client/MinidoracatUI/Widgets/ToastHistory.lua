@@ -4,7 +4,7 @@
 --   * 紀錄視窗：UI.Window＋UI.ScrollPanel，最新的在最上面。每列：左側色條（通知的 border 色）、來源（title）
 --     與相對時間一行，下面是完整訊息（UI.Text.wrap 換行、不截字）。開著時每幀只比 Toast.historyCount 與清單寬，
 --     變了才重排（列物件重用，不每次新建）。相對時間每分鐘重算一次字串。
---   * 移動模式（Placer）：全螢幕半透明底＋可拖的範例框（一則單行通知的大小）＋「完成／恢復預設位置／取消」。
+--   * 移動模式（Placer）：全螢幕半透明底＋可拖的範例框（一則單行通知的大小，寬照 Toast.currentWidth()）＋「完成／恢復預設位置／取消」。
 --     拖曳照 Dock：setCapture＋4px 門檻。範例框是 UI.Focus 的目標：方向鍵每次 NUDGE（Shift 每次 1px）、
 --     Enter＝完成、Esc＝取消；手把十字鍵／A／B 走同一條。完成時 Toast.setAnchor（立刻寫 layout.ini）。
 --     按鍵觸發的關閉走 Focus.close：等觸發鍵放開被消耗了才關，Enter／Esc 的放開不會漏給遊戲（聊天、暫停選單）。
@@ -42,7 +42,7 @@ local PAD = 10
 local GAP = 8
 local BAR_W = 3
 local ROW_PAD = 6
-local TIME_RESERVE = 96 -- 來源名稱最多用到列寬減掉這一段（右側的相對時間）
+local TIME_RESERVE = 96 -- 來源名稱最多用到列寬減掉這一段（右側的相對時間）；大字級或長譯文時照最寬的時間字串放大（create）
 local LAYOUT_KEY = "MinidoracatUIToastHistory"
 local OPTIONS_ID = "MinidoracatUIFor42"
 local OPTION_ENTRY = "ToastHistoryEntry"
@@ -121,6 +121,7 @@ local function newRow(w)
     r.theme = w.theme
     r.font = w.font
     r.fontH = w._fontH
+    r.timeReserve = w._timeReserve
     r:initialise()
     w.scroll:addChild(r)
     return r
@@ -133,7 +134,7 @@ local function bindRow(r, e, width)
     r:setWidth(width)
     local textX = PAD + BAR_W + GAP
     r.lines = Text.wrap(e.message, width - textX - PAD, r.font)
-    r.titleText = e.title and Text.fit(e.title, width - textX - TIME_RESERVE, r.font) or nil
+    r.titleText = e.title and Text.fit(e.title, width - textX - r.timeReserve, r.font) or nil
     r:setHeight(ROW_PAD * 2 + r.fontH * (1 + #r.lines))
 end
 
@@ -278,6 +279,11 @@ local function create()
         resizable = true, minWidth = MIN_W, minHeight = MIN_H, onResize = onResize,
     })
     w._rows = {}
+    -- 右側相對時間最寬的樣子（兩位數）：字型大小 3 以上或長譯文比 TIME_RESERVE 寬，來源名稱要讓更多
+    local tm = getTextManager()
+    local timeW = math.max(tm:MeasureStringX(w.font, relativeText(0)), tm:MeasureStringX(w.font, relativeText(59)),
+        tm:MeasureStringX(w.font, relativeText(23 * 60)))
+    w._timeReserve = math.max(TIME_RESERVE, timeW + PAD + GAP)
     w.onEscape = onEscapeWindow -- 焦點框在視窗上時 Esc 關視窗（Focus 先問 root:onEscape）
     w.btnMove = UI.Button.new({ x = PAD, y = 0, title = getText("IGUI_MinidoracatUI_History_Move"),
         theme = theme, target = w, onClick = onMove })
@@ -338,7 +344,7 @@ local Frame = ISPanel:derive("MinidoracatUIToastPlacerFrame")
 -- 放不下就換到範例框另一側
 local function moveFrame(p, x, y)
     local sw, sh = p.width, p.height
-    local slotW, slotH = Toast.WIDTH, Toast.HEIGHT
+    local slotW, slotH = p.frame.width, Toast.HEIGHT
     x = math.max(0, math.min(math.floor(x), sw - slotW))
     y = math.max(0, math.min(math.floor(y), sh - slotH))
     p.frame:setX(x)
@@ -395,7 +401,7 @@ function Placer:prerender()
     local step = Toast.HEIGHT + Toast.STACK_GAP
     for i = 1, Toast.MAX_VISIBLE - 1 do
         local gy = self.up and (y - step * i) or (y + step * i)
-        Skin.border(self, x, gy, Toast.WIDTH, Toast.HEIGHT, c.textMuted, false, 0.6)
+        Skin.border(self, x, gy, f.width, Toast.HEIGHT, c.textMuted, false, 0.6)
     end
     local t = c.text
     for i = 1, #self.hintLines do
@@ -518,7 +524,7 @@ function History.move()
     p.font = theme.font or UIFont.Small
     p.fontH = getTextManager():getFontHeight(p.font)
     p:initialise()
-    local f = ISPanel.new(Frame, 0, 0, Toast.WIDTH, Toast.HEIGHT)
+    local f = ISPanel.new(Frame, 0, 0, Toast.currentWidth(), Toast.HEIGHT)
     f.background = false
     f.placer = p
     f.font = p.font
@@ -544,7 +550,7 @@ function History.move()
     local joypad = getJoypadData ~= nil and getJoypadData(0) ~= nil
     local hint = getText(joypad and "IGUI_MinidoracatUI_Placer_HintJoypad" or "IGUI_MinidoracatUI_Placer_Hint")
     p.hintLines = Text.wrap(hint, HINT_W, p.font)
-    local x, top, up = Toast.stackOrigin(Toast.WIDTH)
+    local x, top, up = Toast.stackOrigin(f.width)
     moveFrame(p, x, top)
     if Focus then p:setWantKeyEvents(true) end
     p:addToUIManager()

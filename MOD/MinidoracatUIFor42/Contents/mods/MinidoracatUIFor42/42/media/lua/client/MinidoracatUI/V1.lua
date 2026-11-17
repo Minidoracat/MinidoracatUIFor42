@@ -860,7 +860,9 @@ MinidoracatUI.v1 = {
     -- rev 28：TextField 的 opts.onTextChange（原生變更當下同步呼叫，可在裡面 setText 擋掉貼上；textFieldSync）、
     --         NavList 被截字的列滑鼠停留時顯示全名（navListTip）、Tabs 逐項提示 items[i].tooltip／setItemTooltip
     --         （停用的項也顯示；tabsItemTooltip）；Icons 新增 undo
-    API_REVISION = 28,
+    -- rev 29：Toast 寬度跟 NewSmall 字高放大、夾在螢幕寬內，Toast.currentWidth() 回目前的寬（Widgets/Toast.lua，
+    --         toastFontWidth；Toast.WIDTH 仍是 300＝字高 <= 16 時的寬）
+    API_REVISION = 29,
     CAPABILITIES = {
         theme = true,
         skin = true,
@@ -912,6 +914,7 @@ MinidoracatUI.v1 = {
         textFieldSync = false,    -- rev 28：TextField 的 opts.onTextChange 同步回呼（Widgets/Controls.lua）
         navListTip = false,       -- rev 28：NavList 被截字的列顯示全名提示（Widgets/NavList.lua，與 navList 同檔）
         tabsItemTooltip = false,  -- rev 28：Tabs 的 items[i].tooltip／setItemTooltip（Widgets/Controls.lua）
+        toastFontWidth = false,   -- rev 29：Toast 寬度跟字高放大、Toast.currentWidth()（Widgets/Toast.lua，與 toast 同檔）
     },
     Theme = Theme,
     Skin = Skin,

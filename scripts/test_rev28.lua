@@ -13,8 +13,8 @@ end
 
 dofile(ctx.MOD_LUA .. "Widgets/NavList.lua")
 local C = UI.CAPABILITIES
-check(UI.API_REVISION == 28 and C.textFieldSync == true and C.navListTip == true and C.tabsItemTooltip == true,
-    "API_REVISION 28；三個旗標在 widget 檔載入後翻 true")
+check(UI.API_REVISION >= 28 and C.textFieldSync == true and C.navListTip == true and C.tabsItemTooltip == true,
+    "API_REVISION 至少 28；三個旗標在 widget 檔載入後翻 true")
 
 -- ---------- TextField onTextChange ----------
 -- 忠於 ISTextEntryBox.lua:19-23：原生 UITextBox2.onTextChange 叫到 Lua 的 onTextChange，再轉給 onTextChangeFunction(target, self)
