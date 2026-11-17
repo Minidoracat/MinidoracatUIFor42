@@ -83,7 +83,7 @@
     "IGUI_MinidoracatUI_WhatsNew_Title": "%1 %2 更新要点",
     "IGUI_MinidoracatUI_WhatsNew_Option": "显示 MOD 更新概要",
     "IGUI_MinidoracatUI_WhatsNew_Option_tooltip": "MOD 更新后第一次进游戏，右上角会弹出一则更新要点。关闭后不弹出；之后再打开，也不会补弹以前的。",
-    "IGUI_MinidoracatUI_WhatsNew_Note": "工具栏可以调不透明度、选择要显示哪些入口：在把手上右键，选「工具栏设置...」。",
+    "IGUI_MinidoracatUI_WhatsNew_Note": "字体调大时，通知会跟着变宽，较长的通知（例如 MOD 更新要点）不再被截断。",
     "IGUI_MinidoracatUI_Placer_Sample": "通知会出现在这里",
     "IGUI_MinidoracatUI_Placer_Hint": "拖动方框移动位置，方向键微调。Enter 完成，Esc 取消。",
     "IGUI_MinidoracatUI_Placer_HintJoypad": "用十字键移动方框。A 完成，B 取消。",
