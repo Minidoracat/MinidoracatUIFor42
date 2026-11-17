@@ -147,7 +147,7 @@ tabs._mouseOver = true
 ctx.setMouse(110, 110) -- 在 A 上
 tabs:prerender()
 check(shown(tabs) == "First tab" and tabs.tooltipUI.desiredY == 100 + 24 + 8 and tabs.tooltipUI.desiredX == 110
-    and tabs.tooltip == nil, "items[i].tooltip：滑鼠停在那一項顯示在下方 8px；el.tooltip 不留（Focus 說明不會誤讀）")
+    and not tabs.tooltip, "items[i].tooltip：滑鼠停在那一項顯示在下方 8px；el.tooltip 不留（Focus 說明不會誤讀）")
 ctx.setMouse(150, 110) -- 在 Bb 上（沒提示）
 tabs:prerender()
 check(shown(tabs) == nil and tabs.tooltipUI.visible == false, "移到沒有提示的項：收掉")
@@ -197,7 +197,7 @@ nav._mouseOver = true
 ctx.setMouse(50, 50)
 nav:prerender()
 local rows = nav._rows
-check(rows[3].cut and shown(nav) == "Performance very long label that is cut" and nav.tooltip == nil
+check(rows[3].cut and shown(nav) == "Performance very long label that is cut" and not nav.tooltip
     and nav.tooltipUI.desiredY == 66 + 8,
     "被截字的列：顯示去掉頭尾空白的全名、放在那一列下方 8px；el.tooltip 不留")
 ctx.setMouse(50, 30)
