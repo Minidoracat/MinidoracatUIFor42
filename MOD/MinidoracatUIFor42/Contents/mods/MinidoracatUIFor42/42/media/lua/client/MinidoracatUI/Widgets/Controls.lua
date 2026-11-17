@@ -122,10 +122,10 @@ local function itemTip(el, text, y0, y1)
     if not (text or el.tooltipUI) then
         return
     end
-    el.tooltip = text or false -- 收回寫 false 不寫 nil，理由同 NavList.lua 的 rowTip
+    el.tooltip = text
     ISButton.updateTooltip(el)
     if TextWrap then TextWrap.fixTooltip(el) end
-    el.tooltip = false
+    el.tooltip = nil
     local tip = el.tooltipUI
     if text and tip and tip.height == 0 and tip.doLayout then
         tip:doLayout() -- 剛建的 ISToolTip 寬高是 0，要到它自己的 prerender 才排版；先排好，第一幀就夾得對

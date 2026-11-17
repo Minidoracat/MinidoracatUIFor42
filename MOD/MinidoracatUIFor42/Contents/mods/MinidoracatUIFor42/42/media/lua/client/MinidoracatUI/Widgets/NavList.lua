@@ -68,11 +68,10 @@ local function rowTip(nav, text, y0, y1)
     if not (text or nav.tooltipUI) or not (ISButton and ISButton.updateTooltip) then
         return
     end
-    -- 收回寫 false 不寫 nil：key 每幀刪掉再插回，雜湊撞到別的 key 時會整張表重排、配置記憶體（看雜湊種子，時有時無）
-    nav.tooltip = text or false
+    nav.tooltip = text
     ISButton.updateTooltip(nav)
     if TextWrap then TextWrap.fixTooltip(nav) end
-    nav.tooltip = false
+    nav.tooltip = nil
     local tip = nav.tooltipUI
     if text and tip and tip.height == 0 and tip.doLayout then
         tip:doLayout() -- 剛建的 ISToolTip 寬高是 0，要到它自己的 prerender 才排版；先排好，第一幀就夾得對
