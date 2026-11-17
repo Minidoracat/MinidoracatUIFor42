@@ -334,12 +334,15 @@ end
 -- ===== rev 21：玩家放的位置（移動模式在 ToastHistory.lua）=====
 
 -- 夾回螢幕內（第一則整個看得到，寬照目前字型）；中心在下半部就往上疊。只在設定或讀回時配置一次。
-local function clampAnchor(x, y)
+-- right＝靠右半部（寬度變了保住右緣）；不給就照目前寬的中心判。
+local function clampAnchor(x, y, right)
     local core = getCore()
     local sw, sh = core:getScreenWidth(), core:getScreenHeight()
-    x = math.max(0, math.min(math.floor(x), sw - Toast.currentWidth()))
+    local w = Toast.currentWidth()
+    x = math.max(0, math.min(math.floor(x), sw - w))
     y = math.max(0, math.min(math.floor(y), sh - HEIGHT))
-    return { x = x, y = y, up = y + HEIGHT / 2 > sh / 2 }
+    if right == nil then right = x + w / 2 > sw / 2 end
+    return { x = x, y = y, up = y + HEIGHT / 2 > sh / 2, right = right }
 end
 
 local function layoutRegistered()
@@ -367,21 +370,25 @@ end
 -- 呼叫（ISLayoutManager.lua:6-13,99-113）；layout.ini 依解析度分段，讀回的值是字串。
 local AnchorLayout = {}
 
--- rev 29 多存 w（存檔當下的通知寬）：讀回時寬度變了，放在右半部的位置保住右緣（往左長），不往右長蓋到 moodle 與 Dock。
--- 沒有 w 的舊存檔當成 WIDTH（rev 28 以前固定的寬）。
+-- rev 29 多存 w（存檔當下的通知寬）與 r（放的當下在右半部＝1）：讀回時寬度變了，右半部的位置保住右緣（往左長），
+-- 不往右長蓋到 moodle 與 Dock。左右只在放的時候判一次：換大字型再換回，放大時越過中線的位置不會被改判成右邊。
+-- 沒有 w 的舊存檔當成 WIDTH（rev 28 以前固定的寬），沒有 r 就照存的寬的中心判。
 function AnchorLayout.SaveLayout(target, name, layout)
     local a = Toast.anchor
     layout.x = a and a.x or nil -- 自動位置：這一行只剩名字
     layout.y = a and a.y or nil
     layout.w = a and Toast.currentWidth() or nil
+    layout.r = a and (a.right and 1 or 0) or nil
 end
 
 function AnchorLayout.RestoreLayout(target, name, layout)
     local x, y = tonumber(layout.x), tonumber(layout.y)
     if x and y then
-        local was = tonumber(layout.w) or WIDTH
-        if x + was / 2 > getCore():getScreenWidth() / 2 then x = x + was - Toast.currentWidth() end
-        Toast.anchor = clampAnchor(x, y)
+        local was, r = tonumber(layout.w) or WIDTH, tonumber(layout.r)
+        local right
+        if r then right = r == 1 else right = x + was / 2 > getCore():getScreenWidth() / 2 end
+        if right then x = x + was - Toast.currentWidth() end
+        Toast.anchor = clampAnchor(x, y, right)
     else
         Toast.anchor = nil
     end

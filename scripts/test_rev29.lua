@@ -144,6 +144,15 @@ check(Toast.anchor.x == 100, "左半部的位置讀回照舊（往右長）")
 store["1920x1080"].MinidoracatUIToast = { x = "1500", y = "100" }
 ISLayoutManager.TryRestore("MinidoracatUIToast")
 check(Toast.anchor.x == 1070, "rev 28 以前的存檔沒有 w：當成 300，照樣保住右緣")
+fontH = 16
+Toast.setAnchor(750, 100)
+check(store["1920x1080"].MinidoracatUIToast.r == "0", "存檔多一個 r：放的當下在左半部＝0")
+fontH = 26
+ISLayoutManager.TryRestore("MinidoracatUIToast")
+ISLayoutManager.OnPostSave() -- 字高 26 時遊戲存檔：中心 750+252 已越過中線
+fontH = 16
+ISLayoutManager.TryRestore("MinidoracatUIToast")
+check(Toast.anchor.x == 750, "換大字型再換回：左半部的位置照舊（不因放大時越過中線改判成右邊）")
 Toast.setAnchor(nil)
 
 -- ---------- 移動模式：範例框照目前寬度，起點在自動欄、拖到右緣夾住、完成存框的位置 ----------
