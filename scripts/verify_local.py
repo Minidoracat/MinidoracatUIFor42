@@ -3,13 +3,24 @@
 2026-11-26 verify_mod.py 換成家族模板時，從舊副本原樣搬來（門檻與掃描範圍不變）：
 
  12. UI 貼圖（皮膚＋圖示）與圖表匯入相容性 — gen_ui_textures.verify_image 逐張驗、scripts/test_icon_import.py；
-                           缺 Pillow 列 SKIP（hook 的 uv run 環境沒有 Pillow，`uv run --with pillow` 才會跑）
+                           本檔載不到 Pillow 時會改用 `uv run --with pillow` 重跑自己；uv 建不起環境（離線又沒快取）才列 SKIP
  13. Lua 煙霧測試         — 跑 scripts/smoke_harness.lua；publish_workshop.py 只跑 verify_mod.py，這是發布路徑上唯一的煙霧測試
 """
 import os
 import shutil
 import subprocess
 import sys
+
+# hook 的 uv run 環境沒有 Pillow，第 12 項會每次 SKIP：載不到就用 uv 帶 Pillow 重跑本檔（2026-11-26）。
+# 先試建環境：離線又沒快取時建不起來，就照舊往下跑、那兩項列 SKIP，不擋 commit。
+try:
+    import PIL  # noqa: F401
+except ImportError:
+    _uv = ["uv", "run", "--quiet", "--no-project", "--with", "pillow", "python"]
+    if shutil.which("uv") and not os.environ.get("VERIFY_LOCAL_PILLOW") and \
+            subprocess.run(_uv + ["-c", "import PIL"], capture_output=True).returncode == 0:
+        sys.exit(subprocess.run(_uv + [os.path.abspath(__file__)],
+                                env={**os.environ, "VERIFY_LOCAL_PILLOW": "1"}).returncode)
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
