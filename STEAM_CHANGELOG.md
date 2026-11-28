@@ -3,10 +3,13 @@
 
 [b]English summary[/b]
 [list]
-[*] Fixed: with a controller, a scrolling text box (descriptions, details) no longer traps the focus. Once it is scrolled to the end, pressing down again moves to the button or field below, and pressing up at the top moves to the one above, as lists already did. Keyboard behavior is unchanged.
+[*] Fixed: with a controller, a scrolled-to-the-end text box no longer traps the focus; pressing down again moves to the control below, and up at the top moves to the one above.
 [/list]
 
 [h3]🔧 修正[/h3]
 [list]
-[*] [b]用手把時，捲到底的說明框不再把焦點卡住[/b]：比框還長、可以捲動的說明或明細，用十字鍵往下會先捲內容；以前捲到底之後，焦點一直停在那個框。現在捲到底再按「下」就移到下面的按鈕或欄位，捲回頂端再按「上」就移到上面的，和清單一樣。鍵盤不變。
+[*] [b]用手把時，捲到底的說明框不再把焦點卡住[/b]：說明、明細這類可以捲動的文字，捲到底再按「下」會移到下面的按鈕或欄位，捲回頂端再按「上」會移到上面的，和清單一樣。所有使用這個函式庫的 MOD 都適用。
+[list]
+[*] 鍵盤不變：方向鍵捲到底時焦點留在原處，照舊用 Tab 離開。
+[/list]
 [/list]
