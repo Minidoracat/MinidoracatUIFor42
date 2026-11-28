@@ -368,6 +368,74 @@ ctx.press(win, K.KEY_NEXT)
 local firstPage = notes:getYScroll()
 ctx.press(win, K.KEY_NEXT)
 check(firstPage == -32 and notes:getYScroll() == -40, "scroll 目標：PgDn 捲一頁（頁＝可視高－一行，至少一行），到底夾住")
+ctx.press(win, K.KEY_DOWN)
+check(F.focused() == notes and notes:getYScroll() == -40, "scroll 目標到底：鍵盤方向鍵下不移焦點（同清單到邊，鍵盤用 Tab 離開）")
+
+-- 手把：scroll 目標到邊才移到上／下一個目標（同清單）；沒到邊只捲
+F.onJoypadDir(win, "down", nil)
+check(F.focused() == foot, "scroll 目標到底：手把下移到下一個目標")
+F.focusControl(notes, true)
+notes:setYScroll(0)
+F.onJoypadDir(win, "down", nil)
+check(F.focused() == notes and notes:getYScroll() == -16, "scroll 目標沒到底：手把下只捲一行、焦點不動")
+F.onJoypadDir(win, "up", nil)
+F.onJoypadDir(win, "up", nil)
+check(F.focused() == side and notes:getYScroll() == 0, "scroll 目標捲回頂端後再按上：移到上一個目標")
+notes.height = 80
+F.focusControl(notes, true)
+F.onJoypadDir(win, "down", nil)
+check(F.focused() == foot and notes:getYScroll() == 0, "scroll 目標內容沒超過高度：手把下直接移到下一個目標")
+notes.height = 20
+
+-- consumer 自己的捲動契約（scrollOffset／setScrollOffset／maxScrollOffset，Economy 的卡片本文）與原生多行輸入框
+-- （UITextBox2 每幀把位置吸到整行，UITextBox2.java:466-470）：到底再按下都要離開
+local keepTM, keepInstanceof = getTextManager, instanceof
+getTextManager = function()
+    local tm = keepTM()
+    tm.getFontFromEnum = function() return { getLineHeight = function() return 19 end } end
+    return tm
+end
+instanceof = function(o, name) return name == "UITextBox2" and type(o) == "table" and o.textBox2 == true end
+local w2 = UI.Window.new{ x = 0, y = 0, width = 300, height = 300, title = "S" }
+local body = ISPanel.new(ISPanel, 10, 30, 200, 40)
+body.scrollOffset = 0
+function body:maxScrollOffset() return 30 end
+function body:setScrollOffset(o) self.scrollOffset = math.max(0, math.min(math.floor(o), 30)) end
+w2:addChild(body)
+local reader = ISPanel.new(ISPanel, 10, 80, 200, 50)
+reader.javaObject = { textBox2 = true, getInset = function() return 5 end }
+reader:setScrollHeight(190) -- 10 行 × 行高 19
+w2:addChild(reader)
+local nextBtn = UI.Button.new{ x = 10, y = 140, title = "Next" }
+w2:addChild(nextBtn)
+w2.keyboardTargets = function()
+    return { { kind = "scroll", control = body, focusable = false }, { kind = "scroll", control = reader, focusable = false },
+        { kind = "button", control = nextBtn } }
+end
+w2:addToUIManager()
+F.focusControl(body, true)
+local offsets = {}
+for i = 1, 5 do
+    if F.focused() ~= body then break end
+    F.onJoypadDir(w2, "down", nil)
+    offsets[i] = body.scrollOffset
+end
+check(F.focused() == reader and table.concat(offsets, ",") == "16,30,30",
+    "consumer 的 setScrollOffset：捲到 30 為止，再按下移到下一個目標")
+local presses = 0
+while F.focused() == reader and presses < 20 do
+    F.onJoypadDir(w2, "down", nil)
+    presses = presses + 1
+    -- 下一幀引擎把位置吸到整行（topLineIndex＝(int)(-yScroll＋inset)／行高）
+    reader:setYScroll(-math.floor((5 - reader:getYScroll()) / 19) * 19)
+end
+check(F.focused() == nextBtn and presses == 8 and reader:getYScroll() == -133,
+    "原生多行輸入框：每按一次往下一行，停在吸附後的底端（-133，不是 -140）時再按下移到下一個目標（按了 " .. presses .. " 次）")
+F.focusControl(body, true)
+local endConsumed = ctx.press(w2, K.KEY_END)
+check(endConsumed and F.focused() == body and body.scrollOffset == 30, "scroll 目標到底：鍵盤 End 消耗、焦點不動")
+w2:setVisible(false)
+getTextManager, instanceof = keepTM, keepInstanceof
 
 -- 右搖桿（手把）
 local keepAxis, keepUIM = getJoypadAimingAxisY, UIManager

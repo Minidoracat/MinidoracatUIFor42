@@ -604,28 +604,41 @@ local function listActivate(list)
     return true
 end
 
+-- 原生輸入框（UITextBox2）每幀把捲動位置吸到整行（UITextBox2.java:466-470，行高 :431、getInset :547）：
+-- 比的是它會停在哪一格，否則捲到底之後每按一次都「設了又被吸回」，看起來一直有動
+local function settled(c, y)
+    local jo = c.javaObject
+    if jo == nil or instanceof == nil or not instanceof(jo, "UITextBox2") then return y end
+    local lh = getTextManager():getFontFromEnum(c.font or UIFont.Small):getLineHeight()
+    if lh <= 0 then return y end
+    return -math.floor((jo:getInset() - y) / lh) * lh
+end
+
+-- 回 true＝位置真的動了；沒有捲動空間或已經在那一端回 false（手把上下鍵這時移到上／下一個目標，同清單到邊）
 local function scrollBy(c, delta)
     if c.setScrollOffset and c.maxScrollOffset then
         local maxOffset = c:maxScrollOffset()
         if maxOffset <= 0 then return false end
-        local offset = c.scrollOffset or 0
+        local before = c.scrollOffset or 0
+        local offset = before
         if delta == "top" then offset = 0
         elseif delta == "bottom" then offset = maxOffset
         else offset = offset + delta end
         c:setScrollOffset(offset)
-        return true
+        return (c.scrollOffset or 0) ~= before
     end
     if c.setYScroll and c.getYScroll and c.getScrollHeight then
         local room = math.max(0, c:getScrollHeight() - (c.height or 0))
         if room <= 0 then return false end
-        local y = c:getYScroll() or 0
+        local before = c:getYScroll() or 0
+        local y = before
         if delta == "top" then y = 0
         elseif delta == "bottom" then y = -room
         else y = y - delta end
         if y > 0 then y = 0 end
         if y < -room then y = -room end
         c:setYScroll(y)
-        return true
+        return settled(c, c:getYScroll() or 0) ~= settled(c, before)
     end
     return false
 end
@@ -654,7 +667,7 @@ local function copyTarget(c)
     return true
 end
 
--- 捲動鍵（上下一行、PgUp／PgDn 一頁、Home／End 到兩端）捲 c；c 不能捲回 false
+-- 捲動鍵（上下一行、PgUp／PgDn 一頁、Home／End 到兩端）捲 c；c 不能捲或已在那一端回 false
 local function scrollKey(c, key)
     local line = math.max(16, getTextManager():getFontHeight(UIFont.Small) + 4)
     local page = math.max(line, (c.height or 0) - line)
@@ -1003,7 +1016,7 @@ end
 
 -- ---------- 手把 ----------
 -- 手把沒有 Tab：方向鍵先交給焦點下的控制項（清單上下、組內左右、Slider／Tabs 的 onFocusKey），
--- 沒處理（或清單已到邊）就移到上／下一個目標。A＝Enter，B＝Escape 疊層→收下拉→關窗。
+-- 沒處理（或清單、捲動目標已到邊）就移到上／下一個目標。A＝Enter，B＝Escape 疊層→收下拉→關窗。
 
 local DIR_KEYS = nil
 local function dirKey(dir)
